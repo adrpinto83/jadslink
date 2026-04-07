@@ -1,0 +1,56 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from config import get_settings
+
+settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup/shutdown events"""
+    # Startup
+    print(f"🚀 JADSlink API iniciado | Ambiente: {settings.ENVIRONMENT}")
+    yield
+    # Shutdown
+    print("🛑 JADSlink API detenido")
+
+
+app = FastAPI(
+    title=settings.API_TITLE,
+    version=settings.API_VERSION,
+    description="API de plataforma SaaS para comercializar acceso a internet satelital",
+    lifespan=lifespan,
+)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"] if settings.ENVIRONMENT == "development" else ["https://yourdomain.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "ok",
+        "version": settings.API_VERSION,
+        "environment": settings.ENVIRONMENT,
+    }
+
+
+from routers import auth
+
+app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Auth"])
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        app, host="0.0.0.0", port=8000, reload=settings.ENVIRONMENT == "development"
+    )

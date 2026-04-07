@@ -1,0 +1,47 @@
+from sqlalchemy import String, Boolean, Enum as SQLEnum, JSON
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from .base import BaseModel
+import enum
+
+
+class PlanTier(str, enum.Enum):
+    starter = "starter"
+    pro = "pro"
+    enterprise = "enterprise"
+
+
+class Tenant(BaseModel):
+    __tablename__ = "tenants"
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    plan_tier: Mapped[PlanTier] = mapped_column(
+        SQLEnum(PlanTier), default=PlanTier.starter, nullable=False
+    )
+    settings: Mapped[dict] = mapped_column(
+        JSON,
+        default={
+            "logo_url": None,
+            "primary_color": "#2563eb",
+            "payment_methods": ["cash"],
+        },
+        nullable=True,
+    )
+
+    # Relationships
+    users: Mapped[list["User"]] = relationship(
+        "User", back_populates="tenant", foreign_keys="User.tenant_id"
+    )
+    nodes: Mapped[list["Node"]] = relationship(
+        "Node", back_populates="tenant", cascade="all, delete-orphan"
+    )
+    plans: Mapped[list["Plan"]] = relationship(
+        "Plan", back_populates="tenant", cascade="all, delete-orphan"
+    )
+    tickets: Mapped[list["Ticket"]] = relationship(
+        "Ticket", back_populates="tenant", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Tenant id={self.id} slug={self.slug} plan_tier={self.plan_tier}>"

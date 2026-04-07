@@ -1,0 +1,37 @@
+from pydantic_settings import BaseSettings
+from functools import lru_cache
+
+
+class Settings(BaseSettings):
+    """Configuration loaded from environment variables via .env"""
+
+    # Environment
+    ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"
+
+    # Database
+    DATABASE_URL: str = "postgresql+asyncpg://jads:jadspass@db:5432/jadslink"
+
+    # Redis
+    REDIS_URL: str = "redis://redis:6379/0"
+
+    # Security
+    SECRET_KEY: str = "change-me-in-production"
+    TICKET_HMAC_SECRET: str = "change-me-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRATION_DAYS: int = 7
+
+    # API
+    API_PREFIX: str = "/api/v1"
+    API_TITLE: str = "JADSlink API"
+    API_VERSION: str = "1.0"
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
