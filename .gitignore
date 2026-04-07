@@ -1,0 +1,48 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+node_modules/
+package-lock.json
+yarn.lock
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Logs
+*.log
+
+# Vite
+.cache/
