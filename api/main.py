@@ -43,9 +43,13 @@ async def health_check():
     }
 
 
-from routers import auth
+from routers import auth, nodes, plans, tickets, portal
 
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Auth"])
+app.include_router(nodes.router, prefix=f"{settings.API_PREFIX}/nodes", tags=["Nodes"])
+app.include_router(plans.router, prefix=f"{settings.API_PREFIX}/plans", tags=["Plans"])
+app.include_router(tickets.router, prefix=f"{settings.API_PREFIX}/tickets", tags=["Tickets"])
+app.include_router(portal.router, prefix=f"{settings.API_PREFIX}/portal", tags=["Portal"])
 
 
 if __name__ == "__main__":
