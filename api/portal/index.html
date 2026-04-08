@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🛰️ JADSlink - Conectividad Satelital</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        body { display: flex; align-items: center; justify-content: center; padding: 20px; min-height: 100vh; }
+        .container { width: 100%; max-width: 420px; background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 32px 24px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 48px; margin-bottom: 8px; }
+        .title { font-size: 28px; font-weight: 700; color: #1a202c; margin-bottom: 4px; }
+        .subtitle { font-size: 14px; color: #718096; }
+        .form-section { margin-bottom: 28px; }
+        .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: #4a5568; margin-bottom: 12px; letter-spacing: 0.5px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 500; color: #2d3748; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 11px 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; font-family: inherit; appearance: none; }
+        input:focus, select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .plan-selector { position: relative; }
+        select { background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%234a5568' d='M0 0l6 8 6-8'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+        .price { font-size: 12px; color: #718096; margin-top: 4px; }
+        .plans-loading { font-size: 12px; color: #a0aec0; font-style: italic; }
+        button { width: 100%; padding: 13px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .alert { padding: 12px 14px; border-radius: 6px; font-size: 13px; margin-top: 16px; }
+        .alert-success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+        .alert-error { background: #fed7d7; color: #742a2a; border: 1px solid #fc8181; }
+        .alert-info { background: #bee3f8; color: #2c5282; border: 1px solid #90cdf4; }
+        .footer { text-align: center; font-size: 11px; color: #a0aec0; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+        .footer a { color: #667eea; text-decoration: none; }
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-top: 12px; }
+        .badge-success { background: #c6f6d5; color: #22543d; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🛰️</div>
+            <h1 class="title">JADSlink</h1>
+            <p class="subtitle">Conectividad satelital rápida</p>
+        </div>
+
+        <form id="activationForm">
+            <!-- Plan Selection -->
+            <div class="form-section">
+                <div class="section-title">Selecciona tu plan</div>
+                <div class="form-group plan-selector">
+                    <select id="planSelect" name="plan_id" required disabled>
+                        <option value="">Cargando planes...</option>
+                    </select>
+                    <div class="price" id="planPrice"></div>
+                    <div class="plans-loading" id="plansLoading">Cargando planes disponibles...</div>
+                </div>
+            </div>
+
+            <!-- Activation Code -->
+            <div class="form-section">
+                <div class="section-title">Tu código de acceso</div>
+                <div class="form-group">
+                    <input type="text" id="code" name="code" placeholder="Ej: ABC12XYZ" maxlength="8" required autocapitalize="characters">
+                </div>
+            </div>
+
+            <!-- MAC Address -->
+            <div class="form-section">
+                <div class="section-title">Dispositivo</div>
+                <div class="form-group">
+                    <label for="deviceMac">Dirección MAC (opcional)</label>
+                    <input type="text" id="deviceMac" name="device_mac" placeholder="Ej: AA:BB:CC:DD:EE:FF" pattern="[a-fA-F0-9:]{17}">
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="submitBtn">
+                <span id="buttonText">Activar Acceso</span>
+            </button>
+
+            <!-- Messages -->
+            <div id="responseMessage"></div>
+        </form>
+
+        <div class="footer">
+            <p>¿Problemas? Contacta al operador de la red 📱</p>
+            <p style="margin-top: 8px; font-size: 10px; color: #cbd5e0;">JADSlink v1.0</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const NODE_ID = new URLSearchParams(window.location.search).get('node') || '';
+        const API_BASE = '/api/v1';
+        const FORM = document.getElementById('activationForm');
+        const PLAN_SELECT = document.getElementById('planSelect');
+        const PLANS_LOADING = document.getElementById('plansLoading');
+        const PLAN_PRICE = document.getElementById('planPrice');
+        const CODE_INPUT = document.getElementById('code');
+        const MAC_INPUT = document.getElementById('deviceMac');
+        const SUBMIT_BTN = document.getElementById('submitBtn');
+        const BUTTON_TEXT = document.getElementById('buttonText');
+        const RESPONSE_MSG = document.getElementById('responseMessage');
+
+        // Load plans on page load
+        async function loadPlans() {
+            if (!NODE_ID) {
+                showMessage('Error: Node ID no especificado', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/portal/plans/${NODE_ID}`);
+                if (!response.ok) throw new Error('Failed to load plans');
+
+                const plans = await response.json();
+                if (plans.length === 0) {
+                    showMessage('No hay planes disponibles en este nodo', 'info');
+                    return;
+                }
+
+                // Populate select
+                PLAN_SELECT.innerHTML = '<option value="">-- Selecciona un plan --</option>';
+                plans.forEach(plan => {
+                    const option = document.createElement('option');
+                    option.value = plan.id;
+                    option.textContent = `${plan.name} (${plan.duration_minutes} min)`;
+                    option.dataset.price = plan.price_usd;
+                    PLAN_SELECT.appendChild(option);
+                });
+
+                PLAN_SELECT.disabled = false;
+                PLANS_LOADING.classList.add('hidden');
+
+                // Show price on selection
+                PLAN_SELECT.addEventListener('change', () => {
+                    const selected = PLAN_SELECT.options[PLAN_SELECT.selectedIndex];
+                    if (selected.value) {
+                        PLAN_PRICE.textContent = `$${parseFloat(selected.dataset.price).toFixed(2)} USD`;
+                    } else {
+                        PLAN_PRICE.textContent = '';
+                    }
+                });
+            } catch (error) {
+                showMessage('Error al cargar planes: ' + error.message, 'error');
+                PLANS_LOADING.textContent = 'No se pudieron cargar los planes';
+            }
+        }
+
+        // Form submission
+        FORM.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const code = CODE_INPUT.value.toUpperCase();
+            const deviceMac = MAC_INPUT.value || '00:00:00:00:00:00';
+            const planId = PLAN_SELECT.value;
+
+            if (!code || !planId) {
+                showMessage('Completa todos los campos requeridos', 'error');
+                return;
+            }
+
+            SUBMIT_BTN.disabled = true;
+            BUTTON_TEXT.innerHTML = '<span class="spinner"></span>Procesando...';
+
+            try {
+                const response = await fetch(`${API_BASE}/portal/activate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        device_mac: deviceMac,
+                        node_id: NODE_ID
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.ok) {
+                    showMessage(
+                        `✅ ¡Acceso activado!\n` +
+                        `Tienes ${data.minutes_remaining} minutos de conexión.\n` +
+                        `Expira: ${new Date(data.expires_at).toLocaleTimeString()}`,
+                        'success'
+                    );
+                    FORM.reset();
+                    PLAN_PRICE.textContent = '';
+                } else {
+                    showMessage('Código inválido o ya utilizado', 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            } finally {
+                SUBMIT_BTN.disabled = false;
+                BUTTON_TEXT.textContent = 'Activar Acceso';
+            }
+        });
+
+        // Display message
+        function showMessage(text, type) {
+            RESPONSE_MSG.innerHTML = `<div class="alert alert-${type}">${text.replace(/\n/g, '<br>')}</div>`;
+            window.scrollTo(0, 0);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadPlans);
+    </script>
+</body>
+</html>

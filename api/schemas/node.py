@@ -22,3 +22,17 @@ class NodeResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class NodeMetricResponse(BaseModel):
+    id: UUID
+    node_id: UUID
+    recorded_at: datetime
+    active_sessions: int
+    bytes_total_day: int
+    signal_quality: int | None = None
+    cpu_percent: float | None = None
+    ram_percent: float | None = None
+
+    class Config:
+        from_attributes = True
