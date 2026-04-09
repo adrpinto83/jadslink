@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -75,13 +75,13 @@ async def get_current_tenant(
 
 
 async def get_node_by_api_key(
-    api_key: str,
+    x_node_key: str = Header(..., alias="X-Node-Key"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Authenticate a field agent by node API key"""
+    """Authenticate a field agent by node API key from X-Node-Key header"""
     from models.node import Node
 
-    result = await db.execute(select(Node).where(Node.api_key == api_key))
+    result = await db.execute(select(Node).where(Node.api_key == x_node_key))
     node = result.scalar_one_or_none()
     if node is None:
         raise HTTPException(
