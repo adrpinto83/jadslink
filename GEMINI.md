@@ -6,19 +6,15 @@
 
 ## 🎯 MISIÓN DEL PROYECTO
 
-JADSlink es una plataforma SaaS multi-tenant que permite a empresas (operadores)
-comercializar acceso a internet satelital (Starlink Mini) en entornos móviles y
-remotos: buses interurbanos, playas, eventos, zonas rurales sin infraestructura.
+JADSlink es una plataforma SaaS (Software as a Service) multi-tenant que permite a empresas (operadores) registrarse, suscribirse y autogestionar la comercialización de acceso a internet satelital (Starlink Mini) en entornos móviles y remotos.
 
 **Modelo de negocio B2B2C:**
-- `superadmin` → JADS Studio: visión global, gestiona operadores y nodos
-- `operator`   → empresa cliente: administra sus nodos, genera y vende tickets
-- `enduser`    → usuario final: escanea/ingresa código y navega por tiempo pagado
+- `superadmin` → JADS Studio: visión global, aprueba y gestiona operadores, supervisa la plataforma.
+- `operator`   → empresa cliente: se suscribe a un plan, administra sus nodos, personaliza su portal, genera y vende tickets.
+- `enduser`    → usuario final: escanea/ingresa código y navega por tiempo pagado.
 
 **Principio rector absoluto: LIVIANO PRIMERO.**
-Cada decisión de stack, cada dependencia, cada query debe justificarse por su
-bajo consumo de RAM, CPU y ancho de banda. Los nodos de campo corren en hardware
-mínimo. El servidor central correrá en una máquina doméstica con internet NAT.
+Cada decisión de stack, cada dependencia, cada query debe justificarse por su bajo consumo de RAM, CPU y ancho de banda. Los nodos de campo corren en hardware mínimo. El servidor central correrá en una máquina doméstica con internet NAT.
 
 ---
 
@@ -77,6 +73,9 @@ jadslink/
 │   │
 │   ├── routers/                     ← Un router por dominio
 │   │   ├── auth.py
+│   │   ├── tenants.py              ← NEW: para que el operador gestione su tenant
+│   │   ├── subscriptions.py        ← NEW: para gestionar pagos y planes SaaS
+│   │   ├── webhooks.py             ← NEW: para recibir eventos de Stripe
 │   │   ├── nodes.py
 │   │   ├── plans.py
 │   │   ├── tickets.py
@@ -89,6 +88,7 @@ jadslink/
 │   ├── services/                    ← Lógica de negocio desacoplada
 │   │   ├── ticket_service.py        ← generación HMAC, validación
 │   │   ├── session_service.py       ← activar, expirar, desconectar
+│   │   ├── subscription_service.py  ← NEW: lógica de Stripe
 │   │   └── alert_service.py         ← detectar nodos caídos
 │   │
 │   ├── portal/                      ← Captive portal (HTML estático)
@@ -117,12 +117,15 @@ jadslink/
 │       │   └── auth.ts
 │       ├── pages/
 │       │   ├── Login.tsx
+│       │   ├── Register.tsx         ← NEW: para nuevos operadores
 │       │   ├── Dashboard.tsx        ← overview general
 │       │   ├── Nodes.tsx            ← lista + mapa Leaflet
 │       │   ├── NodeDetail.tsx       ← métricas en tiempo real (SSE)
 │       │   ├── Tickets.tsx          ← generar, listar, QR
 │       │   ├── Sessions.tsx         ← sesiones activas
-│       │   ├── Plans.tsx            ← CRUD de planes
+│       │   ├── Plans.tsx            ← CRUD de planes de tickets
+│       │   ├── Settings.tsx         ← NEW: para personalizar el tenant
+│       │   ├── Billing.tsx          ← NEW: para gestionar la suscripción
 │       │   ├── Reports.tsx          ← ventas por período
 │       │   └── Admin.tsx            ← solo superadmin
 │       └── components/
@@ -166,6 +169,7 @@ Tiempo real : SSE (Server-Sent Events) para telemetría en dashboard
 Logs        : logging estándar Python → stdout
               Formato: JSON en producción, legible en desarrollo
 HTTP client : httpx (async) para llamadas internas si se necesitan
+Billing     : Stripe (via `stripe` Python library) para suscripciones
 ```
 
 ### Captive Portal `api/portal/` — reglas de peso máximo
@@ -215,13 +219,17 @@ Implementar en `api/models/` en este orden exacto:
 # 1. tenant.py
 class Tenant(Base):
     __tablename__ = "tenants"
-    id         : UUID  (pk, default uuid4)
-    name       : str   (not null)
-    slug       : str   (unique, usado en URLs)
-    is_active  : bool  (default True)
-    plan_tier  : Enum  ("starter", "pro", "enterprise") default "starter"
-    settings   : JSON  # {logo_url, primary_color, payment_methods[]}
-    created_at : datetime (default now)
+    id                   : UUID  (pk, default uuid4)
+    name                 : str   (not null)
+    slug                 : str   (unique, usado en URLs)
+    is_active            : bool  (default True)
+    # Subscription details
+    plan_tier            : Enum  ("starter", "pro", "enterprise") default "starter"
+    subscription_status  : Enum  ("trialing", "active", "past_due", "canceled", "unpaid") default "trialing"
+    stripe_customer_id   : str   nullable (unique)
+    # Settings
+    settings             : JSON  # {logo_url, primary_color, custom_domain, payment_methods[]}
+    created_at           : datetime (default now)
 
 # 2. node.py
 class Node(Base):
@@ -300,6 +308,8 @@ CREATE INDEX idx_ticket_node_status    ON tickets(node_id, status);
 CREATE INDEX idx_session_active        ON sessions(node_id, is_active, expires_at);
 CREATE INDEX idx_metric_node_time      ON node_metrics(node_id, recorded_at DESC);
 CREATE INDEX idx_node_tenant           ON nodes(tenant_id, status);
+CREATE INDEX idx_tenant_slug           ON tenants(slug);
+CREATE INDEX idx_tenant_stripe_id      ON tenants(stripe_customer_id);
 ```
 
 ---
@@ -307,12 +317,31 @@ CREATE INDEX idx_node_tenant           ON nodes(tenant_id, status);
 ## 🔌 API ENDPOINTS
 
 **Prefijo global:** `/api/v1`
-**Auth:** Header `Authorization: Bearer <jwt>` en todos excepto `/auth/*` y `/portal/*`
+**Auth:** Header `Authorization: Bearer <jwt>` en todos excepto `/auth/*`, `/portal/*` y `/webhooks/*`
 
-### `/auth`
+### `/auth` (público)
 ```
+POST /auth/register           {company_name, email, password} → {status: "pending_approval"}
 POST /auth/login              {email, password} → {access_token, refresh_token}
 POST /auth/refresh            {refresh_token}   → {access_token}
+```
+
+### `/tenants` (rol: operator)
+```
+GET    /tenants/me             → obtiene el tenant del usuario actual
+PATCH  /tenants/me             → actualiza settings {logo_url, primary_color, custom_domain}
+```
+
+### `/subscriptions` (público y operator)
+```
+GET    /subscriptions/plans             (público) → lista de planes de suscripción SaaS
+POST   /subscriptions/checkout-session  (operator) {plan_tier} → {session_id}
+GET    /subscriptions/portal-session    (operator) → {url} (redirect a portal de Stripe)
+```
+
+### `/webhooks` (público, desde Stripe)
+```
+POST /webhooks/stripe           (recibe eventos de Stripe para actualizar suscripciones)
 ```
 
 ### `/nodes` (rol: operator, superadmin)
@@ -328,8 +357,8 @@ GET    /nodes/{id}/stream               SSE — telemetría en tiempo real
 
 ### `/plans` (rol: operator, superadmin)
 ```
-GET    /plans/                          planes del tenant
-POST   /plans/                          crear plan
+GET    /plans/                          planes de tickets del tenant
+POST   /plans/                          crear plan de tickets
 PATCH  /plans/{id}
 DELETE /plans/{id}                      soft delete (is_active=False)
 ```
@@ -370,10 +399,11 @@ POST /agent/sessions/report             reportar activaciones hechas offline
 
 ### `/admin` (rol: superadmin únicamente)
 ```
-GET  /admin/tenants/                    todos los operadores
-POST /admin/tenants/                    crear operador nuevo
-GET  /admin/overview                    métricas globales consolidadas
-GET  /admin/nodes/map                   todos los nodos {id, name, lat, lng, status}
+GET    /admin/tenants/                    todos los operadores
+POST   /admin/tenants/                    crear operador nuevo (manual)
+PATCH  /admin/tenants/{id}/approve      aprobar tenant registrado
+GET    /admin/overview                    métricas globales consolidadas
+GET    /admin/nodes/map                   todos los nodos {id, name, lat, lng, status}
 ```
 
 ### `/health` (público — sin auth)
@@ -492,6 +522,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
       TICKET_HMAC_SECRET: ${TICKET_HMAC_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
       ENVIRONMENT: development
       LOG_LEVEL: INFO
     volumes:
@@ -541,7 +573,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends 
     libpq5 curl && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -553,7 +585,7 @@ EXPOSE 8000
 ```
 
 ```
-# api/requirements.txt — SOLO LO NECESARIO (9 paquetes)
+# api/requirements.txt — SOLO LO NECESARIO
 
 fastapi==0.111.*
 uvicorn[standard]==0.29.*
@@ -565,6 +597,7 @@ python-jose[cryptography]==3.3.*
 passlib[bcrypt]==1.7.*
 redis==5.0.*
 apscheduler==3.10.*
+stripe==8.*
 ```
 
 ```bash
@@ -572,6 +605,8 @@ apscheduler==3.10.*
 
 SECRET_KEY=           # generar: python -c "import secrets; print(secrets.token_hex(32))"
 TICKET_HMAC_SECRET=   # generar: python -c "import secrets; print(secrets.token_hex(16))"
+STRIPE_SECRET_KEY=    # sk_test_...
+STRIPE_WEBHOOK_SECRET=# whsec_...
 ENVIRONMENT=development
 ```
 
@@ -651,8 +686,7 @@ def generate_ticket_code(secret: str) -> str:
 
 ## 🚀 ORDEN DE IMPLEMENTACIÓN
 
-Claude Code debe seguir este orden. No avanzar a la siguiente fase
-sin que la anterior funcione y tenga al menos un test básico.
+Gemini debe seguir este orden. No avanzar a la siguiente fase sin que la anterior funcione y tenga al menos un test básico.
 
 ### FASE 1 — Fundación (completar primero)
 ```
@@ -700,6 +734,17 @@ sin que la anterior funcione y tenga al menos un test básico.
 [ ] 30. Script deploy.sh para servidor con Cloudflare Tunnel
 ```
 
+### FASE 5 — SaaS Multi-Tenant Avanzado
+```
+[ ] 31. Implementar auto-registro de operadores (`POST /auth/register`).
+[ ] 32. Añadir endpoint de aprobación de tenants para superadmin.
+[ ] 33. Añadir endpoint para que operadores actualicen sus ajustes (`PATCH /tenants/me`).
+[ ] 34. Integrar Stripe SDK y añadir endpoints para checkout y portal de cliente.
+[ ] 35. Crear webhook para recibir y procesar eventos de Stripe, actualizando `subscription_status`.
+[ ] 36. Implementar lógica de "feature gating" (ej. limitar # de nodos) basada en `plan_tier`.
+[ ] 37. (Opcional, Pro/Enterprise) Investigar e implementar soporte para dominios personalizados en portales.
+```
+
 ---
 
 ## 💬 PREFIJOS DE TRABAJO
@@ -717,6 +762,7 @@ Cuando recibas una instrucción, identifica el área con estos prefijos:
 | `[TEST]`   | pytest — tests unitarios e integración       |
 | `[SEC]`    | seguridad, rate limiting, validaciones       |
 | `[DEPLOY]` | Cloudflare Tunnel, scripts de producción     |
+| `[SAAS]`   | Lógica de negocio de suscripciones y tenants |
 
 ---
 

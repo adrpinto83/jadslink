@@ -10,15 +10,35 @@ class PlanTier(str, enum.Enum):
     enterprise = "enterprise"
 
 
+class SubscriptionStatus(str, enum.Enum):
+    trialing = "trialing"
+    active = "active"
+    past_due = "past_due"
+    canceled = "canceled"
+    unpaid = "unpaid"
+
+
 class Tenant(BaseModel):
     __tablename__ = "tenants"
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Subscription details
     plan_tier: Mapped[PlanTier] = mapped_column(
-        SQLEnum(PlanTier), default=PlanTier.starter, nullable=False
+        SQLEnum(PlanTier, name="plantier"), default=PlanTier.starter, nullable=False
     )
+    subscription_status: Mapped[SubscriptionStatus] = mapped_column(
+        SQLEnum(SubscriptionStatus, name="subscriptionstatus"),
+        default=SubscriptionStatus.trialing,
+        nullable=False,
+    )
+    stripe_customer_id: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
+
+    # Settings
     settings: Mapped[dict] = mapped_column(
         JSON,
         default={

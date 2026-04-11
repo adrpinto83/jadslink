@@ -1,6 +1,6 @@
 """Session manager — handle ticket activation and expiration"""
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from cache import TicketCache
 from mikrotik import MikroTikClient
 import logging
@@ -46,9 +46,6 @@ class SessionManager:
         # Mark ticket as active locally
         self.cache.mark_active(code, device_mac)
 
-        # Queue report for when internet is available
-        self.cache.add_pending_report(code, device_mac, datetime.now(timezone.utc).isoformat())
-
         log.info(f"Activated ticket {code} for {device_mac}")
         return {
             "ok": True,
@@ -77,12 +74,12 @@ class SessionManager:
             try:
                 activated = datetime.fromisoformat(ticket["activated_at"])
                 duration_seconds = ticket["duration_minutes"] * 60
-                expires_at = activated.replace(tzinfo=timezone.utc) + \
-                             __import__('datetime').timedelta(seconds=duration_seconds)
+                expires_at = activated + timedelta(seconds=duration_seconds) # Corrected calculation
 
                 if now >= expires_at:
                     # Disconnect from hotspot
                     self.mikrotik.remove_hotspot_user(session["device_mac"])
+                    self.cache.mark_expired(code) # Mark as expired in cache
                     log.info(f"Expired session for {code}")
                     expired_count += 1
             except Exception as e:

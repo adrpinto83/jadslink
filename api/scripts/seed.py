@@ -12,19 +12,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database import async_session_maker
 from models import User, Tenant, Node, Plan
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 async def seed():
-    # Simple hash for testing (NOT for production)
-    import hashlib
-
-    def simple_hash(password: str) -> str:
-        return hashlib.sha256(password.encode()).hexdigest()
-
     async with async_session_maker() as session:
         # 1. Create superadmin user
         superadmin = User(
             id=uuid4(),
             email="admin@jads.io",
-            password_hash=simple_hash("admin123"),
+            password_hash=pwd_context.hash("admin123"),
             role="superadmin",
             tenant_id=None,
             is_active=True,
@@ -49,7 +47,7 @@ async def seed():
         operator = User(
             id=uuid4(),
             email="operator@test.io",
-            password_hash=simple_hash("operator123"),
+            password_hash=pwd_context.hash("operator123"),
             role="operator",
             tenant_id=tenant.id,
             is_active=True,

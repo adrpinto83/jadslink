@@ -6,6 +6,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import redis.asyncio as redis
 import logging
 
+import subprocess
+from datetime import datetime
+from pathlib import Path
+
 settings = get_settings()
 log = logging.getLogger("jadslink.main")
 
@@ -37,10 +41,52 @@ async def lifespan(app: FastAPI):
         async with async_session_maker() as db:
             await expire_sessions(db)
 
+    def backup_database_job():
+        """Periodic job to back up the PostgreSQL database."""
+        log.info("Iniciando backup de la base de datos...")
+        backup_dir = Path("./backups")
+        backup_dir.mkdir(exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = backup_dir / f"jadslink_backup_{timestamp}.sql.gz"
+        
+        # Construct the pg_dump command
+        db_url = settings.DATABASE_URL.replace("+asyncpg", "") # pg_dump doesn't use asyncpg
+        command = (
+            f'pg_dump "{db_url}" | gzip > "{backup_file}"'
+        )
+
+        try:
+            subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+            log.info(f"Backup de la base de datos completado con éxito: {backup_file}")
+        except subprocess.CalledProcessError as e:
+            log.error(f"Error al hacer el backup de la base de datos: {e.stderr}")
+
+    async def check_offline_nodes_job():
+        """Periodic job to check for offline nodes."""
+        from database import async_session_maker
+        from sqlalchemy import select
+        from models.node import Node
+        from datetime import timedelta, timezone
+
+        log.debug("Running offline node check...")
+        async with async_session_maker() as db:
+            five_minutes_ago = datetime.now(timezone.utc) - timedelta(minutes=5)
+            result = await db.execute(
+                select(Node).where(Node.last_seen_at < five_minutes_ago)
+            )
+            offline_nodes = result.scalars().all()
+
+            for node in offline_nodes:
+                log.warning(f"NODO OFFLINE: {node.name} (ID: {node.id}) - Última vez visto: {node.last_seen_at}")
+
     scheduler.add_job(expire_sessions_job, "interval", seconds=60, id="expire_sessions")
+    scheduler.add_job(backup_database_job, "cron", hour=3, minute=0, id="db_backup") # Run daily at 3 AM
+    scheduler.add_job(check_offline_nodes_job, "interval", minutes=5, id="offline_check")
+    
     scheduler.start()
     app.state.scheduler = scheduler
-    log.info("✓ APScheduler iniciado")
+    log.info("✓ APScheduler iniciado con trabajos de expiración y backup")
 
     yield
 
@@ -79,9 +125,13 @@ async def health_check():
     }
 
 
-from routers import auth, nodes, plans, tickets, portal, agent
+from routers import auth, nodes, plans, tickets, portal, agent, tenants, admin, subscriptions, webhooks
 
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Auth"])
+app.include_router(tenants.router, prefix=f"{settings.API_PREFIX}/tenants", tags=["Tenants"])
+app.include_router(admin.router, prefix=f"{settings.API_PREFIX}/admin", tags=["Admin"])
+app.include_router(subscriptions.router, prefix=f"{settings.API_PREFIX}/subscriptions", tags=["Subscriptions"])
+app.include_router(webhooks.router, prefix=f"{settings.API_PREFIX}/webhooks", tags=["Webhooks"])
 app.include_router(nodes.router, prefix=f"{settings.API_PREFIX}/nodes", tags=["Nodes"])
 app.include_router(plans.router, prefix=f"{settings.API_PREFIX}/plans", tags=["Plans"])
 app.include_router(tickets.router, prefix=f"{settings.API_PREFIX}/tickets", tags=["Tickets"])

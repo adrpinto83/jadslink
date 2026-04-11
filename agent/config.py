@@ -23,7 +23,6 @@ class AgentConfig:
     ROUTER_IP: str = os.getenv("ROUTER_IP", "192.168.88.1")
     ROUTER_USER: str = os.getenv("ROUTER_USER", "admin")
     ROUTER_PASS: str = os.getenv("ROUTER_PASS", "")
-    ROUTER_PORT: int = int(os.getenv("ROUTER_PORT", "8728"))
 
     # Cache
     CACHE_DIR: Path = Path(os.getenv("CACHE_DIR", ".cache"))

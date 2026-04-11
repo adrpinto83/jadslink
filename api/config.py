@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRATION_DAYS: int = 7
 
+    # Stripe
+    STRIPE_SECRET_KEY: str = "sk_test_your_stripe_secret_key"
+    STRIPE_WEBHOOK_SECRET: str = "whsec_your_stripe_webhook_secret"
+
     # API
     API_PREFIX: str = "/api/v1"
     API_TITLE: str = "JADSlink API"

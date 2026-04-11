@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 import logging
+from config import AgentConfig # Import AgentConfig
 
 log = logging.getLogger("jadslink.cache")
 
@@ -12,9 +13,10 @@ log = logging.getLogger("jadslink.cache")
 class TicketCache:
     """SQLite-based ticket cache for offline operation"""
 
-    def __init__(self, db_path: Path):
+    def __init__(self):
         """Initialize cache database"""
-        self.db_path = db_path
+        self.cfg = AgentConfig() # Instantiate AgentConfig
+        self.db_path = self.cfg.cache_db_path # Get db_path from config
         self._init_db()
 
     def _init_db(self):
@@ -111,6 +113,24 @@ class TicketCache:
             return True
         except Exception as e:
             log.error(f"Error marking ticket active: {e}")
+            return False
+
+    def mark_expired(self, code: str) -> bool:
+        """Mark ticket as expired locally."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    """
+                    UPDATE tickets
+                    SET status = 'expired'
+                    WHERE code = ?
+                    """,
+                    (code,),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            log.error(f"Error marking ticket expired: {e}")
             return False
 
     def get_pending_reports(self) -> List[Dict[str, str]]:

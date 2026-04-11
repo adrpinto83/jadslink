@@ -69,27 +69,57 @@ class ServerSync:
             log.warning(f"Ticket sync connection error: {e}")
             return None
 
-    def report_activations(self, activations: List[Dict[str, str]]) -> bool:
-        """Report offline activations to server"""
-        if not activations:
-            return True
+    def fetch_ticket(self, code: str) -> Optional[Dict[str, Any]]:
+        """Fetch a single ticket from the server by code."""
+        try:
+            url = f"{self.base_url}/api/v1/agent/tickets/sync"
+            params = {"node_id": str(self.config.NODE_ID), "code": code}
+            response = requests.get(
+                url, params=params, headers=self.headers, timeout=self.timeout
+            )
+            if response.status_code == 200:
+                ticket_data = response.json()
+                if ticket_data:
+                    log.info(f"Fetched ticket {code} from server")
+                    return ticket_data[0] if isinstance(ticket_data, list) and ticket_data else None
+                else:
+                    log.info(f"Ticket {code} not found on server")
+                    return None
+            elif response.status_code == 404:
+                log.info(f"Ticket {code} not found on server")
+                return None
+            else:
+                log.warning(f"Fetching ticket {code} failed: {response.status_code}")
+                return None
+        except requests.RequestException as e:
+            log.warning(f"Ticket {code} fetch connection error: {e}")
+            return None
 
+    def report_activation(self, code: str, device_mac: str) -> bool:
+        """Report a single activation to server, or queue if offline."""
+        activation = {"code": code, "device_mac": device_mac, "activated_at": datetime.utcnow().isoformat()}
+        if self._try_report_single_activation(activation):
+            return True
+        else:
+            # If reporting fails, queue it for later
+            log.warning(f"Failed to report activation for {code}, queuing for later.")
+            return self.cache.add_pending_report(code, device_mac, activation["activated_at"])
+
+    def _try_report_single_activation(self, activation: Dict[str, str]) -> bool:
+        """Helper to attempt reporting a single activation directly."""
         try:
             url = f"{self.base_url}/api/v1/agent/sessions/report"
             response = requests.post(
-                url, json=activations, headers=self.headers, timeout=self.timeout
+                url, json=[activation], headers=self.headers, timeout=self.timeout
             )
             if response.status_code == 200:
-                result = response.json()
-                processed = result.get("processed", 0)
-                failed = result.get("failed", 0)
-                log.info(f"Reported {processed} activations (failed: {failed})")
-                return processed > 0
+                log.debug(f"Activation for {activation["code"]} reported successfully.")
+                return True
             else:
-                log.warning(f"Report failed: {response.status_code}")
+                log.warning(f"Failed to report activation {activation["code"]}: {response.status_code}")
                 return False
         except requests.RequestException as e:
-            log.warning(f"Report connection error: {e}")
+            log.warning(f"Connection error while reporting activation {activation["code"]}: {e}")
             return False
 
     def flush_pending_reports(self) -> bool:
@@ -100,20 +130,14 @@ class ServerSync:
 
         log.info(f"Flushing {len(pending)} pending reports")
 
-        # Convert to proper format for API
-        activations = [
-            {
-                "code": p["code"],
-                "device_mac": p["device_mac"],
-                "activated_at": p["activated_at"],
-            }
-            for p in pending
-        ]
-
-        if self.report_activations(activations):
-            # Clear successfully reported
-            codes = [p["code"] for p in pending]
-            self.cache.clear_reported(codes)
+        reported_codes = []
+        for activation_data in pending:
+            # Construct activation dict directly from activation_data (which is already a dict)
+            if self._try_report_single_activation(activation_data):
+                reported_codes.append(activation_data["code"])
+        
+        if reported_codes:
+            self.cache.clear_reported(reported_codes)
+            log.info(f"Cleared {len(reported_codes)} successfully reported activations.")
             return True
-
         return False

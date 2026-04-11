@@ -1,26 +1,31 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, join
+from sqlalchemy.orm import joinedload
 from datetime import timedelta, datetime, timezone
 from jose import jwt, JWTError
 from models.user import User
-from schemas.auth import LoginRequest, TokenResponse, RefreshRequest
+from models.tenant import Tenant
+from schemas.auth import LoginRequest, TokenResponse, RefreshRequest, RegisterRequest, RegisterResponse
 from database import get_db
 from config import get_settings
-import hashlib
+from passlib.context import CryptContext
+import re
 
 router = APIRouter()
 settings = get_settings()
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password - using simple SHA256 for FASE 1 (development only)"""
-    return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
+    """Verifies a password using the bcrypt context."""
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def hash_password(password: str) -> str:
-    """Hash password - using simple SHA256 for FASE 1 (development only)"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hashes a password using the bcrypt context."""
+    return pwd_context.hash(password)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -33,11 +38,48 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
+def slugify(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9]+', '-', text).strip('-')
+    return text
+
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    """Register a new operator and their tenant."""
+    # Check if user already exists
+    result = await db.execute(select(User).where(User.email == request.email))
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Un usuario con este email ya existe",
+        )
+
+    # Create new tenant
+    slug = slugify(request.company_name)
+    new_tenant = Tenant(name=request.company_name, slug=slug, is_active=False) # Inactive until approved
+    db.add(new_tenant)
+    await db.flush() # Flush to get the new_tenant.id
+
+    # Create new user (operator)
+    hashed_password = hash_password(request.password)
+    new_user = User(
+        email=request.email,
+        password_hash=hashed_password,
+        role="operator",
+        tenant_id=new_tenant.id
+    )
+    db.add(new_user)
+    await db.commit()
+
+    return RegisterResponse(status="pending_approval")
+
 
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     """Authenticate user and return JWT tokens"""
-    result = await db.execute(select(User).where(User.email == credentials.email))
+    result = await db.execute(
+        select(User).options(joinedload(User.tenant)).where(User.email == credentials.email)
+    )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(credentials.password, user.password_hash):
@@ -50,6 +92,12 @@ async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)) -
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario inactivo",
+        )
+    
+    if user.role != "superadmin" and (not user.tenant or not user.tenant.is_active):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La cuenta del operador no está activa.",
         )
 
     access_token = create_access_token(

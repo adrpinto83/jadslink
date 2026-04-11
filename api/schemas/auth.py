@@ -6,6 +6,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    company_name: str
+    email: EmailStr
+    password: str
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
@@ -14,3 +20,7 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class RegisterResponse(BaseModel):
+    status: str

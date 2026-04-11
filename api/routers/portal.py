@@ -1,17 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
-from pydantic import BaseModel
 from pathlib import Path
 from models.ticket import Ticket, TicketStatus
 from models.plan import Plan
 from models.node import Node
 from models.session import Session as SessionModel
 from database import get_db
+from services.session_service import SessionService
 import logging
 
 log = logging.getLogger("jadslink.portal")
@@ -20,18 +20,6 @@ log = logging.getLogger("jadslink.portal")
 PORTAL_DIR = Path(__file__).parent.parent / "portal"
 
 router = APIRouter()
-
-
-class ActivateRequest(BaseModel):
-    code: str
-    device_mac: str
-    node_id: UUID
-
-
-class ActivateResponse(BaseModel):
-    ok: bool
-    minutes_remaining: int | None = None
-    expires_at: str | None = None
 
 
 @router.get("", response_class=HTMLResponse)
@@ -52,41 +40,49 @@ async def portal_page():
     """
 
 
-@router.get("/plans/{node_id}")
-async def get_plans(node_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Get available plans for a node (public endpoint)"""
+@router.get("/plans", response_class=HTMLResponse)
+async def get_plans_htmx(
+    node_id: UUID, # Now required as query param
+    db: AsyncSession = Depends(get_db),
+):
+    """Get available plans for a node and return as HTML options for HTMX."""
     result = await db.execute(
         select(Node).where(Node.id == node_id)
     )
     node = result.scalar_one_or_none()
     if not node:
-        raise HTTPException(status_code=404, detail="Nodo no encontrado")
+        return "<option value=\"\">No se pudo encontrar el nodo</option>"
 
     result = await db.execute(
         select(Plan).where(
             Plan.tenant_id == node.tenant_id,
             Plan.is_active,
-        )
+        ).order_by(Plan.duration_minutes)
     )
     plans = result.scalars().all()
-    return [
-        {
-            "id": str(p.id),
-            "name": p.name,
-            "duration_minutes": p.duration_minutes,
-            "price_usd": float(p.price_usd),
-        }
-        for p in plans
-    ]
 
+    if not plans:
+        return "<option value=\"\">No hay planes disponibles</option>"
 
-@router.post("/activate", response_model=ActivateResponse)
+    options_html = '<option value=\"\">-- Selecciona un plan --</option>'
+    for p in plans:
+        options_html += f"<option value=\"{p.id}\" data-price=\"{float(p.price_usd):.2f}\">{p.name} ({p.duration_minutes} min)</option>"
+
+    return options_html
+
+@router.post("/activate", response_class=HTMLResponse)
 async def activate_ticket(
-    req: ActivateRequest,
     request: Request,
+    code: str = Form(...),
+    device_mac: str = Form(""), # Default to empty string if not provided
+    node_id: UUID = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
-    """Activate ticket (public endpoint, no auth)"""
+    """Activate ticket (public endpoint, no auth) and return HTML partial."""
+    # Helper to generate HTML alerts
+    def create_alert(message: str, type: str):
+        return f"<div class=\"alert alert-{type}\">{message}</div>"
+
     # Rate limiting: max 10 attempts per IP per minute
     redis = getattr(request.app.state, "redis", None)
     if redis:
@@ -100,12 +96,7 @@ async def activate_ticket(
 
             if attempts > 10:
                 log.warning(f"Rate limit exceeded for IP {client_ip}")
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="Too many activation attempts",
-                )
-        except HTTPException:
-            raise
+                return create_alert("Demasiados intentos de activación. Por favor, espera un momento.", "error")
         except Exception as e:
             log.warning(f"Rate limiting error: {e}")
             # Continue without rate limiting if Redis fails
@@ -114,77 +105,84 @@ async def activate_ticket(
     result = await db.execute(
         select(Ticket)
         .where(
-            Ticket.code == req.code,
-            Ticket.node_id == req.node_id,
+            Ticket.code == code,
+            Ticket.node_id == node_id,
             Ticket.status == TicketStatus.pending,
         )
         .options(selectinload(Ticket.plan))
     )
     ticket = result.scalar_one_or_none()
     if not ticket:
-        return ActivateResponse(ok=False)
+        return create_alert("Código inválido o ya utilizado.", "error")
 
-    # Mark ticket as active
-    ticket.status = TicketStatus.active
-    ticket.activated_at = datetime.now(timezone.utc)
-    ticket.device_mac = req.device_mac
+    # Use SessionService to activate ticket
+    try:
+        session_service = SessionService(db)
+        session = await session_service.activate_session(
+            ticket=ticket,
+            node_id=node_id,
+            device_mac=device_mac or "00:00:00:00:00:00", # Default MAC if not provided
+            user_ip=request.client.host if request.client else None
+        )
 
-    # Create session
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        minutes=ticket.plan.duration_minutes
-    )
-    ticket.expires_at = expires_at
+        minutes_remaining = int((session.expires_at - datetime.now(timezone.utc)).total_seconds() / 60)
+        expires_at_str = session.expires_at.astimezone(timezone.utc).strftime("%H:%M:%S UTC")
 
-    session = SessionModel(
-        ticket_id=ticket.id,
-        node_id=req.node_id,
-        device_mac=req.device_mac,
-        started_at=datetime.now(timezone.utc),
-        expires_at=expires_at,
-    )
-    db.add(session)
-    await db.commit()
+        return create_alert(
+            f"✅ ¡Acceso activado!\n" +
+            f"Tienes {minutes_remaining} minutos de conexión.\n" +
+            f"Expira: {expires_at_str}",
+            "success"
+        )
 
-    minutes_remaining = ticket.plan.duration_minutes
-    return ActivateResponse(
-        ok=True,
-        minutes_remaining=minutes_remaining,
-        expires_at=expires_at.isoformat(),
-    )
+    except HTTPException as e:
+        return create_alert(e.detail, "error")
+    except Exception as e:
+        log.error(f"Error activating session: {e}")
+        return create_alert("Ocurrió un error inesperado al activar el acceso.", "error")
 
 
-@router.get("/status/{code}")
-async def ticket_status(code: str, db: AsyncSession = Depends(get_db)):
-    """Check ticket activation status (public endpoint)"""
-    result = await db.execute(
-        select(Ticket).where(Ticket.code == code)
-    )
+@router.get("/status/{code}", response_class=HTMLResponse)
+async def ticket_status(
+    code: str,
+    node_id: UUID | None = None, # Assuming node_id can be passed via hx-get params
+    db: AsyncSession = Depends(get_db)
+):
+    """Check ticket activation status (public endpoint) and return HTML partial."""
+    # Helper to generate HTML alerts
+    def create_alert(message: str, type: str):
+        return f"<div class=\"alert alert-{type}\">{message}</div>"
+
+    query = select(Ticket).where(Ticket.code == code)
+    if node_id:
+        query = query.where(Ticket.node_id == node_id)
+
+    result = await db.execute(query.options(selectinload(Ticket.plan)))
     ticket = result.scalar_one_or_none()
 
     if not ticket:
-        return {
-            "ok": False,
-            "is_active": False,
-            "minutes_remaining": None,
-        }
+        return create_alert("Ticket no encontrado.", "info")
 
-    if ticket.status != TicketStatus.active:
-        return {
-            "ok": False,
-            "is_active": False,
-            "minutes_remaining": None,
-        }
-
-    # Calculate remaining time
-    if ticket.expires_at:
+    if ticket.status == TicketStatus.active and ticket.expires_at:
         now = datetime.now(timezone.utc)
-        remaining = ticket.expires_at - now
-        minutes_remaining = max(0, int(remaining.total_seconds() / 60))
-    else:
-        minutes_remaining = None
-
-    return {
-        "ok": True,
-        "is_active": True,
-        "minutes_remaining": minutes_remaining,
-    }
+        if now < ticket.expires_at:
+            remaining = ticket.expires_at - now
+            minutes_remaining = int(remaining.total_seconds() / 60)
+            expires_at_str = ticket.expires_at.astimezone(timezone.utc).strftime("%H:%M:%S UTC")
+            return create_alert(
+                f"✅ Tu acceso está activo. \n" +
+                f"Quedan {minutes_remaining} minutos.\n" +
+                f"Expira: {expires_at_str}",
+                "success"
+            )
+        else:
+            # Ticket expired but status is still active in DB (will be cleaned by APScheduler)
+            return create_alert("Tu ticket ha expirado.", "info")
+    elif ticket.status == TicketStatus.pending:
+        return create_alert("Tu ticket está pendiente de activación.", "info")
+    elif ticket.status == TicketStatus.revoked:
+        return create_alert("Tu ticket ha sido revocado.", "error")
+    elif ticket.status == TicketStatus.expired:
+        return create_alert("Tu ticket ha expirado.", "info")
+    
+    return create_alert("Estado del ticket desconocido.", "info")

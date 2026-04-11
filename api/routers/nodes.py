@@ -10,7 +10,7 @@ from models.tenant import Tenant
 from models.node_metric import NodeMetric
 from schemas.node import NodeCreate, NodeUpdate, NodeResponse, NodeMetricResponse
 from database import get_db
-from deps import get_current_user, get_current_tenant
+from deps import get_current_user, get_current_tenant, check_node_limit
 import secrets
 import asyncio
 import json
@@ -23,16 +23,23 @@ router = APIRouter()
 
 @router.get("", response_model=list[NodeResponse])
 async def list_nodes(
-    tenant: Tenant = Depends(get_current_tenant),
+    tenant: Tenant | None = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Node).where(Node.tenant_id == tenant.id)
-    )
+    """
+    List nodes.
+    - For operators, returns nodes belonging to their tenant.
+    - For superadmins, returns all nodes across all tenants.
+    """
+    query = select(Node)
+    if tenant:
+        query = query.where(Node.tenant_id == tenant.id)
+
+    result = await db.execute(query.order_by(Node.created_at.desc()))
     return result.scalars().all()
 
 
-@router.post("", response_model=NodeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=NodeResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(check_node_limit)])
 async def create_node(
     node_in: NodeCreate,
     tenant: Tenant = Depends(get_current_tenant),
@@ -53,15 +60,19 @@ async def create_node(
 @router.get("/{node_id}", response_model=NodeResponse)
 async def get_node(
     node_id: UUID,
-    tenant: Tenant = Depends(get_current_tenant),
+    tenant: Tenant | None = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Node).where(
-            Node.id == node_id,
-            Node.tenant_id == tenant.id,
-        )
-    )
+    """
+    Get a specific node.
+    - For operators, only returns the node if it belongs to their tenant.
+    - For superadmins, returns the node regardless of tenant.
+    """
+    query = select(Node).where(Node.id == node_id)
+    if tenant:
+        query = query.where(Node.tenant_id == tenant.id)
+
+    result = await db.execute(query)
     node = result.scalar_one_or_none()
     if not node:
         raise HTTPException(status_code=404, detail="Nodo no encontrado")

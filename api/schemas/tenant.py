@@ -8,6 +8,11 @@ class TenantCreate(BaseModel):
     slug: str
 
 
+class TenantUpdate(BaseModel):
+    logo_url: str | None = None
+    primary_color: str | None = None
+    custom_domain: str | None = None
+
 class TenantResponse(BaseModel):
     id: UUID
     name: str
@@ -15,6 +20,7 @@ class TenantResponse(BaseModel):
     plan_tier: str
     is_active: bool
     created_at: datetime
+    settings: dict | None = {}
 
     class Config:
         from_attributes = True
