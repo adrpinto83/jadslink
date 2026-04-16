@@ -6,19 +6,26 @@ from models.plan import Plan
 from models.tenant import Tenant
 from schemas.plan import PlanCreate, PlanUpdate, PlanResponse
 from database import get_db
-from deps import get_current_tenant
+from models.user import User
+from deps import get_current_user, get_current_tenant
 
 router = APIRouter()
 
 
 @router.get("", response_model=list[PlanResponse])
 async def list_plans(
-    tenant: Tenant = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Plan).where(Plan.tenant_id == tenant.id, Plan.is_active)
-    )
+    if current_user.role == "superadmin":
+        query = select(Plan).where(Plan.is_active)
+    else:
+        if not current_user.tenant_id:
+            return []  # Or raise an exception
+        query = select(Plan).where(
+            Plan.tenant_id == current_user.tenant_id, Plan.is_active
+        )
+    result = await db.execute(query)
     return result.scalars().all()
 
 

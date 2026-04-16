@@ -7,6 +7,7 @@ import redis.asyncio as redis
 import logging
 
 import subprocess
+import gzip
 from datetime import datetime
 from pathlib import Path
 
@@ -36,10 +37,11 @@ async def lifespan(app: FastAPI):
     async def expire_sessions_job():
         """Periodic job to expire sessions"""
         from database import async_session_maker
-        from services.session_service import expire_sessions
+        from services.session_service import SessionService
 
         async with async_session_maker() as db:
-            await expire_sessions(db)
+            service = SessionService(db)
+            await service.expire_sessions()
 
     def backup_database_job():
         """Periodic job to back up the PostgreSQL database."""
@@ -48,19 +50,36 @@ async def lifespan(app: FastAPI):
         backup_dir.mkdir(exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_file = backup_dir / f"jadslink_backup_{timestamp}.sql.gz"
-        
+        # Create a temporary file for the SQL dump
+        dump_file = backup_dir / f"jadslink_backup_{timestamp}.sql"
+
         # Construct the pg_dump command
         db_url = settings.DATABASE_URL.replace("+asyncpg", "") # pg_dump doesn't use asyncpg
-        command = (
-            f'pg_dump "{db_url}" | gzip > "{backup_file}"'
-        )
-
+        command = [
+            "pg_dump",
+            db_url,
+        ]
+        
         try:
-            subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
-            log.info(f"Backup de la base de datos completado con éxito: {backup_file}")
+            with open(dump_file, "w") as f:
+                subprocess.run(
+                    command,
+                    stdout=f,
+                    check=True,
+                    text=True,
+                )
+            
+            # Gzip the backup file
+            with gzip.open(str(dump_file) + ".gz", "wb") as f_out:
+                with open(dump_file, "rb") as f_in:
+                    f_out.writelines(f_in)
+            
+            # Remove the original sql file
+            dump_file.unlink()
+            
+            log.info(f"Backup de la base de datos completado con éxito: {dump_file}.gz")
         except subprocess.CalledProcessError as e:
-            log.error(f"Error al hacer el backup de la base de datos: {e.stderr}")
+            log.error(f"Error al hacer el backup de la base de datos: {e}")
 
     async def check_offline_nodes_job():
         """Periodic job to check for offline nodes."""
@@ -108,14 +127,14 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.ENVIRONMENT == "development" else ["https://yourdomain.com"],
+    allow_origins=["*"], # In production, lock this down!
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-@app.get("/health", tags=["Health"])
+@app.get(f"{settings.API_PREFIX}/health", tags=["Health"])
 async def health_check():
     """Health check endpoint"""
     return {
@@ -125,7 +144,16 @@ async def health_check():
     }
 
 
-from routers import auth, nodes, plans, tickets, portal, agent, tenants, admin, subscriptions, webhooks
+from routers import auth
+from routers import nodes
+from routers import plans
+from routers import tickets
+from routers import portal
+from routers import agent
+from routers import tenants
+from routers import admin
+from routers import subscriptions
+from routers import webhooks
 
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Auth"])
 app.include_router(tenants.router, prefix=f"{settings.API_PREFIX}/tenants", tags=["Tenants"])

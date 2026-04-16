@@ -7,6 +7,7 @@ from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from models.node import Node
 from models.tenant import Tenant
+from models.user import User
 from models.node_metric import NodeMetric
 from schemas.node import NodeCreate, NodeUpdate, NodeResponse, NodeMetricResponse
 from database import get_db
@@ -45,6 +46,8 @@ async def create_node(
     tenant: Tenant = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
+    if not tenant:
+        raise HTTPException(status_code=403, detail="No active tenant found for user")
     node = Node(
         tenant_id=tenant.id,
         name=node_in.name,
@@ -86,6 +89,9 @@ async def update_node(
     tenant: Tenant = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
+    if not tenant:
+        raise HTTPException(status_code=403, detail="No active tenant found for user")
+        
     result = await db.execute(
         select(Node).where(
             Node.id == node_id,
@@ -112,6 +118,8 @@ async def get_node_metrics(
     db: AsyncSession = Depends(get_db),
 ):
     """Get historical metrics for a node (last N hours)"""
+    if not tenant:
+        raise HTTPException(status_code=403, detail="No active tenant found for user")
     # Verify node belongs to tenant
     result = await db.execute(
         select(Node).where(
@@ -140,38 +148,36 @@ async def get_node_metrics(
 @router.get("/{node_id}/stream")
 async def stream_node_metrics(
     node_id: UUID,
-    tenant: Tenant = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """SSE stream of node metrics (emitted every 30s)"""
-    # Verify node belongs to tenant
-    result = await db.execute(
-        select(Node).where(
-            Node.id == node_id,
-            Node.tenant_id == tenant.id,
-        )
-    )
+    # Verify node access
+    query = select(Node).where(Node.id == node_id)
+    if current_user.role != "superadmin":
+        query = query.where(Node.tenant_id == current_user.tenant_id)
+
+    result = await db.execute(query)
     node = result.scalar_one_or_none()
     if not node:
-        raise HTTPException(status_code=404, detail="Nodo no encontrado")
+        raise HTTPException(status_code=404, detail="Nodo no encontrado o sin acceso")
 
     async def event_generator():
         """Generate SSE events with node metrics every 30 seconds"""
         try:
             while True:
                 # Get latest metric
-                async with db.begin_nested():
-                    result = await db.execute(
-                        select(NodeMetric)
-                        .where(NodeMetric.node_id == node_id)
-                        .order_by(NodeMetric.recorded_at.desc())
-                        .limit(1)
-                    )
-                    latest_metric = result.scalar_one_or_none()
+                result = await db.execute(
+                    select(NodeMetric)
+                    .where(NodeMetric.node_id == node_id)
+                    .order_by(NodeMetric.recorded_at.desc())
+                    .limit(1)
+                )
+                latest_metric = result.scalar_one_or_none()
 
                 # Prepare event data
                 event_data = {
-                    "status": node.status.value if node.status else "offline",
+                    "status": node.status if node.status else "offline",
                     "last_seen_at": node.last_seen_at.isoformat()
                     if node.last_seen_at
                     else None,
@@ -190,7 +196,10 @@ async def stream_node_metrics(
                     )
 
                 # Emit SSE event
-                yield f"data: {json.dumps(event_data)}\n\n"
+                sse_event = f"""data: {json.dumps(event_data)}
+
+"""
+                yield sse_event
 
                 # Wait 30 seconds before next event
                 await asyncio.sleep(30)
