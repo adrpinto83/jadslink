@@ -2,14 +2,26 @@ from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
 
+class NodeLocation(BaseModel):
+    lat: float | None = None
+    lng: float | None = None
+    address: str | None = None
+    description: str | None = None
 
 class NodeCreate(BaseModel):
     name: str
     serial: str
 
 
+class NodeConfigUpdate(BaseModel):
+    ssid: str | None = None
+    channel: int | None = None
+    max_clients: int | None = None
+    bandwidth_default: int | None = None
+
 class NodeUpdate(BaseModel):
     name: str | None = None
+    config: NodeConfigUpdate | None = None
 
 
 class NodeResponse(BaseModel):
@@ -17,7 +29,8 @@ class NodeResponse(BaseModel):
     name: str
     serial: str
     status: str
-    location: dict | None = None
+    location: NodeLocation | None = None
+    last_seen_at: datetime | None = None
     created_at: datetime
 
     class Config:

@@ -1,9 +1,11 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import apiClient from '@/api/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from '@/components/ui/button';
 import NodeMap from '@/components/NodeMap';
 
 // Define the Node type based on the backend schema
@@ -70,6 +72,7 @@ const Nodes: React.FC = () => {
                 <TableHead>Serial</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Última vez visto</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -81,6 +84,11 @@ const Nodes: React.FC = () => {
                     <Badge variant={getStatusVariant(node.status)}>{node.status}</Badge>
                   </TableCell>
                   <TableCell>{node.last_seen_at ? new Date(node.last_seen_at).toLocaleString() : 'Nunca'}</TableCell>
+                  <TableCell>
+                    <Button asChild variant="outline">
+                      <Link to={`/dashboard/nodes/${node.id}`}>Detalles</Link>
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

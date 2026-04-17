@@ -24,7 +24,7 @@ router = APIRouter()
 
 @router.get("", response_model=list[NodeResponse])
 async def list_nodes(
-    tenant: Tenant | None = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -33,8 +33,10 @@ async def list_nodes(
     - For superadmins, returns all nodes across all tenants.
     """
     query = select(Node)
-    if tenant:
-        query = query.where(Node.tenant_id == tenant.id)
+    if current_user.role != "superadmin":
+        if not current_user.tenant_id:
+            return [] # Or raise an exception
+        query = query.where(Node.tenant_id == current_user.tenant_id)
 
     result = await db.execute(query.order_by(Node.created_at.desc()))
     return result.scalars().all()
@@ -86,24 +88,29 @@ async def get_node(
 async def update_node(
     node_id: UUID,
     node_in: NodeUpdate,
-    tenant: Tenant = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not tenant:
-        raise HTTPException(status_code=403, detail="No active tenant found for user")
-        
-    result = await db.execute(
-        select(Node).where(
-            Node.id == node_id,
-            Node.tenant_id == tenant.id,
-        )
-    )
+    query = select(Node).where(Node.id == node_id)
+    if current_user.role != "superadmin":
+        query = query.where(Node.tenant_id == current_user.tenant_id)
+    
+    result = await db.execute(query)
     node = result.scalar_one_or_none()
     if not node:
         raise HTTPException(status_code=404, detail="Nodo no encontrado")
 
-    if node_in.name:
-        node.name = node_in.name
+    update_data = node_in.model_dump(exclude_unset=True)
+
+    if 'name' in update_data:
+        node.name = update_data['name']
+
+    if 'config' in update_data and update_data['config'] is not None:
+        if node.config is None:
+            node.config = {}
+        # Get non-None values from the input config
+        config_update = {k: v for k, v in update_data['config'].items() if v is not None}
+        node.config.update(config_update)
 
     await db.commit()
     await db.refresh(node)
