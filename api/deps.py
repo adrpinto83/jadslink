@@ -61,14 +61,10 @@ async def get_current_user(
 async def get_current_tenant(
     current_user: "User" = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> "Tenant" | None:
+) -> "Tenant":
     """
-    Get current user's tenant. Returns None for superadmin.
-    Raises 403 if a non-superadmin user has no tenant.
+    Get current user's tenant. Raises 403 if user has no tenant.
     """
-    if current_user.role == "superadmin":
-        return None
-
     if not current_user.tenant_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

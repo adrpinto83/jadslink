@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { toast } from "sonner";
 
 interface Plan {
   id: string;
@@ -22,6 +23,15 @@ interface PlanForm {
   duration_minutes: number;
   price_usd: string;
 }
+
+const planTemplates: PlanForm[] = [
+  { name: "30 Minutos", duration_minutes: 30, price_usd: "2.50" },
+  { name: "1 Hora", duration_minutes: 60, price_usd: "4.00" },
+  { name: "3 Horas", duration_minutes: 180, price_usd: "8.00" },
+  { name: "Día (Bus)", duration_minutes: 480, price_usd: "12.00" },
+  { name: "Día (Evento)", duration_minutes: 1440, price_usd: "20.00" },
+  { name: "Semana", duration_minutes: 10080, price_usd: "50.00" },
+];
 
 const Plans: React.FC = () => {
   const queryClient = useQueryClient();
@@ -48,6 +58,10 @@ const Plans: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plans'] });
       resetForm();
+      toast.success("Plan creado con éxito");
+    },
+    onError: () => {
+      toast.error("Error al crear el plan");
     },
   });
 
@@ -58,6 +72,10 @@ const Plans: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plans'] });
       resetForm();
+      toast.success("Plan actualizado con éxito");
+    },
+    onError: () => {
+      toast.error("Error al actualizar el plan");
     },
   });
 
@@ -68,6 +86,7 @@ const Plans: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plans'] });
     },
+    // We use toast.promise in handleDelete, so no need for explicit toasts here
   });
 
   const resetForm = () => {
@@ -96,10 +115,21 @@ const Plans: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('¿Seguro que deseas eliminar este plan?')) {
-      deleteMutation.mutate(id);
-    }
+    toast.promise(deleteMutation.mutateAsync(id), {
+      loading: 'Eliminando plan...',
+      success: () => {
+        // Invalidate queries is already handled by onSuccess in the mutation
+        return 'Plan eliminado con éxito';
+      },
+      error: 'Error al eliminar el plan',
+    });
   };
+  
+  const handleTemplateClick = (template: PlanForm) => {
+    setEditingPlan(null); // Ensure we are in create mode
+    setFormData(template);
+    setShowForm(true);
+  }
 
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${minutes} min`;
@@ -117,6 +147,20 @@ const Plans: React.FC = () => {
           {showForm ? 'Cancelar' : 'Nuevo Plan'}
         </Button>
       </div>
+
+      {/* Plan Templates */}
+      {!showForm && (
+        <Card className="p-4">
+            <h3 className="text-sm font-semibold mb-2 text-gray-500">O crear desde una plantilla:</h3>
+            <div className="flex flex-wrap gap-2">
+                {planTemplates.map(template => (
+                    <Button key={template.name} variant="outline" size="sm" onClick={() => handleTemplateClick(template)}>
+                        {template.name}
+                    </Button>
+                ))}
+            </div>
+        </Card>
+      )}
 
       {showForm && (
         <Card className="p-6">

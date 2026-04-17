@@ -20,7 +20,23 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 async def seed():
     async with async_session_maker() as session:
         async with session.begin():
-            # 1. Create superadmin user
+            # 1. Create JADS Studio tenant for the superadmin
+            result = await session.execute(select(Tenant).where(Tenant.slug == "jads-studio"))
+            jads_tenant = result.scalar_one_or_none()
+            if not jads_tenant:
+                jads_tenant = Tenant(
+                    id=uuid4(),
+                    name="JADS Studio",
+                    slug="jads-studio",
+                    is_active=True,
+                    plan_tier="enterprise", # The main company has the highest tier
+                )
+                session.add(jads_tenant)
+                print(f"✓ Tenant creado: {jads_tenant.name}")
+            else:
+                print(f"✓ Tenant ya existe: {jads_tenant.name}")
+
+            # 2. Create superadmin user
             result = await session.execute(select(User).where(User.email == "admin@jads.io"))
             superadmin = result.scalar_one_or_none()
             if not superadmin:
@@ -29,15 +45,19 @@ async def seed():
                     email="admin@jads.io",
                     password_hash=pwd_context.hash("admin123"),
                     role="superadmin",
-                    tenant_id=None,
+                    tenant_id=jads_tenant.id, # Associate with JADS tenant
                     is_active=True,
                 )
                 session.add(superadmin)
                 print("✓ Superadmin creado: admin@jads.io (password: admin123)")
             else:
+                # Ensure existing superadmin is associated with the JADS tenant
+                if not superadmin.tenant_id:
+                    superadmin.tenant_id = jads_tenant.id
+                    print("✓ Superadmin actualizado con tenant_id de JADS Studio")
                 print("✓ Superadmin ya existe")
 
-            # 2. Create tenant (operator)
+            # 3. Create tenant (operator)
             result = await session.execute(select(Tenant).where(Tenant.slug == "test-operator"))
             tenant = result.scalar_one_or_none()
             if not tenant:
@@ -110,7 +130,7 @@ async def seed():
 
             for plan_def in plan_definitions:
                 result = await session.execute(select(Plan).where(Plan.name == plan_def["name"], Plan.tenant_id == tenant.id))
-                plan = result.scalar_one_or_none()
+                plan = result.scalars().first()
                 if not plan:
                     plan = Plan(
                         id=uuid4(),
@@ -127,8 +147,7 @@ async def seed():
                     print(f"✓ Plan ya existe: {plan.name}")
 
             await session.commit()
-            print("
-✅ Seed completado exitosamente")
+            print("✅ Seed completado exitosamente")
 
 
 if __name__ == "__main__":
