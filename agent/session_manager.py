@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone, timedelta
 from cache import TicketCache
-from mikrotik import MikroTikClient
+from firewall import FirewallClient
 import logging
 
 log = logging.getLogger("jadslink.session_manager")
@@ -11,10 +11,10 @@ log = logging.getLogger("jadslink.session_manager")
 class SessionManager:
     """Manage active sessions and ticket expiration"""
 
-    def __init__(self, cache: TicketCache, mikrotik: MikroTikClient):
+    def __init__(self, cache: TicketCache, firewall: FirewallClient):
         """Initialize session manager"""
         self.cache = cache
-        self.mikrotik = mikrotik
+        self.firewall = firewall
 
     def activate(self, code: str, device_mac: str) -> dict:
         """
@@ -32,16 +32,21 @@ class SessionManager:
         if ticket["status"] != "pending":
             return {"ok": False, "reason": f"ticket_{ticket['status']}"}
 
-        # Add to hotspot
-        success = self.mikrotik.add_hotspot_user(
+        # Add to firewall
+        success = self.firewall.allow_mac(
             mac=device_mac,
-            time_limit_minutes=ticket["duration_minutes"],
-            rate_down=ticket["bandwidth_down_kbps"],
-            rate_up=ticket["bandwidth_up_kbps"],
+            duration_minutes=ticket["duration_minutes"]
         )
 
         if not success:
-            return {"ok": False, "reason": "hotspot_error"}
+            return {"ok": False, "reason": "firewall_error"}
+
+        # Apply bandwidth limits
+        self.firewall.set_bandwidth_limit(
+            mac=device_mac,
+            download_kbps=ticket.get("bandwidth_down_kbps", 0),
+            upload_kbps=ticket.get("bandwidth_up_kbps", 0)
+        )
 
         # Mark ticket as active locally
         self.cache.mark_active(code, device_mac)
@@ -77,9 +82,9 @@ class SessionManager:
                 expires_at = activated + timedelta(seconds=duration_seconds) # Corrected calculation
 
                 if now >= expires_at:
-                    # Disconnect from hotspot
-                    self.mikrotik.remove_hotspot_user(session["device_mac"])
-                    self.cache.mark_expired(code) # Mark as expired in cache
+                    # Disconnect from firewall
+                    self.firewall.block_mac(session["device_mac"])
+                    self.cache.mark_expired(code)  # Mark as expired in cache
                     log.info(f"Expired session for {code}")
                     expired_count += 1
             except Exception as e:

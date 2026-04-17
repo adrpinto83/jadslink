@@ -31,10 +31,10 @@ const Nodes: React.FC = () => {
     queryFn: fetchNodes 
   });
 
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status.toLowerCase()) {
       case 'online':
-        return 'success';
+        return 'default'; // Green-ish in default theme
       case 'offline':
         return 'destructive';
       default:

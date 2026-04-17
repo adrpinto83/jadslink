@@ -19,10 +19,10 @@ class AgentConfig:
     SYNC_INTERVAL: int = int(os.getenv("SYNC_INTERVAL", "300"))  # 5 minutes
     EXPIRE_INTERVAL: int = int(os.getenv("EXPIRE_INTERVAL", "60"))
 
-    # RouterOS MikroTik
-    ROUTER_IP: str = os.getenv("ROUTER_IP", "192.168.88.1")
-    ROUTER_USER: str = os.getenv("ROUTER_USER", "admin")
-    ROUTER_PASS: str = os.getenv("ROUTER_PASS", "")
+    # Network configuration
+    ROUTER_IP: str = os.getenv("ROUTER_IP", "192.168.1.1")  # Gateway IP
+    PORTAL_PORT: int = int(os.getenv("PORTAL_PORT", "8080"))  # HTTP port
+    PORTAL_HOST: str = os.getenv("PORTAL_HOST", "0.0.0.0")  # Bind all interfaces
 
     # Cache
     CACHE_DIR: Path = Path(os.getenv("CACHE_DIR", ".cache"))

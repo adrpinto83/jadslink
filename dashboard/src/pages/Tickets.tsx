@@ -115,7 +115,7 @@ const Tickets: React.FC = () => {
 
   // --- Print Handler ---
   const handlePrint = useReactToPrint({
-    content: () => ticketToPrintRef.current,
+    contentRef: ticketToPrintRef,
   });
 
   const triggerPrint = (ticket: GeneratedTicket) => {

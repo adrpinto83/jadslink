@@ -56,6 +56,17 @@ class SessionReportResponse(BaseModel):
     failed: int
 
 
+class AgentConfigResponse(BaseModel):
+    node_id: UUID
+    node_name: str
+    heartbeat_interval: int  # seconds
+    sync_interval: int  # seconds
+    portal_url: str
+    tenant_name: str
+    tenant_logo_url: str | None
+    tenant_primary_color: str | None
+
+
 @router.post("/heartbeat", response_model=HeartbeatResponse)
 async def agent_heartbeat(
     req: HeartbeatRequest,
@@ -197,3 +208,28 @@ async def report_sessions(
 
     await db.commit()
     return SessionReportResponse(processed=processed, failed=failed)
+
+
+@router.get("/config", response_model=AgentConfigResponse)
+async def get_agent_config(
+    node: Node = Depends(get_node_by_api_key),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get agent configuration from server.
+    Allows dynamic updates without restarting agent.
+    Protegido con X-Node-Key header.
+    """
+    # Load tenant with relationship
+    await db.refresh(node, ["tenant"])
+
+    return AgentConfigResponse(
+        node_id=node.id,
+        node_name=node.name,
+        heartbeat_interval=30,  # seconds
+        sync_interval=300,  # 5 minutes
+        portal_url=f"http://{node.tenant.custom_domain or 'portal.jadslink.io'}",
+        tenant_name=node.tenant.name,
+        tenant_logo_url=node.tenant.logo_url,
+        tenant_primary_color=node.tenant.primary_color
+    )
