@@ -6,19 +6,11 @@ from uuid import UUID
 from database import get_db
 from models.tenant import Tenant
 from schemas.tenant import TenantResponse
-from deps import get_current_user
+from deps import get_superadmin
 from models.user import User
 from services.subscription_service import create_stripe_customer
 
 router = APIRouter()
-
-def get_superadmin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "superadmin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado. Se requiere rol de superadministrador."
-        )
-    return current_user
 
 
 @router.patch("/tenants/{tenant_id}/approve", response_model=TenantResponse)

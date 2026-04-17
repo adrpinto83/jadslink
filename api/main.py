@@ -125,9 +125,14 @@ app = FastAPI(
 )
 
 # CORS configuration
+origins = [
+    "http://localhost:5174", # React frontend development server
+    # TODO: Add production frontend URL
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, lock this down!
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

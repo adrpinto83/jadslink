@@ -120,3 +120,12 @@ async def check_node_limit(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Límite de nodos ({limit}) para el plan '{tenant.plan_tier}' alcanzado."
         )
+
+def get_superadmin(current_user: User = Depends(get_current_user)) -> User:
+    """Dependency to ensure user is a superadmin."""
+    if current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado. Se requiere rol de superadministrador."
+        )
+    return current_user
