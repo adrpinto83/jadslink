@@ -13,6 +13,7 @@ class TicketResponse(BaseModel):
     id: UUID
     code: str
     qr_data: str
+    qr_base64_png: str | None = None
     status: str
     created_at: datetime
 

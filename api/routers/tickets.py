@@ -9,7 +9,7 @@ from models.user import User
 from schemas.ticket import TicketGenerateRequest, TicketResponse
 from database import get_db
 from deps import get_current_user
-from services.ticket_service import generate_ticket_code
+from services.ticket_service import generate_ticket_code, generate_qr_base64
 from config import get_settings
 
 router = APIRouter()
@@ -47,7 +47,7 @@ async def generate_tickets(
         raise HTTPException(status_code=404, detail="Plan no encontrado en el tenant del nodo")
 
     # Generate tickets
-    tickets = []
+    db_tickets = []
     for _ in range(req.quantity):
         code = generate_ticket_code(settings.TICKET_HMAC_SECRET)
         qr_url = f"https://jadslink.io/activate?code={code}&node={req.node_id}"
@@ -59,13 +59,26 @@ async def generate_tickets(
             plan_id=req.plan_id,
         )
         db.add(ticket)
-        tickets.append(ticket)
+        db_tickets.append(ticket)
 
     await db.commit()
-    for ticket in tickets:
-        await db.refresh(ticket)
 
-    return [TicketResponse.model_validate(t) for t in tickets]
+    response_tickets = []
+    for ticket in db_tickets:
+        await db.refresh(ticket)
+        qr_base64 = generate_qr_base64(ticket.qr_data)
+        response_tickets.append(
+            TicketResponse(
+                id=ticket.id,
+                code=ticket.code,
+                qr_data=ticket.qr_data,
+                qr_base64_png=qr_base64,
+                status=ticket.status.value, # Correctly use the enum's value
+                created_at=ticket.created_at,
+            )
+        )
+
+    return response_tickets
 
 
 @router.get("", response_model=list[TicketResponse])

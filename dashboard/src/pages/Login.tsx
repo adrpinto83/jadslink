@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/auth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -62,6 +62,12 @@ const Login: React.FC = () => {
             {isLoading ? "Cargando..." : "Entrar"}
           </Button>
         </form>
+        <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+          ¿No tienes cuenta?{" "}
+          <Link to="/register" className="text-blue-600 dark:text-blue-400 hover:underline">
+            Regístrate aquí
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -29,7 +29,6 @@ Cada decisión de stack, cada dependencia, cada query debe justificarse por su b
 - Mismo Docker Compose desplegado en servidor con internet Fibex (NAT)
 - Cloudflare Tunnel (`cloudflared`) expondrá el servicio sin IP pública
 - Sin Railway, sin VPS — servidor propio = costo $0 de hosting
-- El CLAUDE.md se actualizará cuando lleguemos a esa fase
 
 ---
 
@@ -40,7 +39,7 @@ Crear y mantener esta estructura desde el inicio. No crear archivos fuera de ell
 ```
 jadslink/
 │
-├── CLAUDE.md                        ← este archivo
+├── GEMINI.md                        ← ESTE ARCHIVO - Plan Maestro
 ├── .env                             ← variables locales (no commitear)
 ├── .env.example                     ← plantilla pública
 ├── .gitignore
@@ -686,64 +685,92 @@ def generate_ticket_code(secret: str) -> str:
 
 ## 🚀 ORDEN DE IMPLEMENTACIÓN
 
-Gemini debe seguir este orden. No avanzar a la siguiente fase sin que la anterior funcione y tenga al menos un test básico.
+A continuación se detalla el estado de implementación del proyecto, fase por fase.
 
-### FASE 1 — Fundación (completar primero)
+### FASE 1 — Fundación (100% COMPLETADA)
 ```
-[ ] 1. Estructura de carpetas completa
-[ ] 2. docker-compose.yml levanta sin errores
-[ ] 3. FastAPI main.py con /health respondiendo
-[ ] 4. Modelos SQLAlchemy + migración inicial con Alembic
-[ ] 5. Auth JWT: POST /auth/login y /auth/refresh funcionando
-[ ] 6. CRUD completo de Nodos con aislamiento multi-tenant
-[ ] 7. CRUD completo de Planes
-[ ] 8. Generación de Tickets con código HMAC
-[ ] 9. Endpoint /portal/activate funcional
-[ ] 10. Seed script: 1 superadmin + 1 tenant + 1 nodo + 3 planes de ejemplo
-```
-
-### FASE 2 — Portal y Agente
-```
-[ ] 11. Captive portal HTML+HTMX completo (< 40KB)
-[ ] 12. Agente Python: heartbeat + sync de tickets
-[ ] 13. Agente Python: modo offline con SQLite cache
-[ ] 14. Integración MikroTik API (hotspot users)
-[ ] 15. Expiración automática de sesiones (APScheduler)
-[ ] 16. Endpoint SSE /nodes/{id}/stream con métricas reales
+[x] 1. Estructura de carpetas completa
+[x] 2. docker-compose.yml levanta sin errores
+[x] 3. FastAPI main.py con /health respondiendo
+[x] 4. Modelos SQLAlchemy + migración inicial con Alembic
+[x] 5. Auth JWT: POST /auth/login y /auth/refresh funcionando
+[x] 6. CRUD completo de Nodos con aislamiento multi-tenant
+[x] 7. CRUD completo de Planes
+[x] 8. Generación de Tickets con código HMAC
+[x] 9. Endpoint /portal/activate funcional
+[x] 10. Seed script: 1 superadmin + 1 tenant + 1 nodo + 3 planes de ejemplo
 ```
 
-### FASE 3 — Dashboard React
+### FASE 2 — Portal y Agente (100% COMPLETADA)
 ```
-[ ] 17. Setup React + Vite + shadcn/ui + Tailwind
-[ ] 18. Login y manejo de JWT en cliente
-[ ] 19. Página Nodes con mapa Leaflet
-[ ] 20. NodeDetail con telemetría SSE en tiempo real
-[ ] 21. Página Tickets: generar, mostrar QR, listar
-[ ] 22. Página Sessions: sesiones activas, desconectar
-[ ] 23. Página Reports: ventas por período y nodo
-[ ] 24. Panel Admin: solo visible para superadmin
+[x] 11. Captive portal HTML+HTMX completo (< 40KB)
+[x] 12. Agente Python: heartbeat + sync de tickets
+[x] 13. Agente Python: modo offline con SQLite cache
+[x] 14. Integración MikroTik API (hotspot users)
+[x] 15. Expiración automática de sesiones (APScheduler)
+[x] 16. Endpoint SSE /nodes/{id}/stream con métricas reales
 ```
 
-### FASE 4 — Hardening y Producción
+### FASE 3 — Dashboard React (100% COMPLETADA)
 ```
-[ ] 25. Rate limiting Redis en endpoints críticos
-[ ] 26. Backup automático PostgreSQL a archivo local
-[ ] 27. Alertas de nodo offline (APScheduler → log + futura notif)
-[ ] 28. Tests pytest para servicios críticos (ticket, session)
-[ ] 29. Documentar variables .env.example completas
-[ ] 30. Script deploy.sh para servidor con Cloudflare Tunnel
+[x] 17. Setup React + Vite + shadcn/ui + Tailwind
+[x] 18. Login y manejo de JWT en cliente
+[x] 19. Página Nodes con mapa Leaflet
+[x] 20. NodeDetail con telemetría SSE en tiempo real
+[x] 21. Página Tickets: generar, mostrar QR, listar
+[x] 22. Página Sessions: sesiones activas, desconectar
+[x] 23. Página Reports: ventas por período y nodo
+[x] 24. Panel Admin: solo visible para superadmin
 ```
 
-### FASE 5 — SaaS Multi-Tenant Avanzado
+### FASE 4 — Hardening y Producción (100% COMPLETADA)
 ```
-[ ] 31. Implementar auto-registro de operadores (`POST /auth/register`).
-[ ] 32. Añadir endpoint de aprobación de tenants para superadmin.
-[ ] 33. Añadir endpoint para que operadores actualicen sus ajustes (`PATCH /tenants/me`).
-[ ] 34. Integrar Stripe SDK y añadir endpoints para checkout y portal de cliente.
-[ ] 35. Crear webhook para recibir y procesar eventos de Stripe, actualizando `subscription_status`.
-[ ] 36. Implementar lógica de "feature gating" (ej. limitar # de nodos) basada en `plan_tier`.
+[x] 25. Rate limiting Redis en endpoints críticos
+[x] 26. Backup automático PostgreSQL a archivo local
+[x] 27. Alertas de nodo offline (APScheduler → log + futura notif)
+[x] 28. Tests pytest para servicios críticos (ticket, session)
+[x] 29. Documentar variables .env.example completas
+[x] 30. Script deploy.sh para servidor con Cloudflare Tunnel
+```
+
+### FASE 5 — SaaS Multi-Tenant Avanzado (Backend COMPLETO)
+```
+[x] 31. Implementar auto-registro de operadores (`POST /auth/register`).
+[x] 32. Añadir endpoint de aprobación de tenants para superadmin.
+[x] 33. Añadir endpoint para que operadores actualicen sus ajustes (`PATCH /tenants/me`).
+[x] 34. Integrar Stripe SDK y añadir endpoints para checkout y portal de cliente.
+[x] 35. Crear webhook para recibir y procesar eventos de Stripe, actualizando `subscription_status`.
+[x] 36. Implementar lógica de "feature gating" (ej. limitar # de nodos) basada en `plan_tier`.
 [ ] 37. (Opcional, Pro/Enterprise) Investigar e implementar soporte para dominios personalizados en portales.
 ```
+
+### FASE 6 - Optimización y Mantenimiento (Futuro)
+
+Tareas para mejorar la performance, monitoreo y robustez general de la plataforma.
+
+#### Performance
+- [ ] Añadir índices de base de datos adicionales para queries lentas.
+- [ ] Implementar caching selectivo en Redis para queries de alta lectura y baja escritura.
+- [ ] Revisar y optimizar queries N+1 con `selectinload` o `joinedload` de SQLAlchemy.
+- [ ] Habilitar compresión de responses (Gzip) en el servidor web.
+
+#### Monitoreo y Alertas
+- [ ] Implementar logging estructurado en JSON para facilitar el parseo y análisis.
+- [ ] Exponer métricas de la aplicación en formato Prometheus.
+- [ ] Crear un health check avanzado que verifique la conectividad con la DB y Redis.
+- [ ] Integrar alertas con servicios como Slack o Discord para notificaciones críticas.
+
+#### Calidad de Código y Testing
+- [ ] Desarrollar tests End-to-End (E2E) con Playwright para simular flujos de usuario completos.
+- [ ] Crear tests de carga con Locust para identificar cuellos de botella.
+- [ ] Aumentar el code coverage de los tests unitarios y de integración a >80%.
+- [ ] Configurar un pipeline de Integración Continua y Despliegue Continuo (CI/CD) con GitHub Actions.
+
+#### Mejoras de Funcionalidad
+- [ ] **Agente de Campo**: Probar en hardware real (GL.iNet / Raspberry Pi) y validar modo offline.
+- [ ] **Dashboard**: Implementar modo oscuro e internacionalización (i18n).
+- [ ] **Portal Captivo**: Permitir personalización por tenant y múltiples idiomas.
+- [ ] **Pagos**: Integrar métodos de pago locales (ej. Pago Móvil VE, Binance Pay).
 
 ---
 

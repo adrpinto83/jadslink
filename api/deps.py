@@ -107,7 +107,7 @@ async def check_node_limit(
     db: AsyncSession = Depends(get_db),
 ):
     """Dependency to enforce node limits based on the tenant's plan."""
-    if tenant.role == "superadmin":
+    if not tenant: # This happens for superadmin
         return
 
     limit = PLAN_LIMITS.get(tenant.plan_tier, 0)

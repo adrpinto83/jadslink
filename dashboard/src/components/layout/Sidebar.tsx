@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Wifi, Ticket, BookUser, BarChart, Settings, CreditCard, Shield, LogOut } from 'lucide-react';
+import { Home, Wifi, Ticket, BookUser, BarChart, Settings, CreditCard, Shield, LogOut, Package } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
+import { ModeToggle } from '@/components/theme-toggle';
 
 const Sidebar: React.FC = () => {
   const logout = useAuthStore((state) => state.logout);
@@ -33,7 +34,10 @@ const Sidebar: React.FC = () => {
           <BookUser className="w-5 h-5 mr-3" />
           Sesiones
         </NavLink>
-        {/* Add other links here based on GEMINI.md */}
+        <NavLink to="/dashboard/plans" className={navLinkClass}>
+          <Package className="w-5 h-5 mr-3" />
+          Planes
+        </NavLink>
         <NavLink to="/dashboard/reports" className={navLinkClass}>
           <BarChart className="w-5 h-5 mr-3" />
           Reportes
@@ -51,7 +55,8 @@ const Sidebar: React.FC = () => {
           Admin
         </NavLink>
       </nav>
-      <div className="mt-auto absolute bottom-4 w-56">
+      <div className="mt-auto absolute bottom-4 w-56 space-y-2">
+        <ModeToggle />
         <button onClick={logout} className="flex items-center px-4 py-2 text-gray-700 rounded-lg hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700 w-full">
           <LogOut className="w-5 h-5 mr-3" />
           Cerrar Sesión

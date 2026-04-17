@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm.attributes import flag_modified
 from uuid import UUID
 
 from database import get_db
@@ -9,11 +10,7 @@ from models.tenant import Tenant
 from schemas.tenant import TenantResponse, TenantUpdate
 from deps import get_current_tenant
 
-router = APIRouter(
-    prefix="/tenants",
-    tags=["tenants"],
-    responses={404: {"description": "Not found"}},
-)
+router = APIRouter()
 
 @router.get("/me", response_model=TenantResponse)
 async def read_tenant_me(current_tenant: Tenant = Depends(get_current_tenant)):
@@ -31,7 +28,7 @@ async def update_tenant_me(
     """
     Update the current tenant's settings.
     """
-    updated_settings = tenant_update.dict(exclude_unset=True)
+    updated_settings = tenant_update.model_dump(exclude_unset=True)
 
     if not updated_settings:
         raise HTTPException(status_code=400, detail="No settings to update")
@@ -41,6 +38,7 @@ async def update_tenant_me(
         current_tenant.settings = {}
     
     current_tenant.settings.update(updated_settings)
+    flag_modified(current_tenant, "settings")
 
     db.add(current_tenant)
     await db.commit()

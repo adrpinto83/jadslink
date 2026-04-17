@@ -12,6 +12,7 @@ from models.node import Node
 from models.session import Session as SessionModel
 from database import get_db
 from services.session_service import SessionService
+from utils.rate_limit import rate_limit
 import logging
 
 log = logging.getLogger("jadslink.portal")
@@ -74,32 +75,15 @@ async def get_plans_htmx(
 async def activate_ticket(
     request: Request,
     code: str = Form(...),
-    device_mac: str = Form(""), # Default to empty string if not provided
+    device_mac: str = Form(""),
     node_id: UUID = Form(...),
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit(max_requests=10, window_seconds=60, endpoint="portal_activate")),
 ):
     """Activate ticket (public endpoint, no auth) and return HTML partial."""
     # Helper to generate HTML alerts
     def create_alert(message: str, type: str):
         return f"<div class=\"alert alert-{type}\">{message}</div>"
-
-    # Rate limiting: max 10 attempts per IP per minute
-    redis = getattr(request.app.state, "redis", None)
-    if redis:
-        client_ip = request.client.host if request.client else "unknown"
-        rate_limit_key = f"portal:activate:{client_ip}"
-
-        try:
-            attempts = await redis.incr(rate_limit_key)
-            if attempts == 1:
-                await redis.expire(rate_limit_key, 60)  # 60 second window
-
-            if attempts > 10:
-                log.warning(f"Rate limit exceeded for IP {client_ip}")
-                return create_alert("Demasiados intentos de activación. Por favor, espera un momento.", "error")
-        except Exception as e:
-            log.warning(f"Rate limiting error: {e}")
-            # Continue without rate limiting if Redis fails
 
     # Find ticket with eager load of plan
     result = await db.execute(

@@ -6,6 +6,7 @@ import App from './App.tsx'
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Login from './pages/Login.tsx';
+import Register from './pages/Register.tsx';
 import Root from './Root.tsx';
 import DashboardLayout from './components/layout/DashboardLayout.tsx';
 import Dashboard from './pages/Dashboard.tsx';
@@ -13,8 +14,13 @@ import Nodes from './pages/Nodes.tsx';
 import NodeDetail from './pages/NodeDetail.tsx';
 import Tickets from './pages/Tickets.tsx';
 import Sessions from './pages/Sessions.tsx';
+import Plans from './pages/Plans.tsx';
+import Settings from './pages/Settings.tsx';
+import Billing from './pages/Billing.tsx';
 import Reports from './pages/Reports.tsx';
 import Admin from './pages/Admin.tsx';
+import { ThemeProvider } from "./components/theme-provider";
+import { Toaster } from "sonner";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +28,10 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/register",
+    element: <Register />,
   },
   {
     path: "/",
@@ -56,6 +66,18 @@ const router = createBrowserRouter([
             element: <Sessions />,
           },
           {
+            path: "plans",
+            element: <Plans />,
+          },
+          {
+            path: "settings",
+            element: <Settings />,
+          },
+          {
+            path: "billing",
+            element: <Billing />,
+          },
+          {
             path: "reports",
             element: <Reports />,
           },
@@ -75,8 +97,11 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="system" enableSystem>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+      <Toaster />
+    </ThemeProvider>
   </StrictMode>,
 )

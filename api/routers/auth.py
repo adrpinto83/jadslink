@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, join
 from sqlalchemy.orm import joinedload
@@ -10,6 +10,7 @@ from schemas.auth import LoginRequest, TokenResponse, RefreshRequest, RegisterRe
 from database import get_db
 from config import get_settings
 from passlib.context import CryptContext
+from utils.rate_limit import rate_limit
 import re
 
 router = APIRouter()
@@ -44,7 +45,12 @@ def slugify(text: str) -> str:
     return text
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(
+    http_request: Request,
+    request: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit(max_requests=5, window_seconds=300, endpoint="auth_register")),
+):
     """Register a new operator and their tenant."""
     # Check if user already exists
     result = await db.execute(select(User).where(User.email == request.email))
@@ -75,7 +81,12 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def login(
+    http_request: Request,
+    credentials: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit(max_requests=5, window_seconds=60, endpoint="auth_login")),
+) -> TokenResponse:
     """Authenticate user and return JWT tokens"""
     result = await db.execute(
         select(User).options(joinedload(User.tenant)).where(User.email == credentials.email)
