@@ -65,7 +65,7 @@ async def create_node(
 @router.get("/{node_id}", response_model=NodeResponse)
 async def get_node(
     node_id: UUID,
-    tenant: Tenant | None = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -74,8 +74,10 @@ async def get_node(
     - For superadmins, returns the node regardless of tenant.
     """
     query = select(Node).where(Node.id == node_id)
-    if tenant:
-        query = query.where(Node.tenant_id == tenant.id)
+    if current_user.role != "superadmin":
+        if not current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Usuario no asociado a un tenant")
+        query = query.where(Node.tenant_id == current_user.tenant_id)
 
     result = await db.execute(query)
     node = result.scalar_one_or_none()
