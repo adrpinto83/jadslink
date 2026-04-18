@@ -5,12 +5,14 @@ from uuid import UUID
 from models.ticket import Ticket
 from models.plan import Plan
 from models.node import Node
+from models.tenant import Tenant
 from models.user import User
 from schemas.ticket import TicketGenerateRequest, TicketResponse
 from database import get_db
 from deps import get_current_user
 from services.ticket_service import generate_ticket_code, generate_qr_base64
 from config import get_settings
+from schemas.ticket import BatchRevokeRequest
 
 router = APIRouter()
 settings = get_settings()
@@ -33,6 +35,12 @@ async def generate_tickets(
     # If user is not superadmin, check if they have access to this tenant
     if current_user.role != "superadmin" and current_user.tenant_id != tenant_id:
         raise HTTPException(status_code=403, detail="No tiene permiso para este nodo")
+
+    # Get tenant settings
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
 
     # Verify plan belongs to the same tenant
     plan_result = await db.execute(
@@ -73,8 +81,11 @@ async def generate_tickets(
                 code=ticket.code,
                 qr_data=ticket.qr_data,
                 qr_base64_png=qr_base64,
-                status=ticket.status.value, # Correctly use the enum's value
+                status=ticket.status.value,  # Correctly use the enum's value
                 created_at=ticket.created_at,
+                plan_name=plan.name,
+                tenant_logo_url=tenant.settings.get("logo_url"),
+                tenant_ssid=tenant.settings.get("ssid"),
             )
         )
 
@@ -87,14 +98,30 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == "superadmin":
-        query = select(Ticket)
+        query = select(Ticket, Plan, Tenant).join(Plan, Ticket.plan_id == Plan.id).join(Tenant, Ticket.tenant_id == Tenant.id)
     else:
         if not current_user.tenant_id:
             return []
-        query = select(Ticket).where(Ticket.tenant_id == current_user.tenant_id)
+        query = select(Ticket, Plan, Tenant).join(Plan, Ticket.plan_id == Plan.id).join(Tenant, Ticket.tenant_id == Tenant.id).where(Ticket.tenant_id == current_user.tenant_id)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    
+    response_tickets = []
+    for ticket, plan, tenant in result.all():
+        response_tickets.append(
+            TicketResponse(
+                id=ticket.id,
+                code=ticket.code,
+                qr_data=ticket.qr_data,
+                status=ticket.status.value,
+                created_at=ticket.created_at,
+                plan_name=plan.name,
+                tenant_logo_url=tenant.settings.get("logo_url"),
+                tenant_ssid=tenant.settings.get("ssid"),
+            )
+        )
+
+    return response_tickets
 
 
 @router.post("/{ticket_id}/revoke", status_code=status.HTTP_200_OK)
@@ -134,3 +161,36 @@ async def revoke_ticket(
     await db.commit()
 
     return {"message": "Ticket revocado exitosamente", "ticket_id": str(ticket.id)}
+
+
+@router.post("/revoke-multiple", status_code=status.HTTP_200_OK)
+async def revoke_multiple_tickets(
+    req: BatchRevokeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not req.ticket_ids:
+        raise HTTPException(status_code=400, detail="No se proporcionaron IDs de tickets")
+
+    query = select(Ticket).where(Ticket.id.in_(req.ticket_ids))
+
+    if current_user.role != "superadmin":
+        if not current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Usuario no asociado a un tenant")
+        query = query.where(Ticket.tenant_id == current_user.tenant_id)
+
+    result = await db.execute(query)
+    tickets_to_revoke = result.scalars().all()
+
+    if len(tickets_to_revoke) != len(req.ticket_ids):
+        raise HTTPException(status_code=404, detail="Algunos tickets no se encontraron o no pertenecen a tu tenant")
+
+    revoked_count = 0
+    for ticket in tickets_to_revoke:
+        if ticket.status.value in ['pending', 'active']:
+            ticket.status = 'revoked'
+            revoked_count += 1
+
+    await db.commit()
+
+    return {"message": f"{revoked_count} tickets revocados exitosamente"}

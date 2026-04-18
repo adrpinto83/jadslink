@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +9,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from 'sonner';
 
@@ -37,12 +35,10 @@ interface Node {
 // Schema for the form
 const formSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
-  config: z.object({
-    ssid: z.string().optional(),
-    channel: z.coerce.number().int().min(1).max(13).optional(),
-    max_clients: z.coerce.number().int().min(1).optional(),
-    bandwidth_default: z.coerce.number().int().min(0).optional(),
-  }),
+  ssid: z.string().optional(),
+  channel: z.coerce.number().int().min(1).max(13).optional(),
+  max_clients: z.coerce.number().int().min(1).optional(),
+  bandwidth_default: z.coerce.number().int().min(0).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -63,9 +59,18 @@ const NodeDetail: React.FC = () => {
     enabled: !!nodeId,
   });
 
-  const mutation = useMutation({
+  const mutation = useMutation<void, Error, FormValues>({
     mutationFn: (updatedNode: FormValues) => {
-        return apiClient.patch(`/nodes/${nodeId}`, updatedNode);
+        const payload = {
+          name: updatedNode.name,
+          config: {
+            ssid: updatedNode.ssid,
+            channel: updatedNode.channel,
+            max_clients: updatedNode.max_clients,
+            bandwidth_default: updatedNode.bandwidth_default,
+          }
+        }
+        return apiClient.patch(`/nodes/${nodeId}`, payload);
     },
     onSuccess: () => {
         toast.success('Nodo actualizado exitosamente');
@@ -79,14 +84,12 @@ const NodeDetail: React.FC = () => {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { // Use defaultValues instead of values
+    defaultValues: {
         name: '',
-        config: {
-            ssid: '',
-            channel: 1,
-            max_clients: 10,
-            bandwidth_default: 0,
-        }
+        ssid: '',
+        channel: 1,
+        max_clients: 10,
+        bandwidth_default: 0,
     }
   });
 
@@ -94,12 +97,10 @@ const NodeDetail: React.FC = () => {
     if (node) {
       form.reset({
         name: node.name,
-        config: {
-            ssid: node.config?.ssid ?? '',
-            channel: node.config?.channel ?? 1,
-            max_clients: node.config?.max_clients ?? 10,
-            bandwidth_default: node.config?.bandwidth_default ?? 0,
-        }
+        ssid: node.config?.ssid ?? '',
+        channel: node.config?.channel ?? 1,
+        max_clients: node.config?.max_clients ?? 10,
+        bandwidth_default: node.config?.bandwidth_default ?? 0,
       });
     }
   }, [node, form]);
@@ -156,7 +157,7 @@ const NodeDetail: React.FC = () => {
                   />
                   <FormField
                     control={form.control}
-                    name="config.ssid"
+                    name="ssid"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>SSID</FormLabel>
@@ -170,7 +171,7 @@ const NodeDetail: React.FC = () => {
                   />
                   <FormField
                     control={form.control}
-                    name="config.channel"
+                    name="channel"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Canal WiFi</FormLabel>
@@ -183,7 +184,7 @@ const NodeDetail: React.FC = () => {
                   />
                   <FormField
                     control={form.control}
-                    name="config.max_clients"
+                    name="max_clients"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Máximo de Clientes</FormLabel>
@@ -196,7 +197,7 @@ const NodeDetail: React.FC = () => {
                   />
                    <FormField
                     control={form.control}
-                    name="config.bandwidth_default"
+                    name="bandwidth_default"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Ancho de banda por defecto (kbps)</FormLabel>

@@ -49,7 +49,6 @@ import {
   Edit,
   Trash2,
   MoreVertical,
-  Copy,
   Eye,
   Settings,
   Key

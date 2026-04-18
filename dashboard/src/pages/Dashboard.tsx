@@ -24,11 +24,7 @@ interface DashboardStats {
   total_revenue: number;
 }
 
-interface RecentActivity {
-  type: 'ticket_generated' | 'ticket_activated' | 'session_ended' | 'node_online';
-  message: string;
-  timestamp: string;
-}
+
 
 const Dashboard: React.FC = () => {
   const { data: stats, isLoading: loadingStats } = useQuery<DashboardStats>({

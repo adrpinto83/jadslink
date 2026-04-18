@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/api/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,13 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +22,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useReactToPrint } from 'react-to-print';
@@ -38,17 +29,15 @@ import { toast } from 'sonner';
 import {
   Search,
   Printer,
-  AlertCircle,
   CheckCircle,
   Clock,
   XCircle,
-  Share2,
   Copy,
-  Eye,
   Ban,
   MoreVertical,
   Wifi,
-  DollarSign
+  DollarSign,
+  Share2,
 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -107,116 +96,60 @@ interface GeneratedTicket {
   qr_base64_png?: string;
   status: string;
   created_at: string;
+  plan_name: string;
+  tenant_logo_url: string | null;
+  tenant_ssid: string | null;
 }
 
-// --- Compact Printable Ticket Component (3 per page) ---
+// --- Compact Printable Ticket Component ---
 const PrintableTicket = React.forwardRef<HTMLDivElement, {
   ticket: GeneratedTicket | TicketData;
   tenant: Tenant | undefined;
-  node: Node | undefined;
-  plan: Plan | undefined;
-}>(({ ticket, tenant, node, plan }, ref) => {
-  const ssid = tenant?.settings?.ssid || node?.config?.ssid || 'JADSlink WiFi';
-  const logoUrl = tenant?.settings?.logo_url;
-  const contactEmail = tenant?.settings?.contact_email;
-  const contactPhone = tenant?.settings?.contact_phone;
+  showQr: boolean;
+}>(({ ticket, tenant, showQr }, ref) => {
+  const ssid = 'tenant_ssid' in ticket && ticket.tenant_ssid ? ticket.tenant_ssid : tenant?.settings?.ssid || 'JADSlink WiFi';
+  const logoUrl = 'tenant_logo_url' in ticket && ticket.tenant_logo_url ? ticket.tenant_logo_url : tenant?.settings?.logo_url;
+  const planName = 'plan_name' in ticket ? ticket.plan_name : ('plan' in ticket ? ticket.plan?.name : 'N/A');
 
   return (
-    <div ref={ref} className="bg-white p-4 border-2 border-gray-300 rounded-lg" style={{ pageBreakInside: 'avoid' }}>
-      {/* Compact Header */}
-      <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2 mb-3">
+    <div ref={ref} className="printable-ticket bg-white p-3 border border-dashed border-gray-400 rounded-lg w-full">
+      <div className="flex items-center justify-between pb-2 mb-2 border-b border-dashed">
         <div className="flex items-center gap-2">
           {logoUrl ? (
-            <img src={logoUrl} alt={tenant?.name} className="h-8 w-auto" />
+            <img src={logoUrl} alt={tenant?.name} className="h-8 w-auto max-w-[100px]" />
           ) : (
             <Wifi className="h-6 w-6 text-blue-600" />
           )}
-          <div>
-            <h2 className="text-lg font-bold text-gray-800">{tenant?.name || 'JADSlink'}</h2>
-            <p className="text-xs text-gray-600">Ticket WiFi</p>
-          </div>
+          <h2 className="text-md font-bold text-gray-800">{tenant?.name || 'JADSlink'}</h2>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-gray-500">Plan</p>
+          <p className="font-semibold text-sm">{planName}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* QR Code - Smaller */}
-        <div className="flex flex-col items-center bg-gray-50 rounded p-2 border border-gray-300">
-          {ticket.qr_base64_png ? (
+      <div className={`grid gap-2 ${showQr ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {showQr && ticket.qr_base64_png && (
+          <div className="flex flex-col items-center justify-center">
             <img
               src={ticket.qr_base64_png}
               alt={`QR ${ticket.code}`}
-              className="w-32 h-32 object-contain"
+              className="w-24 h-24 object-contain"
               style={{ imageRendering: 'pixelated' }}
             />
-          ) : (
-            <div className="w-32 h-32 bg-gray-200 flex items-center justify-center">
-              <p className="text-xs text-gray-500">Sin QR</p>
-            </div>
-          )}
-          <div className="mt-2 text-center w-full">
-            <p className="text-xs text-gray-600">Código</p>
-            <p className="font-mono text-xl font-bold tracking-wide text-gray-900 bg-white px-2 py-1 rounded border border-gray-300">
-              {ticket.code}
-            </p>
           </div>
-        </div>
-
-        {/* Details */}
-        <div className="space-y-2">
-          {/* WiFi SSID - Prominent */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded p-2">
-            <div className="flex items-center gap-1 mb-1">
-              <Wifi className="h-4 w-4" />
-              <p className="text-xs font-semibold">Red WiFi</p>
-            </div>
-            <p className="text-lg font-bold">{ssid}</p>
-          </div>
-
-          {/* Plan Info */}
-          {plan && (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-blue-50 p-2 rounded">
-                <p className="text-gray-600">Plan</p>
-                <p className="font-semibold text-gray-800">{plan.name}</p>
-              </div>
-              <div className="bg-green-50 p-2 rounded">
-                <p className="text-gray-600">Tiempo</p>
-                <p className="font-semibold text-gray-800">{plan.duration_minutes}min</p>
-              </div>
-              <div className="bg-purple-50 p-2 rounded">
-                <p className="text-gray-600">Precio</p>
-                <p className="font-semibold text-gray-800">${plan.price_usd.toFixed(2)}</p>
-              </div>
-              {node && (
-                <div className="bg-orange-50 p-2 rounded">
-                  <p className="text-gray-600">Nodo</p>
-                  <p className="font-semibold text-gray-800 truncate">{node.name}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Compact Instructions */}
-      <div className="bg-yellow-50 border-l-2 border-yellow-400 p-2 mt-3">
-        <p className="text-xs font-semibold text-yellow-800 mb-1">Pasos:</p>
-        <ol className="text-xs text-yellow-700 list-decimal list-inside space-y-0.5">
-          <li>Conéctate a WiFi: <strong>{ssid}</strong></li>
-          <li>Abre tu navegador</li>
-          <li>Escanea QR o ingresa código</li>
-        </ol>
-      </div>
-
-      {/* Compact Footer */}
-      <div className="border-t border-gray-200 pt-2 mt-2 text-center">
-        {(contactEmail || contactPhone) && (
-          <p className="text-xs text-gray-600">
-            {contactEmail && <span>{contactEmail}</span>}
-            {contactEmail && contactPhone && <span> • </span>}
-            {contactPhone && <span>{contactPhone}</span>}
-          </p>
         )}
+
+        <div className="flex flex-col justify-center space-y-2">
+          <div>
+            <p className="text-xs text-gray-600">Red WiFi:</p>
+            <p className="font-bold text-lg">{ssid}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-600">Código de Acceso:</p>
+            <p className="font-mono text-xl font-bold tracking-wider bg-gray-100 px-2 py-1 rounded border-gray-300 border">{ticket.code}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -232,15 +165,12 @@ const Tickets: React.FC = () => {
   const [quantity, setQuantity] = useState<number>(1);
   const [generatedTickets, setGeneratedTickets] = useState<GeneratedTicket[]>([]);
   const [selectedTicketForPrint, setSelectedTicketForPrint] = useState<GeneratedTicket | TicketData | null>(null);
-  const [selectedTicketForView, setSelectedTicketForView] = useState<TicketData | null>(null);
-  const [ticketToRevoke, setTicketToRevoke] = useState<TicketData | null>(null);
+  const [batchRevokeDialogOpen, setBatchRevokeDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'used' | 'expired' | 'revoked'>('all');
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [selectedTicketsForBatchPrint, setSelectedTicketsForBatchPrint] = useState<Set<string>>(new Set());
   const [ticketsToPrintBatch, setTicketsToPrintBatch] = useState<TicketData[]>([]);
-  const [showQrInPrint, setShowQrInPrint] = useState(false);
+  const [showQrInPrint, setShowQrInPrint] = useState(true);
 
   const ticketToPrintRef = useRef<HTMLDivElement>(null);
   const batchPrintRef = useRef<HTMLDivElement>(null);
@@ -284,18 +214,18 @@ const Tickets: React.FC = () => {
     }
   });
 
-  const revokeTicketMutation = useMutation({
-    mutationFn: async (ticketId: string) => {
-      await apiClient.post(`/tickets/${ticketId}/revoke`);
+  const revokeMultipleTicketsMutation = useMutation({
+    mutationFn: async (ticketIds: string[]) => {
+      await apiClient.post('/tickets/revoke-multiple', { ticket_ids: ticketIds });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-tickets'] });
-      setRevokeDialogOpen(false);
-      setTicketToRevoke(null);
-      toast.success('Ticket revocado exitosamente');
+      setSelectedTicketsForBatchPrint(new Set());
+      setBatchRevokeDialogOpen(false);
+      toast.success('Tickets seleccionados revocados exitosamente');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Error al revocar ticket');
+      toast.error(error.response?.data?.detail || 'Error al revocar tickets en lote');
     }
   });
 
@@ -310,17 +240,24 @@ const Tickets: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
-    contentRef: ticketToPrintRef,
+    content: () => ticketToPrintRef.current,
+    onAfterPrint: () => setSelectedTicketForPrint(null),
   });
 
   const handleBatchPrint = useReactToPrint({
-    contentRef: batchPrintRef,
+    content: () => batchPrintRef.current,
+    onAfterPrint: () => setTicketsToPrintBatch([]),
   });
 
   const triggerPrint = (ticket: GeneratedTicket | TicketData) => {
     setSelectedTicketForPrint(ticket);
-    setTimeout(handlePrint, 100);
   };
+
+  useEffect(() => {
+    if (selectedTicketForPrint) {
+      handlePrint();
+    }
+  }, [selectedTicketForPrint]);
 
   const triggerBatchPrint = () => {
     const ticketsToPrint = filteredTickets.filter(t => selectedTicketsForBatchPrint.has(t.id));
@@ -329,7 +266,16 @@ const Tickets: React.FC = () => {
       return;
     }
     setTicketsToPrintBatch(ticketsToPrint);
-    setTimeout(handleBatchPrint, 100);
+  };
+  
+  useEffect(() => {
+    if (ticketsToPrintBatch.length > 0) {
+        handleBatchPrint();
+    }
+}, [ticketsToPrintBatch]);
+
+  const handleBatchRevoke = () => {
+    revokeMultipleTicketsMutation.mutate(Array.from(selectedTicketsForBatchPrint));
   };
 
   const toggleTicketSelection = (ticketId: string) => {
@@ -355,10 +301,17 @@ const Tickets: React.FC = () => {
     navigator.clipboard.writeText(text);
     toast.success('Código copiado al portapapeles');
   };
-
+  
   const shareWhatsApp = (ticket: TicketData) => {
     const ssid = tenant?.settings?.ssid || ticket.node?.config?.ssid || 'JADSlink WiFi';
-    const message = `Tu ticket de acceso WiFi:\n\nCódigo: ${ticket.code}\nRed: ${ssid}\nPlan: ${ticket.plan?.name}\nDuración: ${ticket.plan?.duration_minutes} min\n\nConéctate y disfruta!`;
+    const message = `Tu ticket de acceso WiFi:
+
+Código: ${ticket.code}
+Red: ${ssid}
+Plan: ${ticket.plan?.name || 'N/A'}
+Duración: ${ticket.plan?.duration_minutes || 0} min
+
+Conéctate y disfruta!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -372,10 +325,11 @@ const Tickets: React.FC = () => {
 
   // --- Filters ---
   const filteredTickets = allTickets?.filter(ticket => {
+    const searchTermLower = searchTerm.toLowerCase();
     const matchesSearch =
-      ticket.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.node?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.plan?.name.toLowerCase().includes(searchTerm.toLowerCase());
+      ticket.code.toLowerCase().includes(searchTermLower) ||
+      (ticket.node?.name || '').toLowerCase().includes(searchTermLower) ||
+      (ticket.plan?.name || '').toLowerCase().includes(searchTermLower);
 
     const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
 
@@ -393,17 +347,6 @@ const Tickets: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active': return <CheckCircle className="h-4 w-4" />;
-      case 'pending': return <Clock className="h-4 w-4" />;
-      case 'used': return <CheckCircle className="h-4 w-4" />;
-      case 'expired': return <XCircle className="h-4 w-4" />;
-      case 'revoked': return <Ban className="h-4 w-4" />;
-      default: return <AlertCircle className="h-4 w-4" />;
-    }
-  };
-
   const StatCard = ({
     title,
     value,
@@ -414,7 +357,7 @@ const Tickets: React.FC = () => {
     title: string;
     value: string | number;
     description: string;
-    icon: any;
+    icon: React.ElementType;
     loading?: boolean;
   }) => (
     <Card>
@@ -447,12 +390,18 @@ const Tickets: React.FC = () => {
             margin: 0.5cm;
           }
           body {
-            print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
-          * {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
+          .printable-batch-area {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 1cm;
+            height: 100%;
+          }
+          .printable-ticket {
+            page-break-inside: avoid;
           }
         }
       `}</style>
@@ -466,48 +415,12 @@ const Tickets: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard
-          title="Pendientes"
-          value={pendingTickets}
-          description="Sin activar"
-          icon={Clock}
-          loading={isLoadingAllTickets}
-        />
-        <StatCard
-          title="Activos"
-          value={activeTickets}
-          description="En uso ahora"
-          icon={CheckCircle}
-          loading={isLoadingAllTickets}
-        />
-        <StatCard
-          title="Usados"
-          value={usedTickets}
-          description="Completados"
-          icon={CheckCircle}
-          loading={isLoadingAllTickets}
-        />
-        <StatCard
-          title="Expirados"
-          value={expiredTickets}
-          description="Vencidos"
-          icon={XCircle}
-          loading={isLoadingAllTickets}
-        />
-        <StatCard
-          title="Revocados"
-          value={revokedTickets}
-          description="Cancelados"
-          icon={Ban}
-          loading={isLoadingAllTickets}
-        />
-        <StatCard
-          title="Ingresos"
-          value={`$${totalRevenue.toFixed(2)}`}
-          description="Total vendido"
-          icon={DollarSign}
-          loading={isLoadingAllTickets}
-        />
+        <StatCard title="Pendientes" value={pendingTickets} description="Sin activar" icon={Clock} loading={isLoadingAllTickets} />
+        <StatCard title="Activos" value={activeTickets} description="En uso ahora" icon={CheckCircle} loading={isLoadingAllTickets} />
+        <StatCard title="Usados" value={usedTickets} description="Completados" icon={CheckCircle} loading={isLoadingAllTickets} />
+        <StatCard title="Expirados" value={expiredTickets} description="Vencidos" icon={XCircle} loading={isLoadingAllTickets} />
+        <StatCard title="Revocados" value={revokedTickets} description="Cancelados" icon={Ban} loading={isLoadingAllTickets} />
+        <StatCard title="Ingresos" value={`$${totalRevenue.toFixed(2)}`} description="Total vendido" icon={DollarSign} loading={isLoadingAllTickets} />
       </div>
 
       {/* Tabs */}
@@ -590,57 +503,17 @@ const Tickets: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Tickets Generados Recientemente</CardTitle>
-                <CardDescription>{generatedTickets.length} ticket(s) listos para usar</CardDescription>
+                <CardDescription>
+                  {generatedTickets.length} ticket(s) listos para usar. Puedes imprimirlos individualmente.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {generatedTickets.map((ticket) => {
-                    const node = nodes?.find(n => n.id === selectedNode);
-                    const plan = plans?.find(p => p.id === selectedPlan);
-
-                    return (
-                      <div key={ticket.id} className="border rounded-lg p-4 space-y-3 bg-gradient-to-br from-blue-50 to-white">
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="bg-white">
-                            {plan?.name}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(ticket.code)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        {ticket.qr_base64_png && (
-                          <img
-                            src={ticket.qr_base64_png}
-                            alt={`QR ${ticket.code}`}
-                            className="w-full h-48 object-contain bg-white rounded p-2"
-                          />
-                        )}
-
-                        <div className="bg-white rounded p-2 text-center">
-                          <p className="text-xs text-gray-600 mb-1">Código</p>
-                          <p className="font-mono font-bold text-lg tracking-wider">{ticket.code}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="bg-white rounded p-2">
-                            <p className="text-gray-600">Red WiFi</p>
-                            <p className="font-semibold">{tenant?.settings?.ssid || node?.config?.ssid || 'JADSlink WiFi'}</p>
-                          </div>
-                          {plan && (
-                            <div className="bg-white rounded p-2">
-                              <p className="text-gray-600">Duración</p>
-                              <p className="font-semibold">{plan.duration_minutes}min</p>
-                            </div>
-                          )}
-                        </div>
-
-                        <Button
-                          variant="default"
+                  {generatedTickets.map((ticket) => (
+                    <div key={ticket.id} className="border rounded-lg p-4 space-y-3 bg-gray-50">
+                       <PrintableTicket ticket={ticket} tenant={tenant} showQr={true} />
+                       <Button
+                          variant="outline"
                           size="sm"
                           className="w-full"
                           onClick={() => triggerPrint(ticket)}
@@ -648,9 +521,8 @@ const Tickets: React.FC = () => {
                           <Printer className="h-4 w-4 mr-2" />
                           Imprimir Ticket
                         </Button>
-                      </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -659,33 +531,12 @@ const Tickets: React.FC = () => {
 
         {/* View All Tab */}
         <TabsContent value="view" className="space-y-6">
-          {/* Filters */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Filtros</CardTitle>
-                {selectedTicketsForBatchPrint.size > 0 && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={deselectAllTickets}
-                    >
-                      Deseleccionar todos
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={triggerBatchPrint}
-                    >
-                      <Printer className="h-4 w-4 mr-2" />
-                      Imprimir {selectedTicketsForBatchPrint.size} ticket(s)
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <CardTitle>Lista de Tickets</CardTitle>
+              <CardDescription>Busca, filtra y gestiona todos los tickets del sistema.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
@@ -706,7 +557,7 @@ const Tickets: React.FC = () => {
                       size="sm"
                       onClick={() => setStatusFilter(status)}
                     >
-                      {status === 'all' ? 'Todos' : status.charAt(0).toUpperCase() + status.slice(1)}
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
                     </Button>
                   ))}
                 </div>
@@ -714,54 +565,64 @@ const Tickets: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Tickets Table */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Lista de Tickets</CardTitle>
-                  <CardDescription>
-                    {filteredTickets.length} de {allTickets?.length || 0} ticket(s)
-                    {selectedTicketsForBatchPrint.size > 0 && (
-                      <span className="ml-2 text-primary font-medium">
-                        ({selectedTicketsForBatchPrint.size} seleccionados)
-                      </span>
-                    )}
-                  </CardDescription>
-                </div>
-                {filteredTickets.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectedTicketsForBatchPrint.size === filteredTickets.length ? deselectAllTickets : selectAllTickets}
-                  >
-                    {selectedTicketsForBatchPrint.size === filteredTickets.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                  </Button>
-                )}
-              </div>
+               <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div>
+                     <CardTitle>Acciones en Lote</CardTitle>
+                     <CardDescription>{selectedTicketsForBatchPrint.size} ticket(s) seleccionados</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-4">
+                     <div className="flex items-center space-x-2">
+                        <input
+                           type="checkbox"
+                           id="show-qr-print"
+                           checked={showQrInPrint}
+                           onChange={(e) => setShowQrInPrint(e.target.checked)}
+                           className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <Label htmlFor="show-qr-print">Incluir QR</Label>
+                     </div>
+                     <Button
+                        variant="default"
+                        size="sm"
+                        onClick={triggerBatchPrint}
+                        disabled={selectedTicketsForBatchPrint.size === 0}
+                        >
+                        <Printer className="h-4 w-4 mr-2" />
+                        Imprimir Selección
+                     </Button>
+                     <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setBatchRevokeDialogOpen(true)}
+                        disabled={selectedTicketsForBatchPrint.size === 0}
+                        >
+                        <Ban className="h-4 w-4 mr-2" />
+                        Revocar Selección
+                     </Button>
+                  </div>
+               </div>
             </CardHeader>
             <CardContent>
               {isLoadingAllTickets ? (
-                <div className="text-center py-8">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
-                  <p className="mt-2 text-muted-foreground">Cargando tickets...</p>
-                </div>
-              ) : filteredTickets.length === 0 ? (
-                <div className="text-center py-8">
-                  <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <p className="mt-2 text-muted-foreground">No se encontraron tickets</p>
-                </div>
+                <p>Cargando tickets...</p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-12"></TableHead>
+                        <TableHead className="w-12">
+                          <input
+                            type="checkbox"
+                            onChange={(e) => e.target.checked ? selectAllTickets() : deselectAllTickets()}
+                            checked={selectedTicketsForBatchPrint.size === filteredTickets.length && filteredTickets.length > 0}
+                          />
+                        </TableHead>
                         <TableHead>Código</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead>Nodo</TableHead>
                         <TableHead>Plan</TableHead>
-                        <TableHead>Precio</TableHead>
                         <TableHead>Creado</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
@@ -777,82 +638,22 @@ const Tickets: React.FC = () => {
                               className="h-4 w-4 rounded border-gray-300"
                             />
                           </TableCell>
-                          <TableCell className="font-mono font-medium">
-                            {ticket.code}
-                          </TableCell>
+                          <TableCell className="font-mono font-medium">{ticket.code}</TableCell>
                           <TableCell>
-                            <Badge variant={getStatusVariant(ticket.status)} className="flex items-center gap-1 w-fit">
-                              {getStatusIcon(ticket.status)}
-                              {ticket.status}
-                            </Badge>
+                            <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
                           </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{ticket.node?.name || 'N/A'}</p>
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Wifi className="h-3 w-3" />
-                                {tenant?.settings?.ssid || ticket.node?.config?.ssid || 'JADSlink WiFi'}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {ticket.plan?.name || 'N/A'}
-                            {ticket.plan && (
-                              <p className="text-xs text-muted-foreground">
-                                {ticket.plan.duration_minutes}min
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            ${ticket.plan?.price_usd.toFixed(2) || '0.00'}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {new Date(ticket.created_at).toLocaleString('es-VE', {
-                              dateStyle: 'short',
-                              timeStyle: 'short'
-                            })}
-                          </TableCell>
+                          <TableCell>{ticket.node?.name}</TableCell>
+                          <TableCell>{ticket.plan?.name}</TableCell>
+                          <TableCell>{new Date(ticket.created_at).toLocaleDateString()}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
+                                <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => {
-                                  setSelectedTicketForView(ticket);
-                                  setViewDialogOpen(true);
-                                }}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Ver Detalles
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => triggerPrint(ticket)}>
-                                  <Printer className="h-4 w-4 mr-2" />
-                                  Imprimir
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => copyToClipboard(ticket.code)}>
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Copiar Código
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => shareWhatsApp(ticket)}>
-                                  <Share2 className="h-4 w-4 mr-2" />
-                                  Compartir WhatsApp
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {(ticket.status === 'pending' || ticket.status === 'active') && (
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => {
-                                      setTicketToRevoke(ticket);
-                                      setRevokeDialogOpen(true);
-                                    }}
-                                  >
-                                    <Ban className="h-4 w-4 mr-2" />
-                                    Revocar
-                                  </DropdownMenuItem>
-                                )}
+                                <DropdownMenuItem onClick={() => triggerPrint(ticket)}><Printer className="mr-2 h-4 w-4" /> Imprimir</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => copyToClipboard(ticket.code)}><Copy className="mr-2 h-4 w-4" /> Copiar</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => shareWhatsApp(ticket as TicketData)}><Share2 className="mr-2 h-4 w-4" /> Compartir</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -867,162 +668,51 @@ const Tickets: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* View Details Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Detalles del Ticket</DialogTitle>
-            <DialogDescription>Información completa del ticket de acceso</DialogDescription>
-          </DialogHeader>
-          {selectedTicketForView && (
-            <div className="space-y-4">
-              {selectedTicketForView.qr_base64_png && (
-                <div className="flex justify-center">
-                  <img
-                    src={selectedTicketForView.qr_base64_png}
-                    alt={`QR ${selectedTicketForView.code}`}
-                    className="w-48 h-48"
-                  />
-                </div>
-              )}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Código:</span>
-                  <span className="font-mono font-bold">{selectedTicketForView.code}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Estado:</span>
-                  <Badge variant={getStatusVariant(selectedTicketForView.status)}>
-                    {selectedTicketForView.status}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Nodo:</span>
-                  <span className="font-medium">{selectedTicketForView.node?.name || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Red WiFi:</span>
-                  <span className="font-medium">{tenant?.settings?.ssid || selectedTicketForView.node?.config?.ssid || 'JADSlink WiFi'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Plan:</span>
-                  <span className="font-medium">{selectedTicketForView.plan?.name || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Duración:</span>
-                  <span className="font-medium">{selectedTicketForView.plan?.duration_minutes || 0} min</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Precio:</span>
-                  <span className="font-medium">${selectedTicketForView.plan?.price_usd.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Creado:</span>
-                  <span className="text-sm">{new Date(selectedTicketForView.created_at).toLocaleString('es-VE')}</span>
-                </div>
-                {selectedTicketForView.activated_at && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Activado:</span>
-                    <span className="text-sm">{new Date(selectedTicketForView.activated_at).toLocaleString('es-VE')}</span>
-                  </div>
-                )}
-                {selectedTicketForView.expires_at && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Expira:</span>
-                    <span className="text-sm">{new Date(selectedTicketForView.expires_at).toLocaleString('es-VE')}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => triggerPrint(selectedTicketForView)}
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimir
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => shareWhatsApp(selectedTicketForView)}
-                >
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Compartir
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Hidden Printable Component - Single */}
+      <div style={{ display: "none" }}>
+          {selectedTicketForPrint && <PrintableTicket
+            ref={ticketToPrintRef}
+            ticket={selectedTicketForPrint}
+            tenant={tenant}
+            showQr={showQrInPrint}
+          />}
+      </div>
 
-      {/* Revoke Confirmation Dialog */}
-      <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
+      {/* Hidden Printable Component - Batch (Grid) */}
+      <div style={{ display: "none" }}>
+        <div ref={batchPrintRef} className="printable-batch-area">
+          {ticketsToPrintBatch.map((ticket) => (
+            <PrintableTicket
+              key={ticket.id}
+              ticket={ticket}
+              tenant={tenant}
+              showQr={showQrInPrint}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Batch Revoke Dialog */}
+      <AlertDialog open={batchRevokeDialogOpen} onOpenChange={setBatchRevokeDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Revocar este ticket?</AlertDialogTitle>
+            <AlertDialogTitle>¿Revocar Tickets Seleccionados?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción marcará el ticket como revocado y no podrá ser usado.
-              {ticketToRevoke && (
-                <span className="block mt-2 font-mono font-bold">
-                  Código: {ticketToRevoke.code}
-                </span>
-              )}
+              Estás a punto de revocar {selectedTicketsForBatchPrint.size} tickets. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setRevokeDialogOpen(false);
-                setTicketToRevoke(null);
-              }}
-            >
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => ticketToRevoke && revokeTicketMutation.mutate(ticketToRevoke.id)}
-              disabled={revokeTicketMutation.isPending}
+              onClick={handleBatchRevoke}
+              disabled={revokeMultipleTicketsMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {revokeTicketMutation.isPending ? 'Revocando...' : 'Revocar Ticket'}
+              {revokeMultipleTicketsMutation.isPending ? 'Revocando...' : 'Revocar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Hidden Printable Component - Single */}
-      <div style={{ display: "none" }}>
-        {selectedTicketForPrint && (
-          <PrintableTicket
-            ref={ticketToPrintRef}
-            ticket={selectedTicketForPrint}
-            tenant={tenant}
-            node={nodes?.find(n => n.id === ('node' in selectedTicketForPrint ? selectedTicketForPrint.node?.id : selectedNode))}
-            plan={plans?.find(p => p.id === ('plan' in selectedTicketForPrint ? selectedTicketForPrint.plan?.id : selectedPlan))}
-          />
-        )}
-      </div>
-
-      {/* Hidden Printable Component - Batch (3 per page) */}
-      <div style={{ display: "none" }}>
-        <div ref={batchPrintRef} className="space-y-4 p-4">
-          {ticketsToPrintBatch.map((ticket, index) => {
-            const isLastInPage = (index + 1) % 3 === 0;
-            const isLast = index === ticketsToPrintBatch.length - 1;
-
-            return (
-              <div key={ticket.id} style={{ pageBreakAfter: isLastInPage && !isLast ? 'always' : 'auto', marginBottom: isLastInPage ? 0 : '1rem' }}>
-                <PrintableTicket
-                  ticket={ticket}
-                  tenant={tenant}
-                  node={nodes?.find(n => n.id === ticket.node?.id)}
-                  plan={plans?.find(p => p.id === ticket.plan?.id)}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 };

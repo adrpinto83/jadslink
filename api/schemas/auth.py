@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from uuid import UUID
 
 
 class LoginRequest(BaseModel):
@@ -24,3 +25,14 @@ class RefreshRequest(BaseModel):
 
 class RegisterResponse(BaseModel):
     status: str
+
+
+class UserResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    role: str
+    is_active: bool
+    tenant_id: UUID | None = None
+
+    class Config:
+        from_attributes = True

@@ -6,12 +6,13 @@ from datetime import timedelta, datetime, timezone
 from jose import jwt, JWTError
 from models.user import User
 from models.tenant import Tenant
-from schemas.auth import LoginRequest, TokenResponse, RefreshRequest, RegisterRequest, RegisterResponse
+from schemas.auth import LoginRequest, TokenResponse, RefreshRequest, RegisterRequest, RegisterResponse, UserResponse
 from database import get_db
 from config import get_settings
 from passlib.context import CryptContext
 from utils.rate_limit import rate_limit
 import re
+from deps import get_current_user
 
 router = APIRouter()
 settings = get_settings()
@@ -167,3 +168,8 @@ async def refresh(request: RefreshRequest, db: AsyncSession = Depends(get_db)) -
     )
 
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.get("/me", response_model=UserResponse)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user

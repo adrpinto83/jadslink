@@ -12,8 +12,7 @@ import {
   Wifi,
   AlertCircle,
   Power,
-  Search,
-  Filter
+  Search
 } from 'lucide-react';
 
 interface Session {

@@ -16,6 +16,12 @@ class TicketResponse(BaseModel):
     qr_base64_png: str | None = None
     status: str
     created_at: datetime
+    plan_name: str
+    tenant_logo_url: str | None = None
+    tenant_ssid: str | None = None
 
     class Config:
         from_attributes = True
+
+class BatchRevokeRequest(BaseModel):
+    ticket_ids: list[UUID]
