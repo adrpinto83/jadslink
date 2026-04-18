@@ -240,6 +240,7 @@ const Tickets: React.FC = () => {
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [selectedTicketsForBatchPrint, setSelectedTicketsForBatchPrint] = useState<Set<string>>(new Set());
   const [ticketsToPrintBatch, setTicketsToPrintBatch] = useState<TicketData[]>([]);
+  const [showQrInPrint, setShowQrInPrint] = useState(false);
 
   const ticketToPrintRef = useRef<HTMLDivElement>(null);
   const batchPrintRef = useRef<HTMLDivElement>(null);
