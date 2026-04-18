@@ -18,6 +18,9 @@ interface Tenant {
     logo_url?: string;
     primary_color?: string;
     custom_domain?: string;
+    ssid?: string;
+    contact_email?: string;
+    contact_phone?: string;
   } | null;
 }
 
@@ -25,6 +28,9 @@ interface SettingsForm {
   logo_url: string;
   primary_color: string;
   custom_domain: string;
+  ssid: string;
+  contact_email: string;
+  contact_phone: string;
 }
 
 const Settings: React.FC = () => {
@@ -43,6 +49,9 @@ const Settings: React.FC = () => {
     logo_url: tenant?.settings?.logo_url || '',
     primary_color: tenant?.settings?.primary_color || '#3b82f6',
     custom_domain: tenant?.settings?.custom_domain || '',
+    ssid: tenant?.settings?.ssid || '',
+    contact_email: tenant?.settings?.contact_email || '',
+    contact_phone: tenant?.settings?.contact_phone || '',
   });
 
   React.useEffect(() => {
@@ -51,6 +60,9 @@ const Settings: React.FC = () => {
         logo_url: tenant.settings.logo_url || '',
         primary_color: tenant.settings.primary_color || '#3b82f6',
         custom_domain: tenant.settings.custom_domain || '',
+        ssid: tenant.settings.ssid || '',
+        contact_email: tenant.settings.contact_email || '',
+        contact_phone: tenant.settings.contact_phone || '',
       });
     }
   }, [tenant]);
@@ -83,6 +95,15 @@ const Settings: React.FC = () => {
     if (formData.custom_domain !== tenant?.settings?.custom_domain) {
       updates.custom_domain = formData.custom_domain;
     }
+    if (formData.ssid !== tenant?.settings?.ssid) {
+      updates.ssid = formData.ssid;
+    }
+    if (formData.contact_email !== tenant?.settings?.contact_email) {
+      updates.contact_email = formData.contact_email;
+    }
+    if (formData.contact_phone !== tenant?.settings?.contact_phone) {
+      updates.contact_phone = formData.contact_phone;
+    }
 
     if (Object.keys(updates).length > 0) {
       updateMutation.mutate(updates);
@@ -94,6 +115,9 @@ const Settings: React.FC = () => {
       logo_url: tenant?.settings?.logo_url || '',
       primary_color: tenant?.settings?.primary_color || '#3b82f6',
       custom_domain: tenant?.settings?.custom_domain || '',
+      ssid: tenant?.settings?.ssid || '',
+      contact_email: tenant?.settings?.contact_email || '',
+      contact_phone: tenant?.settings?.contact_phone || '',
     });
     setHasChanges(false);
   };
@@ -185,6 +209,48 @@ const Settings: React.FC = () => {
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Personaliza el color de tu portal
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="ssid">SSID de WiFi</Label>
+              <Input
+                id="ssid"
+                type="text"
+                value={formData.ssid}
+                onChange={(e) => handleInputChange('ssid', e.target.value)}
+                placeholder="MiEmpresa-WiFi"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Nombre de la red WiFi que aparecerá en todos los tickets
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="contact_email">Email de Contacto</Label>
+              <Input
+                id="contact_email"
+                type="email"
+                value={formData.contact_email}
+                onChange={(e) => handleInputChange('contact_email', e.target.value)}
+                placeholder="soporte@miempresa.com"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Aparecerá en los tickets para que los clientes puedan contactarte
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="contact_phone">Teléfono de Contacto</Label>
+              <Input
+                id="contact_phone"
+                type="tel"
+                value={formData.contact_phone}
+                onChange={(e) => handleInputChange('contact_phone', e.target.value)}
+                placeholder="+58 412-1234567"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Aparecerá en los tickets para soporte
               </p>
             </div>
 
