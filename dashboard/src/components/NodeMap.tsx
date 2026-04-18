@@ -28,7 +28,12 @@ const NodeMap: React.FC<NodeMapProps> = ({ nodes }) => {
   const position: [number, number] = [6.4238, -66.5897]; // Default to Venezuela center
 
   return (
-    <MapContainer center={position} zoom={5} style={{ height: '100%', width: '100%' }} className="rounded-lg">
+    <MapContainer
+      center={position}
+      zoom={5}
+      style={{ height: '100%', width: '100%', zIndex: 0 }}
+      className="rounded-lg relative z-0"
+    >
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

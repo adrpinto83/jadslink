@@ -14,7 +14,7 @@ class Base(DeclarativeBase):
 
 
 class BaseModel(Base):
-    """Mixin for common fields: id, created_at, updated_at"""
+    """Mixin for common fields: id, created_at, updated_at, deleted_at"""
 
     __abstract__ = True
 
@@ -29,4 +29,7 @@ class BaseModel(Base):
         server_default=func.now(),
         onupdate=func.now(),
         default=datetime.utcnow,
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
     )

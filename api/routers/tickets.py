@@ -95,3 +95,42 @@ async def list_tickets(
 
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.post("/{ticket_id}/revoke", status_code=status.HTTP_200_OK)
+async def revoke_ticket(
+    ticket_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Revoke a ticket (change status to revoked).
+    Only pending or active tickets can be revoked.
+    """
+    query = select(Ticket).where(Ticket.id == ticket_id)
+
+    # Filter by tenant if not superadmin
+    if current_user.role != "superadmin":
+        if not current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Usuario no asociado a un tenant")
+        query = query.where(Ticket.tenant_id == current_user.tenant_id)
+
+    result = await db.execute(query)
+    ticket = result.scalar_one_or_none()
+
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+
+    # Check if ticket can be revoked
+    if ticket.status.value not in ['pending', 'active']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede revocar un ticket con estado '{ticket.status.value}'"
+        )
+
+    # Revoke the ticket
+    from models.ticket import TicketStatus
+    ticket.status = TicketStatus.revoked
+    await db.commit()
+
+    return {"message": "Ticket revocado exitosamente", "ticket_id": str(ticket.id)}

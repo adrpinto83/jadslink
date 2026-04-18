@@ -32,7 +32,7 @@ async def list_nodes(
     - For operators, returns nodes belonging to their tenant.
     - For superadmins, returns all nodes across all tenants.
     """
-    query = select(Node)
+    query = select(Node).where(Node.deleted_at == None)
     if current_user.role != "superadmin":
         if not current_user.tenant_id:
             return [] # Or raise an exception
@@ -73,7 +73,7 @@ async def get_node(
     - For operators, only returns the node if it belongs to their tenant.
     - For superadmins, returns the node regardless of tenant.
     """
-    query = select(Node).where(Node.id == node_id)
+    query = select(Node).where(Node.id == node_id, Node.deleted_at == None)
     if current_user.role != "superadmin":
         if not current_user.tenant_id:
             raise HTTPException(status_code=403, detail="Usuario no asociado a un tenant")
@@ -93,10 +93,10 @@ async def update_node(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Node).where(Node.id == node_id)
+    query = select(Node).where(Node.id == node_id, Node.deleted_at == None)
     if current_user.role != "superadmin":
         query = query.where(Node.tenant_id == current_user.tenant_id)
-    
+
     result = await db.execute(query)
     node = result.scalar_one_or_none()
     if not node:
@@ -117,6 +117,35 @@ async def update_node(
     await db.commit()
     await db.refresh(node)
     return node
+
+
+@router.delete("/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_node(
+    node_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Delete a node (soft delete by setting deleted_at).
+    - For operators, only deletes the node if it belongs to their tenant.
+    - For superadmins, can delete any node.
+    """
+    query = select(Node).where(Node.id == node_id, Node.deleted_at == None)
+    if current_user.role != "superadmin":
+        if not current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Usuario no asociado a un tenant")
+        query = query.where(Node.tenant_id == current_user.tenant_id)
+
+    result = await db.execute(query)
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail="Nodo no encontrado")
+
+    # Soft delete: set deleted_at timestamp
+    node.deleted_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return None
 
 
 @router.get("/{node_id}/metrics", response_model=list[NodeMetricResponse])
