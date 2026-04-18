@@ -36,23 +36,19 @@ import {
 import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
 import {
-  Ticket as TicketIcon,
   Search,
   Printer,
   AlertCircle,
   CheckCircle,
   Clock,
   XCircle,
-  Download,
   Share2,
   Copy,
   Eye,
   Ban,
   MoreVertical,
   Wifi,
-  Calendar,
-  DollarSign,
-  MapPin
+  DollarSign
 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -232,28 +228,7 @@ const PrintableTicket = React.forwardRef<HTMLDivElement, {
         </p>
       </div>
 
-      {/* Print Styles */}
-      <style type="text/css">{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .bg-white, .bg-white * {
-            visibility: visible;
-          }
-          .bg-white {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            page-break-after: always;
-          }
-          @page {
-            size: A4 portrait;
-            margin: 1cm;
-          }
-        }
-      `}</style>
+      {/* Print Styles - removed to allow batch printing */}
     </div>
   );
 });
@@ -274,8 +249,11 @@ const Tickets: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'used' | 'expired' | 'revoked'>('all');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [selectedTicketsForBatchPrint, setSelectedTicketsForBatchPrint] = useState<Set<string>>(new Set());
+  const [ticketsToPrintBatch, setTicketsToPrintBatch] = useState<TicketData[]>([]);
 
   const ticketToPrintRef = useRef<HTMLDivElement>(null);
+  const batchPrintRef = useRef<HTMLDivElement>(null);
 
   // --- Data Fetching ---
   const { data: nodes, isLoading: isLoadingNodes } = useQuery<Node[]>({
@@ -345,9 +323,42 @@ const Tickets: React.FC = () => {
     contentRef: ticketToPrintRef,
   });
 
+  const handleBatchPrint = useReactToPrint({
+    contentRef: batchPrintRef,
+  });
+
   const triggerPrint = (ticket: GeneratedTicket | TicketData) => {
     setSelectedTicketForPrint(ticket);
     setTimeout(handlePrint, 100);
+  };
+
+  const triggerBatchPrint = () => {
+    const ticketsToPrint = filteredTickets.filter(t => selectedTicketsForBatchPrint.has(t.id));
+    if (ticketsToPrint.length === 0) {
+      toast.error('Selecciona al menos un ticket para imprimir');
+      return;
+    }
+    setTicketsToPrintBatch(ticketsToPrint);
+    setTimeout(handleBatchPrint, 100);
+  };
+
+  const toggleTicketSelection = (ticketId: string) => {
+    const newSet = new Set(selectedTicketsForBatchPrint);
+    if (newSet.has(ticketId)) {
+      newSet.delete(ticketId);
+    } else {
+      newSet.add(ticketId);
+    }
+    setSelectedTicketsForBatchPrint(newSet);
+  };
+
+  const selectAllTickets = () => {
+    const allIds = new Set(filteredTickets.map(t => t.id));
+    setSelectedTicketsForBatchPrint(allIds);
+  };
+
+  const deselectAllTickets = () => {
+    setSelectedTicketsForBatchPrint(new Set());
   };
 
   const copyToClipboard = (text: string) => {
@@ -437,6 +448,16 @@ const Tickets: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Global Print Styles */}
+      <style type="text/css">{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 1cm;
+          }
+        }
+      `}</style>
+
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Tickets</h2>
         <p className="text-muted-foreground">
@@ -644,7 +665,28 @@ const Tickets: React.FC = () => {
           {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Filtros</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Filtros</CardTitle>
+                {selectedTicketsForBatchPrint.size > 0 && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={deselectAllTickets}
+                    >
+                      Deseleccionar todos
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={triggerBatchPrint}
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Imprimir {selectedTicketsForBatchPrint.size} ticket(s)
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4">
@@ -678,10 +720,28 @@ const Tickets: React.FC = () => {
           {/* Tickets Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Lista de Tickets</CardTitle>
-              <CardDescription>
-                {filteredTickets.length} de {allTickets?.length || 0} ticket(s)
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Lista de Tickets</CardTitle>
+                  <CardDescription>
+                    {filteredTickets.length} de {allTickets?.length || 0} ticket(s)
+                    {selectedTicketsForBatchPrint.size > 0 && (
+                      <span className="ml-2 text-primary font-medium">
+                        ({selectedTicketsForBatchPrint.size} seleccionados)
+                      </span>
+                    )}
+                  </CardDescription>
+                </div>
+                {filteredTickets.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectedTicketsForBatchPrint.size === filteredTickets.length ? deselectAllTickets : selectAllTickets}
+                  >
+                    {selectedTicketsForBatchPrint.size === filteredTickets.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isLoadingAllTickets ? (
@@ -699,6 +759,7 @@ const Tickets: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12"></TableHead>
                         <TableHead>Código</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead>Nodo</TableHead>
@@ -711,6 +772,14 @@ const Tickets: React.FC = () => {
                     <TableBody>
                       {filteredTickets.map((ticket) => (
                         <TableRow key={ticket.id}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedTicketsForBatchPrint.has(ticket.id)}
+                              onChange={() => toggleTicketSelection(ticket.id)}
+                              className="h-4 w-4 rounded border-gray-300"
+                            />
+                          </TableCell>
                           <TableCell className="font-mono font-medium">
                             {ticket.code}
                           </TableCell>
@@ -928,7 +997,7 @@ const Tickets: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Hidden Printable Component */}
+      {/* Hidden Printable Component - Single */}
       <div style={{ display: "none" }}>
         {selectedTicketForPrint && (
           <PrintableTicket
@@ -939,6 +1008,22 @@ const Tickets: React.FC = () => {
             plan={plans?.find(p => p.id === ('plan' in selectedTicketForPrint ? selectedTicketForPrint.plan?.id : selectedPlan))}
           />
         )}
+      </div>
+
+      {/* Hidden Printable Component - Batch */}
+      <div style={{ display: "none" }}>
+        <div ref={batchPrintRef}>
+          {ticketsToPrintBatch.map((ticket, index) => (
+            <div key={ticket.id} style={{ pageBreakAfter: index < ticketsToPrintBatch.length - 1 ? 'always' : 'auto' }}>
+              <PrintableTicket
+                ticket={ticket}
+                tenant={tenant}
+                node={nodes?.find(n => n.id === ticket.node?.id)}
+                plan={plans?.find(p => p.id === ticket.plan?.id)}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
