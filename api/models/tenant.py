@@ -45,6 +45,9 @@ class Tenant(BaseModel):
             "logo_url": None,
             "primary_color": "#2563eb",
             "payment_methods": ["cash"],
+            "ssid": None,
+            "contact_email": None,
+            "contact_phone": None,
         },
         nullable=True,
     )

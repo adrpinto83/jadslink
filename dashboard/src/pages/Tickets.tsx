@@ -78,10 +78,13 @@ interface Plan {
 interface Tenant {
   id: string;
   name: string;
-  logo_url?: string;
-  primary_color?: string;
-  contact_email?: string;
-  contact_phone?: string;
+  settings?: {
+    logo_url?: string;
+    primary_color?: string;
+    ssid?: string;
+    contact_email?: string;
+    contact_phone?: string;
+  };
 }
 
 interface TicketData {
@@ -106,129 +109,115 @@ interface GeneratedTicket {
   created_at: string;
 }
 
-// --- Professional Printable Ticket Component ---
+// --- Compact Printable Ticket Component (3 per page) ---
 const PrintableTicket = React.forwardRef<HTMLDivElement, {
   ticket: GeneratedTicket | TicketData;
   tenant: Tenant | undefined;
   node: Node | undefined;
   plan: Plan | undefined;
 }>(({ ticket, tenant, node, plan }, ref) => {
-  const expiryDate = 'expires_at' in ticket && ticket.expires_at
-    ? new Date(ticket.expires_at)
-    : plan ? new Date(Date.now() + plan.duration_minutes * 60 * 1000) : null;
+  const ssid = tenant?.settings?.ssid || node?.config?.ssid || 'JADSlink WiFi';
+  const logoUrl = tenant?.settings?.logo_url;
+  const contactEmail = tenant?.settings?.contact_email;
+  const contactPhone = tenant?.settings?.contact_phone;
 
   return (
-    <div ref={ref} className="bg-white p-8 max-w-md mx-auto">
-      {/* Header with Logo */}
-      <div className="text-center border-b-2 border-gray-200 pb-4 mb-6">
-        {tenant?.logo_url ? (
-          <img src={tenant.logo_url} alt={tenant.name} className="h-16 mx-auto mb-2" />
-        ) : (
-          <div className="h-16 flex items-center justify-center">
-            <Wifi className="h-12 w-12 text-blue-600" />
+    <div ref={ref} className="bg-white p-4 border-2 border-gray-300 rounded-lg" style={{ pageBreakInside: 'avoid' }}>
+      {/* Compact Header */}
+      <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2 mb-3">
+        <div className="flex items-center gap-2">
+          {logoUrl ? (
+            <img src={logoUrl} alt={tenant?.name} className="h-8 w-auto" />
+          ) : (
+            <Wifi className="h-6 w-6 text-blue-600" />
+          )}
+          <div>
+            <h2 className="text-lg font-bold text-gray-800">{tenant?.name || 'JADSlink'}</h2>
+            <p className="text-xs text-gray-600">Ticket WiFi</p>
           </div>
-        )}
-        <h1 className="text-2xl font-bold text-gray-800">{tenant?.name || 'JADSlink'}</h1>
-        <p className="text-sm text-gray-600">Ticket de Acceso WiFi</p>
-      </div>
-
-      {/* QR Code - Center piece */}
-      <div className="bg-gray-50 rounded-lg p-6 mb-6 border-2 border-dashed border-gray-300">
-        {ticket.qr_base64_png ? (
-          <img
-            src={ticket.qr_base64_png}
-            alt={`QR para ${ticket.code}`}
-            className="w-64 h-64 mx-auto"
-          />
-        ) : (
-          <div className="w-64 h-64 mx-auto bg-gray-200 flex items-center justify-center">
-            <p className="text-gray-500">No QR disponible</p>
-          </div>
-        )}
-        <div className="text-center mt-4">
-          <p className="text-xs text-gray-600 mb-1">Código de Acceso</p>
-          <p className="font-mono text-3xl font-bold tracking-wider text-gray-900 bg-white px-4 py-2 rounded border-2 border-gray-300">
-            {ticket.code}
-          </p>
         </div>
       </div>
 
-      {/* Ticket Details Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-        {plan && (
-          <>
-            <div className="bg-blue-50 p-3 rounded">
-              <p className="text-xs text-gray-600 mb-1">Plan</p>
-              <p className="font-semibold text-gray-800">{plan.name}</p>
+      <div className="grid grid-cols-2 gap-3">
+        {/* QR Code - Smaller */}
+        <div className="flex flex-col items-center bg-gray-50 rounded p-2 border border-gray-300">
+          {ticket.qr_base64_png ? (
+            <img
+              src={ticket.qr_base64_png}
+              alt={`QR ${ticket.code}`}
+              className="w-32 h-32 object-contain"
+              style={{ imageRendering: 'pixelated' }}
+            />
+          ) : (
+            <div className="w-32 h-32 bg-gray-200 flex items-center justify-center">
+              <p className="text-xs text-gray-500">Sin QR</p>
             </div>
-            <div className="bg-green-50 p-3 rounded">
-              <p className="text-xs text-gray-600 mb-1">Duración</p>
-              <p className="font-semibold text-gray-800">{plan.duration_minutes} minutos</p>
-            </div>
-            <div className="bg-purple-50 p-3 rounded">
-              <p className="text-xs text-gray-600 mb-1">Valor</p>
-              <p className="font-semibold text-gray-800">${plan.price_usd.toFixed(2)}</p>
-            </div>
-          </>
-        )}
-        {node && (
-          <div className="bg-orange-50 p-3 rounded">
-            <p className="text-xs text-gray-600 mb-1">Ubicación</p>
-            <p className="font-semibold text-gray-800">{node.name}</p>
+          )}
+          <div className="mt-2 text-center w-full">
+            <p className="text-xs text-gray-600">Código</p>
+            <p className="font-mono text-xl font-bold tracking-wide text-gray-900 bg-white px-2 py-1 rounded border border-gray-300">
+              {ticket.code}
+            </p>
           </div>
-        )}
+        </div>
+
+        {/* Details */}
+        <div className="space-y-2">
+          {/* WiFi SSID - Prominent */}
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded p-2">
+            <div className="flex items-center gap-1 mb-1">
+              <Wifi className="h-4 w-4" />
+              <p className="text-xs font-semibold">Red WiFi</p>
+            </div>
+            <p className="text-lg font-bold">{ssid}</p>
+          </div>
+
+          {/* Plan Info */}
+          {plan && (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-blue-50 p-2 rounded">
+                <p className="text-gray-600">Plan</p>
+                <p className="font-semibold text-gray-800">{plan.name}</p>
+              </div>
+              <div className="bg-green-50 p-2 rounded">
+                <p className="text-gray-600">Tiempo</p>
+                <p className="font-semibold text-gray-800">{plan.duration_minutes}min</p>
+              </div>
+              <div className="bg-purple-50 p-2 rounded">
+                <p className="text-gray-600">Precio</p>
+                <p className="font-semibold text-gray-800">${plan.price_usd.toFixed(2)}</p>
+              </div>
+              {node && (
+                <div className="bg-orange-50 p-2 rounded">
+                  <p className="text-gray-600">Nodo</p>
+                  <p className="font-semibold text-gray-800 truncate">{node.name}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* WiFi Connection Info */}
-      {node?.config?.ssid && (
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Wifi className="h-5 w-5" />
-            <p className="font-semibold">Red WiFi</p>
-          </div>
-          <p className="text-2xl font-bold">{node.config.ssid}</p>
-        </div>
-      )}
-
-      {/* Instructions */}
-      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-        <p className="text-sm font-semibold text-yellow-800 mb-2">Instrucciones de Uso:</p>
-        <ol className="text-xs text-yellow-700 space-y-1 list-decimal list-inside">
-          <li>Conéctate a la red WiFi {node?.config?.ssid || 'JADSlink'}</li>
-          <li>Abre tu navegador (se abrirá automáticamente el portal)</li>
-          <li>Escanea el QR o ingresa el código de acceso</li>
-          <li>¡Disfruta de tu conexión!</li>
+      {/* Compact Instructions */}
+      <div className="bg-yellow-50 border-l-2 border-yellow-400 p-2 mt-3">
+        <p className="text-xs font-semibold text-yellow-800 mb-1">Pasos:</p>
+        <ol className="text-xs text-yellow-700 list-decimal list-inside space-y-0.5">
+          <li>Conéctate a WiFi: <strong>{ssid}</strong></li>
+          <li>Abre tu navegador</li>
+          <li>Escanea QR o ingresa código</li>
         </ol>
       </div>
 
-      {/* Validity */}
-      {expiryDate && (
-        <div className="bg-red-50 p-3 rounded mb-6">
-          <p className="text-xs text-red-600 mb-1">Válido hasta</p>
-          <p className="font-semibold text-red-800">
-            {expiryDate.toLocaleString('es-VE', {
-              dateStyle: 'medium',
-              timeStyle: 'short'
-            })}
+      {/* Compact Footer */}
+      <div className="border-t border-gray-200 pt-2 mt-2 text-center">
+        {(contactEmail || contactPhone) && (
+          <p className="text-xs text-gray-600">
+            {contactEmail && <span>{contactEmail}</span>}
+            {contactEmail && contactPhone && <span> • </span>}
+            {contactPhone && <span>{contactPhone}</span>}
           </p>
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="border-t-2 border-gray-200 pt-4 text-center">
-        <p className="text-xs text-gray-600 mb-1">Contacto</p>
-        {tenant?.contact_email && (
-          <p className="text-xs text-gray-700">{tenant.contact_email}</p>
         )}
-        {tenant?.contact_phone && (
-          <p className="text-xs text-gray-700">{tenant.contact_phone}</p>
-        )}
-        <p className="text-xs text-gray-500 mt-2">
-          Generado: {new Date(ticket.created_at).toLocaleString('es-VE')}
-        </p>
       </div>
-
-      {/* Print Styles - removed to allow batch printing */}
     </div>
   );
 });
@@ -367,7 +356,8 @@ const Tickets: React.FC = () => {
   };
 
   const shareWhatsApp = (ticket: TicketData) => {
-    const message = `Tu ticket de acceso WiFi:\n\nCódigo: ${ticket.code}\nRed: ${ticket.node?.config?.ssid || 'JADSlink'}\nPlan: ${ticket.plan?.name}\nDuración: ${ticket.plan?.duration_minutes} min\n\nConéctate y disfruta!`;
+    const ssid = tenant?.settings?.ssid || ticket.node?.config?.ssid || 'JADSlink WiFi';
+    const message = `Tu ticket de acceso WiFi:\n\nCódigo: ${ticket.code}\nRed: ${ssid}\nPlan: ${ticket.plan?.name}\nDuración: ${ticket.plan?.duration_minutes} min\n\nConéctate y disfruta!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -453,7 +443,15 @@ const Tickets: React.FC = () => {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 1cm;
+            margin: 0.5cm;
+          }
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+          * {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
           }
         }
       `}</style>
@@ -540,7 +538,7 @@ const Tickets: React.FC = () => {
                       <option value="">{isLoading ? 'Cargando...' : 'Selecciona un Nodo'}</option>
                       {nodes?.map((node) => (
                         <option key={node.id} value={node.id}>
-                          {node.name} {node.config?.ssid && `(${node.config.ssid})`}
+                          {node.name}
                         </option>
                       ))}
                     </select>
@@ -628,12 +626,10 @@ const Tickets: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 text-xs">
-                          {node?.config?.ssid && (
-                            <div className="bg-white rounded p-2">
-                              <p className="text-gray-600">Red WiFi</p>
-                              <p className="font-semibold">{node.config.ssid}</p>
-                            </div>
-                          )}
+                          <div className="bg-white rounded p-2">
+                            <p className="text-gray-600">Red WiFi</p>
+                            <p className="font-semibold">{tenant?.settings?.ssid || node?.config?.ssid || 'JADSlink WiFi'}</p>
+                          </div>
                           {plan && (
                             <div className="bg-white rounded p-2">
                               <p className="text-gray-600">Duración</p>
@@ -792,12 +788,10 @@ const Tickets: React.FC = () => {
                           <TableCell>
                             <div>
                               <p className="font-medium">{ticket.node?.name || 'N/A'}</p>
-                              {ticket.node?.config?.ssid && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Wifi className="h-3 w-3" />
-                                  {ticket.node.config.ssid}
-                                </p>
-                              )}
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Wifi className="h-3 w-3" />
+                                {tenant?.settings?.ssid || ticket.node?.config?.ssid || 'JADSlink WiFi'}
+                              </p>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -905,12 +899,10 @@ const Tickets: React.FC = () => {
                   <span className="text-sm text-muted-foreground">Nodo:</span>
                   <span className="font-medium">{selectedTicketForView.node?.name || 'N/A'}</span>
                 </div>
-                {selectedTicketForView.node?.config?.ssid && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Red WiFi:</span>
-                    <span className="font-medium">{selectedTicketForView.node.config.ssid}</span>
-                  </div>
-                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Red WiFi:</span>
+                  <span className="font-medium">{tenant?.settings?.ssid || selectedTicketForView.node?.config?.ssid || 'JADSlink WiFi'}</span>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Plan:</span>
                   <span className="font-medium">{selectedTicketForView.plan?.name || 'N/A'}</span>
@@ -1010,19 +1002,24 @@ const Tickets: React.FC = () => {
         )}
       </div>
 
-      {/* Hidden Printable Component - Batch */}
+      {/* Hidden Printable Component - Batch (3 per page) */}
       <div style={{ display: "none" }}>
-        <div ref={batchPrintRef}>
-          {ticketsToPrintBatch.map((ticket, index) => (
-            <div key={ticket.id} style={{ pageBreakAfter: index < ticketsToPrintBatch.length - 1 ? 'always' : 'auto' }}>
-              <PrintableTicket
-                ticket={ticket}
-                tenant={tenant}
-                node={nodes?.find(n => n.id === ticket.node?.id)}
-                plan={plans?.find(p => p.id === ticket.plan?.id)}
-              />
-            </div>
-          ))}
+        <div ref={batchPrintRef} className="space-y-4 p-4">
+          {ticketsToPrintBatch.map((ticket, index) => {
+            const isLastInPage = (index + 1) % 3 === 0;
+            const isLast = index === ticketsToPrintBatch.length - 1;
+
+            return (
+              <div key={ticket.id} style={{ pageBreakAfter: isLastInPage && !isLast ? 'always' : 'auto', marginBottom: isLastInPage ? 0 : '1rem' }}>
+                <PrintableTicket
+                  ticket={ticket}
+                  tenant={tenant}
+                  node={nodes?.find(n => n.id === ticket.node?.id)}
+                  plan={plans?.find(p => p.id === ticket.plan?.id)}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
