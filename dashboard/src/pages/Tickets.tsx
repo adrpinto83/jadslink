@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/api/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -249,36 +249,39 @@ const Tickets: React.FC = () => {
     onAfterPrint: () => setTicketsToPrintBatch([]),
   });
 
-  const triggerPrint = (ticket: GeneratedTicket | TicketData) => {
-    setSelectedTicketForPrint(ticket);
-  };
-
+  // Effect to trigger single ticket print
   useEffect(() => {
     if (selectedTicketForPrint) {
+      // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         handlePrint();
-      }, 100);
+      }, 150);
       return () => clearTimeout(timer);
     }
-  }, [selectedTicketForPrint, handlePrint]);
+  }, [selectedTicketForPrint]);
 
-  const triggerBatchPrint = () => {
+  // Effect to trigger batch print
+  useEffect(() => {
+    if (ticketsToPrintBatch.length > 0) {
+      const timer = setTimeout(() => {
+        handleBatchPrint();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [ticketsToPrintBatch]);
+
+  const triggerPrint = useCallback((ticket: GeneratedTicket | TicketData) => {
+    setSelectedTicketForPrint(ticket);
+  }, []);
+
+  const triggerBatchPrint = useCallback(() => {
     const ticketsToPrint = filteredTickets.filter(t => selectedTicketsForBatchPrint.has(t.id));
     if (ticketsToPrint.length === 0) {
       toast.error('Selecciona al menos un ticket para imprimir');
       return;
     }
     setTicketsToPrintBatch(ticketsToPrint);
-  };
-  
-  useEffect(() => {
-    if (ticketsToPrintBatch.length > 0) {
-      const timer = setTimeout(() => {
-        handleBatchPrint();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [ticketsToPrintBatch, handleBatchPrint]);
+  }, [selectedTicketsForBatchPrint, filteredTickets]);
 
   const handleBatchRevoke = () => {
     revokeMultipleTicketsMutation.mutate(Array.from(selectedTicketsForBatchPrint));
@@ -675,28 +678,33 @@ Conéctate y disfruta!`;
       </Tabs>
 
       {/* Hidden Printable Component - Single */}
-      <div style={{ display: "none" }}>
-          {selectedTicketForPrint && <PrintableTicket
-            ref={ticketToPrintRef}
-            ticket={selectedTicketForPrint}
-            tenant={tenant}
-            showQr={showQrInPrint}
-          />}
-      </div>
-
-      {/* Hidden Printable Component - Batch (Grid) */}
-      <div style={{ display: "none" }}>
-        <div ref={batchPrintRef} className="printable-batch-area">
-          {ticketsToPrintBatch.map((ticket) => (
+      {selectedTicketForPrint && (
+        <div style={{ visibility: "hidden", height: 0, overflow: "hidden" }}>
+          <div ref={ticketToPrintRef}>
             <PrintableTicket
-              key={ticket.id}
-              ticket={ticket}
+              ticket={selectedTicketForPrint}
               tenant={tenant}
               showQr={showQrInPrint}
             />
-          ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Hidden Printable Component - Batch (Grid) */}
+      {ticketsToPrintBatch.length > 0 && (
+        <div style={{ visibility: "hidden", height: 0, overflow: "hidden" }}>
+          <div ref={batchPrintRef} className="printable-batch-area">
+            {ticketsToPrintBatch.map((ticket) => (
+              <PrintableTicket
+                key={ticket.id}
+                ticket={ticket}
+                tenant={tenant}
+                showQr={showQrInPrint}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Batch Revoke Dialog */}
       <AlertDialog open={batchRevokeDialogOpen} onOpenChange={setBatchRevokeDialogOpen}>
