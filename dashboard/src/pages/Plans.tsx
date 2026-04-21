@@ -142,44 +142,77 @@ const Plans: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Planes de Tickets</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Planes de Tickets</h1>
+          <p className="text-gray-600 mt-1">Crea y administra planes personalizados con precios propios</p>
+        </div>
         <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancelar' : 'Nuevo Plan'}
+          {showForm ? 'Cancelar' : '+ Nuevo Plan'}
         </Button>
       </div>
 
-      {/* Plan Templates */}
-      {!showForm && (
-        <Card className="p-4">
-            <h3 className="text-sm font-semibold mb-2 text-gray-500">O crear desde una plantilla:</h3>
-            <div className="flex flex-wrap gap-2">
-                {planTemplates.map(template => (
-                    <Button key={template.name} variant="outline" size="sm" onClick={() => handleTemplateClick(template)}>
-                        {template.name}
-                    </Button>
-                ))}
+      {/* Create Form or Templates */}
+      {!showForm && plans && plans.length === 0 && (
+        <Card className="p-6 border-2 border-dashed border-blue-200 bg-blue-50">
+          <div className="text-center space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Sin planes aún</h3>
+              <p className="text-gray-600">Crea tu primer plan o usa una plantilla como base</p>
             </div>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button onClick={() => setShowForm(true)} variant="default">
+                Crear Plan Personalizado
+              </Button>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-3">O usa una plantilla:</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {planTemplates.map(template => (
+                  <Button key={template.name} variant="outline" size="sm" onClick={() => handleTemplateClick(template)}>
+                    {template.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Plan Templates (shown when user has plans) */}
+      {!showForm && plans && plans.length > 0 && (
+        <Card className="p-4 bg-gray-50">
+          <h3 className="text-sm font-semibold mb-3 text-gray-700">Crear desde plantilla:</h3>
+          <div className="flex flex-wrap gap-2">
+            {planTemplates.map(template => (
+              <Button key={template.name} variant="outline" size="sm" onClick={() => handleTemplateClick(template)}>
+                {template.name}
+              </Button>
+            ))}
+          </div>
         </Card>
       )}
 
       {showForm && (
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {editingPlan ? 'Editar Plan' : 'Crear Plan'}
+        <Card className="p-8 border-2 border-blue-200 bg-white">
+          <h2 className="text-2xl font-bold mb-6">
+            {editingPlan ? 'Editar Plan' : 'Crear Nuevo Plan'}
           </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Nombre del Plan</Label>
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium">Nombre del Plan</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="ej. 30 Minutos"
+                placeholder="ej. 30 Minutos, Acceso Diario, etc."
                 required
+                className="border border-gray-300"
               />
+              <p className="text-xs text-gray-500">Nombre visible para tus clientes</p>
             </div>
-            <div>
-              <Label htmlFor="duration">Duración (minutos)</Label>
+
+            <div className="space-y-2">
+              <Label htmlFor="duration" className="text-sm font-medium">Duración (minutos)</Label>
               <Input
                 id="duration"
                 type="number"
@@ -189,25 +222,42 @@ const Plans: React.FC = () => {
                 }
                 min="1"
                 required
+                className="border border-gray-300"
               />
+              <p className="text-xs text-gray-500">ej. 30, 60, 1440 (1 día)</p>
             </div>
-            <div>
-              <Label htmlFor="price">Precio (USD)</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                value={formData.price_usd}
-                onChange={(e) => setFormData({ ...formData, price_usd: e.target.value })}
-                min="0"
-                required
-              />
+
+            <div className="space-y-2">
+              <Label htmlFor="price" className="text-sm font-medium">Precio (USD)</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">$</span>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  value={formData.price_usd}
+                  onChange={(e) => setFormData({ ...formData, price_usd: e.target.value })}
+                  min="0"
+                  required
+                  placeholder="0.00"
+                  className="border border-gray-300"
+                />
+              </div>
+              <p className="text-xs text-gray-500">Define el precio que quieres cobrar</p>
             </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                {editingPlan ? 'Actualizar' : 'Crear'}
+
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+              <p className="text-sm font-medium text-blue-900">Vista previa:</p>
+              <p className="text-sm text-blue-700 mt-1">
+                {formData.name || 'Plan'} - {formData.duration_minutes || 0} min - ${formData.price_usd || '0.00'}
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="flex-1">
+                {editingPlan ? 'Actualizar Plan' : 'Crear Plan'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>
+              <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                 Cancelar
               </Button>
             </div>
@@ -215,51 +265,53 @@ const Plans: React.FC = () => {
         </Card>
       )}
 
-      <Card className="p-6">
-        <Table>
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Duración</th>
-              <th>Precio</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plans?.map((plan) => (
-              <tr key={plan.id}>
-                <td className="font-medium">{plan.name}</td>
-                <td>{formatDuration(plan.duration_minutes)}</td>
-                <td>${plan.price_usd}</td>
-                <td>
-                  <Badge variant={plan.is_active ? 'default' : 'secondary'}>
-                    {plan.is_active ? 'Activo' : 'Inactivo'}
-                  </Badge>
-                </td>
-                <td>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(plan)}>
-                      Editar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(plan.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      Eliminar
-                    </Button>
+      {plans && plans.length > 0 && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Tus Planes Activos</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {plans.map((plan) => (
+              <div key={plan.id} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-white to-gray-50 hover:shadow-md transition-shadow">
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">{plan.name}</h4>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {formatDuration(plan.duration_minutes)} de acceso
+                    </p>
                   </div>
-                </td>
-              </tr>
+
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-blue-600">${plan.price_usd}</span>
+                    <span className="text-sm text-gray-500">USD</span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                    <Badge variant={plan.is_active ? 'default' : 'secondary'}>
+                      {plan.is_active ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(plan)}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(plan.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </Table>
-        {!plans?.length && (
-          <p className="text-center py-8 text-gray-500">No hay planes creados</p>
-        )}
-      </Card>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

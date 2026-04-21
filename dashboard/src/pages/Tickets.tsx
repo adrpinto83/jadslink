@@ -255,9 +255,12 @@ const Tickets: React.FC = () => {
 
   useEffect(() => {
     if (selectedTicketForPrint) {
-      handlePrint();
+      const timer = setTimeout(() => {
+        handlePrint();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [selectedTicketForPrint]);
+  }, [selectedTicketForPrint, handlePrint]);
 
   const triggerBatchPrint = () => {
     const ticketsToPrint = filteredTickets.filter(t => selectedTicketsForBatchPrint.has(t.id));
@@ -270,9 +273,12 @@ const Tickets: React.FC = () => {
   
   useEffect(() => {
     if (ticketsToPrintBatch.length > 0) {
+      const timer = setTimeout(() => {
         handleBatchPrint();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-}, [ticketsToPrintBatch]);
+  }, [ticketsToPrintBatch, handleBatchPrint]);
 
   const handleBatchRevoke = () => {
     revokeMultipleTicketsMutation.mutate(Array.from(selectedTicketsForBatchPrint));

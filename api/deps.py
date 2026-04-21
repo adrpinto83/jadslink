@@ -21,14 +21,14 @@ security = HTTPBearer()
 
 # Plan limits: nodes
 NODE_LIMITS = {
-    "free": 1,
+    "starter": 1,
     "pro": 5,
     "enterprise": -1,  # Unlimited
 }
 
 # Plan limits: tickets per month
 TICKET_LIMITS = {
-    "free": 50,
+    "starter": 50,
     "pro": 500,
     "enterprise": -1,  # Unlimited
 }
