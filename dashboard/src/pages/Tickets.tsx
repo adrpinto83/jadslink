@@ -678,33 +678,29 @@ Conéctate y disfruta!`;
         </TabsContent>
       </Tabs>
 
-      {/* Hidden Printable Component - Single */}
-      {selectedTicketForPrint && (
-        <div style={{ visibility: "hidden", height: 0, overflow: "hidden" }}>
-          <PrintableTicket
-            ref={ticketToPrintRef}
-            ticket={selectedTicketForPrint}
-            tenant={tenant}
-            showQr={showQrInPrint}
-          />
-        </div>
-      )}
+      {/* Hidden Printable Component - Single (positioned off-screen) */}
+      <div style={{ position: "fixed", left: "-10000px", top: "-10000px", width: "210mm", height: "297mm" }}>
+        <PrintableTicket
+          ref={ticketToPrintRef}
+          ticket={selectedTicketForPrint || { id: '', code: '', qr_data: '', status: 'pending', created_at: '', plan_name: '', tenant_logo_url: null, tenant_ssid: null } as any}
+          tenant={tenant}
+          showQr={showQrInPrint}
+        />
+      </div>
 
-      {/* Hidden Printable Component - Batch (Grid) */}
-      {ticketsToPrintBatch.length > 0 && (
-        <div style={{ visibility: "hidden", height: 0, overflow: "hidden" }}>
-          <div ref={batchPrintRef} className="printable-batch-area" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", padding: "10px" }}>
-            {ticketsToPrintBatch.map((ticket) => (
-              <PrintableTicket
-                key={ticket.id}
-                ticket={ticket}
-                tenant={tenant}
-                showQr={showQrInPrint}
-              />
-            ))}
-          </div>
+      {/* Hidden Printable Component - Batch (positioned off-screen) */}
+      <div style={{ position: "fixed", left: "-10000px", top: "-10000px", width: "210mm", minHeight: "297mm" }}>
+        <div ref={batchPrintRef} style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", padding: "10px", width: "100%", pageBreakInside: "avoid" }}>
+          {ticketsToPrintBatch.map((ticket) => (
+            <PrintableTicket
+              key={ticket.id}
+              ticket={ticket}
+              tenant={tenant}
+              showQr={showQrInPrint}
+            />
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Batch Revoke Dialog */}
       <AlertDialog open={batchRevokeDialogOpen} onOpenChange={setBatchRevokeDialogOpen}>
