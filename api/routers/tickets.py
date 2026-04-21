@@ -128,11 +128,13 @@ async def list_tickets(
     
     response_tickets = []
     for ticket, plan, tenant in result.all():
+        qr_base64 = generate_qr_base64(ticket.qr_data)
         response_tickets.append(
             TicketResponse(
                 id=ticket.id,
                 code=ticket.code,
                 qr_data=ticket.qr_data,
+                qr_base64_png=qr_base64,
                 status=ticket.status.value,
                 created_at=ticket.created_at,
                 plan_name=plan.name,
