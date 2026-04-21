@@ -7,11 +7,13 @@ from jose import JWTError, jwt
 from config import get_settings
 from database import get_db
 from uuid import UUID
+from datetime import datetime, timezone, timedelta
 
 # Import models for internal logic, not for top-level type hints
 from models.user import User
 from models.tenant import Tenant
 from models.node import Node
+from models.ticket import Ticket
 
 
 settings = get_settings()
@@ -103,23 +105,56 @@ async def check_node_limit(
     db: AsyncSession = Depends(get_db),
 ):
     """Dependency to enforce node limits based on the tenant's plan."""
-    if not tenant: # This happens for superadmin
+    if not tenant:
         return
 
     limit = PLAN_LIMITS.get(tenant.plan_tier, 0)
-    if limit == -1:  # Unlimited
+    if limit == -1:
         return
 
     count_result = await db.execute(
-        select(func.count(Node.id)).where(Node.tenant_id == tenant.id)
+        select(func.count(Node.id)).where(
+            Node.tenant_id == tenant.id,
+            Node.deleted_at == None
+        )
     )
     node_count = count_result.scalar_one()
 
     if node_count >= limit:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Límite de nodos ({limit}) para el plan '{tenant.plan_tier}' alcanzado."
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Límite de nodos ({limit}) alcanzado para el plan '{tenant.plan_tier}'. Upgrade requerido."
         )
+
+async def check_ticket_limit(
+    quantity: int,
+    tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dependency to enforce ticket generation limits based on the tenant's plan."""
+    if not tenant:
+        return
+
+    limit = PLAN_LIMITS.get(tenant.plan_tier, 0)
+    if limit == -1:
+        return
+
+    since = datetime.now(timezone.utc) - timedelta(days=30)
+    count_result = await db.execute(
+        select(func.count(Ticket.id)).where(
+            Ticket.tenant_id == tenant.id,
+            Ticket.created_at >= since
+        )
+    )
+    ticket_count = count_result.scalar_one()
+    remaining = limit - ticket_count
+
+    if ticket_count + quantity > limit:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Límite de {limit} tickets/mes excedido. Disponibles: {remaining}. Upgrade requerido."
+        )
+
 
 def get_superadmin(current_user: User = Depends(get_current_user)) -> User:
     """Dependency to ensure user is a superadmin."""

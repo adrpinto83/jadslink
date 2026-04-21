@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from uuid import UUID
+from datetime import datetime, timezone, timedelta
 from models.ticket import Ticket
 from models.plan import Plan
 from models.node import Node
@@ -9,7 +10,7 @@ from models.tenant import Tenant
 from models.user import User
 from schemas.ticket import TicketGenerateRequest, TicketResponse
 from database import get_db
-from deps import get_current_user
+from deps import get_current_user, PLAN_LIMITS
 from services.ticket_service import generate_ticket_code, generate_qr_base64
 from config import get_settings
 from schemas.ticket import BatchRevokeRequest
@@ -41,6 +42,25 @@ async def generate_tickets(
     tenant = tenant_result.scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Check ticket limit for this plan
+    limit = PLAN_LIMITS.get(tenant.plan_tier, 0)
+    if limit != -1:
+        since = datetime.now(timezone.utc) - timedelta(days=30)
+        count_result = await db.execute(
+            select(func.count(Ticket.id)).where(
+                Ticket.tenant_id == tenant_id,
+                Ticket.created_at >= since
+            )
+        )
+        ticket_count = count_result.scalar_one()
+        remaining = limit - ticket_count
+
+        if ticket_count + req.quantity > limit:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"Límite de {limit} tickets/mes alcanzado. Disponibles: {remaining}. Upgrade requerido."
+            )
 
     # Verify plan belongs to the same tenant
     plan_result = await db.execute(
