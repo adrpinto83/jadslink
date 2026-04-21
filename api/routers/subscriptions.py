@@ -24,9 +24,26 @@ async def get_subscription_plans():
 
 
 @router.post("/checkout-session")
-async def create_checkout_session(price_id: str, current_tenant: Tenant = Depends(get_current_tenant)):
+async def create_checkout_session(
+    price_id: str,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
     """Create a Stripe Checkout session for a subscription."""
     try:
+        # Create Stripe customer if not exists
+        if not current_tenant.stripe_customer_id:
+            # Get primary user email
+            primary_user = current_tenant.users[0] if current_tenant.users else None
+            customer = stripe.Customer.create(
+                email=primary_user.email if primary_user else "noreply@jadslink.io",
+                name=current_tenant.name,
+                metadata={"tenant_id": str(current_tenant.id)},
+            )
+            current_tenant.stripe_customer_id = customer.id
+            db.add(current_tenant)
+            await db.commit()
+
         checkout_session = stripe.checkout.Session.create(
             client_reference_id=str(current_tenant.id),
             customer=current_tenant.stripe_customer_id,
@@ -42,6 +59,8 @@ async def create_checkout_session(price_id: str, current_tenant: Tenant = Depend
             cancel_url=f"{settings.FRONTEND_URL}/billing",
         )
         return {"sessionId": checkout_session.id}
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

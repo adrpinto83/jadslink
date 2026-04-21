@@ -12,7 +12,7 @@ settings = get_settings()
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 PLAN_TIER_MAP = {
-    "starter_plan": PlanTier.starter,
+    "free_plan": PlanTier.free,
     "pro_plan": PlanTier.pro,
     "enterprise_plan": PlanTier.enterprise,
 }
