@@ -274,15 +274,6 @@ const Tickets: React.FC = () => {
     setSelectedTicketForPrint(ticket);
   }, []);
 
-  const triggerBatchPrint = useCallback(() => {
-    const ticketsToPrint = filteredTickets.filter(t => selectedTicketsForBatchPrint.has(t.id));
-    if (ticketsToPrint.length === 0) {
-      toast.error('Selecciona al menos un ticket para imprimir');
-      return;
-    }
-    setTicketsToPrintBatch(ticketsToPrint);
-  }, [selectedTicketsForBatchPrint, filteredTickets]);
-
   const handleBatchRevoke = () => {
     revokeMultipleTicketsMutation.mutate(Array.from(selectedTicketsForBatchPrint));
   };
@@ -295,11 +286,6 @@ const Tickets: React.FC = () => {
       newSet.add(ticketId);
     }
     setSelectedTicketsForBatchPrint(newSet);
-  };
-
-  const selectAllTickets = () => {
-    const allIds = new Set(filteredTickets.map(t => t.id));
-    setSelectedTicketsForBatchPrint(allIds);
   };
 
   const deselectAllTickets = () => {
@@ -344,6 +330,21 @@ Conéctate y disfruta!`;
 
     return matchesSearch && matchesStatus;
   }) || [];
+
+  // --- Handlers that depend on filteredTickets ---
+  const triggerBatchPrint = () => {
+    const ticketsToPrint = filteredTickets.filter(t => selectedTicketsForBatchPrint.has(t.id));
+    if (ticketsToPrint.length === 0) {
+      toast.error('Selecciona al menos un ticket para imprimir');
+      return;
+    }
+    setTicketsToPrintBatch(ticketsToPrint);
+  };
+
+  const selectAllTickets = () => {
+    const allIds = new Set(filteredTickets.map(t => t.id));
+    setSelectedTicketsForBatchPrint(allIds);
+  };
 
   const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
