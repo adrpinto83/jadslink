@@ -11,6 +11,10 @@ import gzip
 from datetime import datetime
 from pathlib import Path
 
+# Setup structured logging first
+from utils.logging_config import setup_logging
+setup_logging()
+
 settings = get_settings()
 log = logging.getLogger("jadslink.main")
 
@@ -138,15 +142,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add metrics middleware for Prometheus
+from utils.metrics import MetricsMiddleware, app_info
+app.add_middleware(MetricsMiddleware)
 
-@app.get(f"{settings.API_PREFIX}/health", tags=["Health"])
-async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "ok",
-        "version": settings.API_VERSION,
-        "environment": settings.ENVIRONMENT,
-    }
+# Initialize app info metric
+app_info.info({
+    "version": settings.API_VERSION,
+    "environment": settings.ENVIRONMENT,
+})
 
 
 from routers import auth
@@ -159,6 +163,7 @@ from routers import tenants
 from routers import admin
 from routers import subscriptions
 from routers import webhooks
+from routers import health
 
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Auth"])
 app.include_router(tenants.router, prefix=f"{settings.API_PREFIX}/tenants", tags=["Tenants"])
@@ -170,6 +175,7 @@ app.include_router(plans.router, prefix=f"{settings.API_PREFIX}/plans", tags=["P
 app.include_router(tickets.router, prefix=f"{settings.API_PREFIX}/tickets", tags=["Tickets"])
 app.include_router(portal.router, prefix=f"{settings.API_PREFIX}/portal", tags=["Portal"])
 app.include_router(agent.router, prefix=f"{settings.API_PREFIX}/agent", tags=["Agent"])
+app.include_router(health.router, tags=["Health & Monitoring"])
 
 
 if __name__ == "__main__":
