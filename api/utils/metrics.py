@@ -8,7 +8,7 @@ from prometheus_client import Counter, Gauge, Histogram, Info
 import time
 
 # Application info
-app_info = Info("jadslink_app", "JADSlink API information", ["version", "environment"])
+app_info = Info("jadslink_app", "JADSlink API information")
 
 # Request metrics
 request_count = Counter(
