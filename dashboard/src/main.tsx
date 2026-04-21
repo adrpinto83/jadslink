@@ -18,6 +18,7 @@ import Plans from './pages/Plans.tsx';
 import Settings from './pages/Settings.tsx';
 import Billing from './pages/Billing.tsx';
 import Reports from './pages/Reports.tsx';
+import DashboardAnalytics from './pages/DashboardAnalytics.tsx';
 import Admin from './pages/Admin.tsx';
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "sonner";
@@ -80,6 +81,10 @@ const router = createBrowserRouter([
           {
             path: "reports",
             element: <Reports />,
+          },
+          {
+            path: "analytics",
+            element: <DashboardAnalytics />,
           },
           {
             path: "admin",
