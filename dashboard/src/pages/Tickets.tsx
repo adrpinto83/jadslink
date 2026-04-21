@@ -512,16 +512,30 @@ Conéctate y disfruta!`;
           {generateTicketsMutation.isSuccess && generatedTickets.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Tickets Generados Recientemente</CardTitle>
-                <CardDescription>
-                  {generatedTickets.length} ticket(s) listos para usar. Puedes imprimirlos individualmente.
-                </CardDescription>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>Tickets Generados Recientemente</CardTitle>
+                    <CardDescription>
+                      {generatedTickets.length} ticket(s) listos para usar. Puedes imprimirlos individualmente.
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="show-qr-generated"
+                      checked={showQrInPrint}
+                      onChange={(e) => setShowQrInPrint(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="show-qr-generated" className="text-sm">Incluir QR</Label>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {generatedTickets.map((ticket) => (
                     <div key={ticket.id} className="border rounded-lg p-4 space-y-3 bg-gray-50">
-                       <PrintableTicket ticket={ticket} tenant={tenant} showQr={true} />
+                       <PrintableTicket ticket={ticket} tenant={tenant} showQr={showQrInPrint} />
                        <Button
                           variant="outline"
                           size="sm"
