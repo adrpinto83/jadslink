@@ -681,20 +681,19 @@ Conéctate y disfruta!`;
       {/* Hidden Printable Component - Single */}
       {selectedTicketForPrint && (
         <div style={{ visibility: "hidden", height: 0, overflow: "hidden" }}>
-          <div ref={ticketToPrintRef}>
-            <PrintableTicket
-              ticket={selectedTicketForPrint}
-              tenant={tenant}
-              showQr={showQrInPrint}
-            />
-          </div>
+          <PrintableTicket
+            ref={ticketToPrintRef}
+            ticket={selectedTicketForPrint}
+            tenant={tenant}
+            showQr={showQrInPrint}
+          />
         </div>
       )}
 
       {/* Hidden Printable Component - Batch (Grid) */}
       {ticketsToPrintBatch.length > 0 && (
         <div style={{ visibility: "hidden", height: 0, overflow: "hidden" }}>
-          <div ref={batchPrintRef} className="printable-batch-area">
+          <div ref={batchPrintRef} className="printable-batch-area" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", padding: "10px" }}>
             {ticketsToPrintBatch.map((ticket) => (
               <PrintableTicket
                 key={ticket.id}
