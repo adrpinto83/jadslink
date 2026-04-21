@@ -158,6 +158,7 @@ from routers import admin
 from routers import subscriptions
 from routers import webhooks
 from routers import health
+from routers import sessions
 
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Auth"])
 app.include_router(tenants.router, prefix=f"{settings.API_PREFIX}/tenants", tags=["Tenants"])
@@ -167,6 +168,7 @@ app.include_router(webhooks.router, prefix=f"{settings.API_PREFIX}/webhooks", ta
 app.include_router(nodes.router, prefix=f"{settings.API_PREFIX}/nodes", tags=["Nodes"])
 app.include_router(plans.router, prefix=f"{settings.API_PREFIX}/plans", tags=["Plans"])
 app.include_router(tickets.router, prefix=f"{settings.API_PREFIX}/tickets", tags=["Tickets"])
+app.include_router(sessions.router, prefix=f"{settings.API_PREFIX}/sessions", tags=["Sessions"])
 app.include_router(portal.router, prefix=f"{settings.API_PREFIX}/portal", tags=["Portal"])
 app.include_router(agent.router, prefix=f"{settings.API_PREFIX}/agent", tags=["Agent"])
 app.include_router(health.router, tags=["Health & Monitoring"])
