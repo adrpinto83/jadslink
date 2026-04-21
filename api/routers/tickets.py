@@ -10,7 +10,7 @@ from models.tenant import Tenant
 from models.user import User
 from schemas.ticket import TicketGenerateRequest, TicketResponse
 from database import get_db
-from deps import get_current_user, PLAN_LIMITS
+from deps import get_current_user, TICKET_LIMITS
 from services.ticket_service import generate_ticket_code, generate_qr_base64
 from config import get_settings
 from schemas.ticket import BatchRevokeRequest
@@ -44,7 +44,7 @@ async def generate_tickets(
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
 
     # Check ticket limit for this plan
-    limit = PLAN_LIMITS.get(tenant.plan_tier, 0)
+    limit = TICKET_LIMITS.get(tenant.plan_tier, 0)
     if limit != -1:
         since = datetime.now(timezone.utc) - timedelta(days=30)
         count_result = await db.execute(

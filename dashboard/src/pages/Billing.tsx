@@ -274,14 +274,14 @@ const Billing: React.FC = () => {
               <ul className="space-y-2 mb-6 text-sm">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600" />
-                  {plan.product.name === 'Starter' && '5 nodos'}
-                  {plan.product.name === 'Pro' && '50 nodos'}
+                  {plan.product.name === 'Free' && '1 nodo'}
+                  {plan.product.name === 'Pro' && '5 nodos'}
                   {plan.product.name === 'Enterprise' && 'Nodos ilimitados'}
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600" />
-                  {plan.product.name === 'Starter' && '5 tickets/mes'}
-                  {plan.product.name === 'Pro' && '50 tickets/mes'}
+                  {plan.product.name === 'Free' && '50 tickets/mes'}
+                  {plan.product.name === 'Pro' && '500 tickets/mes'}
                   {plan.product.name === 'Enterprise' && 'Tickets ilimitados'}
                 </li>
               </ul>

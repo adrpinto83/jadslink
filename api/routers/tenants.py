@@ -12,7 +12,7 @@ from models.tenant import Tenant
 from models.node import Node
 from models.ticket import Ticket
 from schemas.tenant import TenantResponse, TenantUpdate
-from deps import get_current_tenant, PLAN_LIMITS
+from deps import get_current_tenant, NODE_LIMITS, TICKET_LIMITS
 
 router = APIRouter()
 
@@ -78,8 +78,8 @@ async def get_tenant_usage(
     tickets_used = ticket_result.scalar_one()
 
     # Get plan limits
-    nodes_limit = PLAN_LIMITS.get(current_tenant.plan_tier, 0)
-    tickets_limit = PLAN_LIMITS.get(current_tenant.plan_tier, 0)
+    nodes_limit = NODE_LIMITS.get(current_tenant.plan_tier, 0)
+    tickets_limit = TICKET_LIMITS.get(current_tenant.plan_tier, 0)
 
     return {
         "plan_tier": current_tenant.plan_tier,

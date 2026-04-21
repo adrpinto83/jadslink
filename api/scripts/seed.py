@@ -66,7 +66,7 @@ async def seed():
                     name="Test Operator",
                     slug="test-operator",
                     is_active=True,
-                    plan_tier="starter",
+                    plan_tier="free",
                 )
                 session.add(tenant)
                 print(f"✓ Tenant creado: {tenant.name}")

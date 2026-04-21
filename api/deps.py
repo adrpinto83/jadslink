@@ -19,12 +19,22 @@ from models.ticket import Ticket
 settings = get_settings()
 security = HTTPBearer()
 
-# Plan limits
-PLAN_LIMITS = {
-    "starter": 5,
-    "pro": 50,
+# Plan limits: nodes
+NODE_LIMITS = {
+    "free": 1,
+    "pro": 5,
     "enterprise": -1,  # Unlimited
 }
+
+# Plan limits: tickets per month
+TICKET_LIMITS = {
+    "free": 50,
+    "pro": 500,
+    "enterprise": -1,  # Unlimited
+}
+
+# Backward compatibility
+PLAN_LIMITS = NODE_LIMITS
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -108,7 +118,7 @@ async def check_node_limit(
     if not tenant:
         return
 
-    limit = PLAN_LIMITS.get(tenant.plan_tier, 0)
+    limit = NODE_LIMITS.get(tenant.plan_tier, 0)
     if limit == -1:
         return
 
@@ -135,7 +145,7 @@ async def check_ticket_limit(
     if not tenant:
         return
 
-    limit = PLAN_LIMITS.get(tenant.plan_tier, 0)
+    limit = TICKET_LIMITS.get(tenant.plan_tier, 0)
     if limit == -1:
         return
 

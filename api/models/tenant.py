@@ -5,7 +5,7 @@ import enum
 
 
 class PlanTier(str, enum.Enum):
-    starter = "starter"
+    free = "free"
     pro = "pro"
     enterprise = "enterprise"
 
@@ -27,7 +27,7 @@ class Tenant(BaseModel):
 
     # Subscription details
     plan_tier: Mapped[PlanTier] = mapped_column(
-        SQLEnum(PlanTier, name="plantier"), default=PlanTier.starter, nullable=False
+        SQLEnum(PlanTier, name="plantier"), default=PlanTier.free, nullable=False
     )
     subscription_status: Mapped[SubscriptionStatus] = mapped_column(
         SQLEnum(SubscriptionStatus, name="subscriptionstatus"),
