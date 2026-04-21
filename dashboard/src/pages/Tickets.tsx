@@ -240,35 +240,35 @@ const Tickets: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
-    content: () => ticketToPrintRef.current,
+    contentRef: ticketToPrintRef,
     onAfterPrint: () => setSelectedTicketForPrint(null),
   });
 
   const handleBatchPrint = useReactToPrint({
-    content: () => batchPrintRef.current,
+    contentRef: batchPrintRef,
     onAfterPrint: () => setTicketsToPrintBatch([]),
   });
 
   // Effect to trigger single ticket print
   useEffect(() => {
-    if (selectedTicketForPrint) {
+    if (selectedTicketForPrint && ticketToPrintRef.current) {
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         handlePrint();
-      }, 150);
+      }, 200);
       return () => clearTimeout(timer);
     }
-  }, [selectedTicketForPrint]);
+  }, [selectedTicketForPrint, handlePrint]);
 
   // Effect to trigger batch print
   useEffect(() => {
-    if (ticketsToPrintBatch.length > 0) {
+    if (ticketsToPrintBatch.length > 0 && batchPrintRef.current) {
       const timer = setTimeout(() => {
         handleBatchPrint();
-      }, 150);
+      }, 200);
       return () => clearTimeout(timer);
     }
-  }, [ticketsToPrintBatch]);
+  }, [ticketsToPrintBatch, handleBatchPrint]);
 
   const triggerPrint = useCallback((ticket: GeneratedTicket | TicketData) => {
     setSelectedTicketForPrint(ticket);
