@@ -59,60 +59,60 @@ const DashboardAnalytics: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold">Analytics</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Última actualización: hace 1 minuto</p>
+      <div className="animate-in fade-in duration-500">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Analytics</h1>
+        <p className="text-gray-600 mt-2">Última actualización: hace 1 minuto</p>
       </div>
 
       {/* KPIs Row */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card className="animate-in fade-in slide-in-from-left duration-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">$8,420</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              <span className="text-green-600">+12%</span> vs semana anterior
+            <div className="text-3xl font-bold text-green-600">$8,420</div>
+            <p className="text-xs text-gray-600">
+              <span className="text-green-600 font-semibold">+12%</span> vs semana anterior
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="animate-in fade-in slide-in-from-left duration-500" style={{ animationDelay: '100ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tickets Generados</CardTitle>
             <Zap className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">1,247</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-3xl font-bold text-blue-600">1,247</div>
+            <p className="text-xs text-gray-600">
               +89 esta semana
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="animate-in fade-in slide-in-from-left duration-500" style={{ animationDelay: '200ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Sesiones Activas</CardTitle>
             <Activity className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">342</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-3xl font-bold text-purple-600">342</div>
+            <p className="text-xs text-gray-600">
               En los últimos 30 minutos
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="animate-in fade-in slide-in-from-left duration-500" style={{ animationDelay: '300ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Nodos Online</CardTitle>
-            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">14/17</Badge>
+            <Badge className="bg-emerald-100 text-emerald-800">14/17</Badge>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">82%</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-3xl font-bold text-emerald-600">82%</div>
+            <p className="text-xs text-gray-600">
               Disponibilidad
             </p>
           </CardContent>
@@ -122,7 +122,7 @@ const DashboardAnalytics: React.FC = () => {
       {/* Charts Grid */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Tickets por día */}
-        <Card>
+        <Card className="animate-in fade-in slide-in-from-bottom duration-500 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle>Tickets Generados (7 días)</CardTitle>
             <CardDescription>Tendencia diaria de generación de tickets</CardDescription>
@@ -147,7 +147,7 @@ const DashboardAnalytics: React.FC = () => {
         </Card>
 
         {/* Ingresos por día */}
-        <Card>
+        <Card className="animate-in fade-in slide-in-from-bottom duration-500 shadow-lg hover:shadow-xl transition-shadow" style={{ animationDelay: '100ms' }}>
           <CardHeader>
             <CardTitle>Ingresos (7 días)</CardTitle>
             <CardDescription>Tendencia de ingresos diarios</CardDescription>
