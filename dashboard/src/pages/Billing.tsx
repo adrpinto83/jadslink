@@ -5,7 +5,7 @@ import apiClient from '@/api/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { CreditCard, CheckCircle, XCircle, AlertCircle, TrendingUp } from 'lucide-react';
 
 interface Tenant {
   id: string;
@@ -32,6 +32,21 @@ interface SubscriptionPlan {
   };
 }
 
+interface UsageData {
+  plan_tier: string;
+  subscription_status: string;
+  nodes: {
+    used: number;
+    limit: number;
+    unlimited: boolean;
+  };
+  tickets: {
+    used: number;
+    limit: number;
+    unlimited: boolean;
+  };
+}
+
 const Billing: React.FC = () => {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -40,6 +55,14 @@ const Billing: React.FC = () => {
     queryKey: ['tenant', 'me'],
     queryFn: async () => {
       const response = await apiClient.get('/tenants/me');
+      return response.data;
+    },
+  });
+
+  const { data: usage, refetch: refetchUsage } = useQuery<UsageData>({
+    queryKey: ['tenant', 'usage'],
+    queryFn: async () => {
+      const response = await apiClient.get('/tenants/me/usage');
       return response.data;
     },
   });
@@ -70,8 +93,6 @@ const Billing: React.FC = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      // Redirect to Stripe Checkout (would need Stripe.js for embedded checkout)
-      // For now, assume we're redirecting via the session URL
       window.location.href = `https://checkout.stripe.com/pay/${data.sessionId}`;
     },
   });
@@ -79,8 +100,9 @@ const Billing: React.FC = () => {
   useEffect(() => {
     if (sessionId) {
       refetchTenant();
+      refetchUsage();
     }
-  }, [sessionId, refetchTenant]);
+  }, [sessionId, refetchTenant, refetchUsage]);
 
   const getStatusBadge = (status?: string) => {
     const statusMap: Record<string, { variant: 'default' | 'secondary' | 'destructive'; icon: React.ReactNode }> = {
@@ -106,6 +128,51 @@ const Billing: React.FC = () => {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount / 100);
+  };
+
+  const getProgressColor = (percentage: number) => {
+    if (percentage >= 90) return 'bg-red-500';
+    if (percentage >= 70) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  const renderUsageBar = (used: number, limit: number, unlimited: boolean, label: string) => {
+    if (unlimited) {
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+            <span className="text-sm font-semibold">Sin límite</span>
+          </div>
+        </div>
+      );
+    }
+
+    const percentage = Math.min((used / limit) * 100, 100);
+    const isWarning = percentage >= 70;
+
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+          <span className={`text-sm font-semibold ${isWarning ? 'text-orange-600 dark:text-orange-400' : ''}`}>
+            {used} / {limit}
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div
+            className={`h-2 rounded-full transition-all ${getProgressColor(percentage)}`}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+        {isWarning && (
+          <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />
+            Acercándote al límite
+          </p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -159,7 +226,7 @@ const Billing: React.FC = () => {
                     : 'Gestionar Suscripción en Stripe'}
                 </Button>
                 <p className="text-xs text-gray-500 mt-2 text-center">
-                  Actualiza tu método de pago, facturas e información de facturación
+                  Actualiza tu método de pago y facturas
                 </p>
               </div>
             )}
@@ -167,32 +234,17 @@ const Billing: React.FC = () => {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Límites del Plan</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 dark:text-gray-400">Nodos máximos</span>
-              <span className="font-semibold">
-                {tenant?.plan_tier === 'starter' && '5'}
-                {tenant?.plan_tier === 'pro' && '20'}
-                {tenant?.plan_tier === 'enterprise' && 'Ilimitado'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 dark:text-gray-400">Tickets por mes</span>
-              <span className="font-semibold">
-                {tenant?.plan_tier === 'starter' && '1,000'}
-                {tenant?.plan_tier === 'pro' && '10,000'}
-                {tenant?.plan_tier === 'enterprise' && 'Ilimitado'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 dark:text-gray-400">Soporte</span>
-              <span className="font-semibold">
-                {tenant?.plan_tier === 'starter' && 'Email'}
-                {tenant?.plan_tier === 'pro' && 'Email + Chat'}
-                {tenant?.plan_tier === 'enterprise' && 'Dedicado'}
-              </span>
-            </div>
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            Uso Actual
+          </h2>
+          <div className="space-y-4">
+            {usage && (
+              <>
+                {renderUsageBar(usage.nodes.used, usage.nodes.limit, usage.nodes.unlimited, 'Nodos')}
+                {renderUsageBar(usage.tickets.used, usage.tickets.limit, usage.tickets.unlimited, 'Tickets (30 días)')}
+              </>
+            )}
           </div>
         </Card>
       </div>
@@ -201,14 +253,17 @@ const Billing: React.FC = () => {
         <h2 className="text-2xl font-semibold mb-4">Planes Disponibles</h2>
         <div className="grid gap-6 md:grid-cols-3">
           {plans?.map((plan) => (
-            <Card key={plan.id} className="p-6">
+            <Card key={plan.id} className="p-6 relative">
+              {tenant?.plan_tier === plan.product.name.toLowerCase() && (
+                <Badge className="absolute top-4 right-4 bg-blue-500">Plan Actual</Badge>
+              )}
               <h3 className="text-xl font-bold mb-2">{plan.product.name}</h3>
               {plan.product.description && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   {plan.product.description}
                 </p>
               )}
-              <div className="mb-4">
+              <div className="mb-6">
                 <span className="text-3xl font-bold">
                   {formatPrice(plan.unit_amount, plan.currency)}
                 </span>
@@ -216,6 +271,20 @@ const Billing: React.FC = () => {
                   /{plan.recurring.interval}
                 </span>
               </div>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  {plan.product.name === 'Starter' && '5 nodos'}
+                  {plan.product.name === 'Pro' && '50 nodos'}
+                  {plan.product.name === 'Enterprise' && 'Nodos ilimitados'}
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  {plan.product.name === 'Starter' && '5 tickets/mes'}
+                  {plan.product.name === 'Pro' && '50 tickets/mes'}
+                  {plan.product.name === 'Enterprise' && 'Tickets ilimitados'}
+                </li>
+              </ul>
               <Button
                 className="w-full"
                 variant={
