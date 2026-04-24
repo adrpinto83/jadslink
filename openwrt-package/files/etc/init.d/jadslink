@@ -1,0 +1,84 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+USE_PROCD=1
+
+PROG=/usr/bin/python3
+AGENT=/usr/lib/jadslink/agent.py
+
+start_service() {
+	# Source UCI configuration
+	local enabled
+	config_load jadslink
+	config_get_bool enabled agent enabled 1
+
+	[ "$enabled" = "0" ] && return 1
+
+	# Load configuration from UCI
+	local backend_url node_id api_key portal_port max_bandwidth
+
+	config_get backend_url agent backend_url "https://api.jadslink.io"
+	config_get node_id agent node_id ""
+	config_get api_key agent api_key ""
+	config_get portal_port agent portal_port "80"
+	config_get max_bandwidth agent max_bandwidth_mbps "100"
+
+	# Validate required parameters
+	if [ -z "$node_id" ] || [ -z "$api_key" ]; then
+		logger -t jadslink "ERROR: node_id and api_key not configured"
+		return 1
+	fi
+
+	# Create .env file from UCI configuration
+	local env_file="/var/lib/jadslink/.env"
+	mkdir -p /var/lib/jadslink
+
+	cat > "$env_file" << EOF
+# JADSlink Agent Configuration - Auto-generated from UCI
+NODE_ID=$node_id
+API_KEY=$api_key
+SERVER_URL=$backend_url
+PORTAL_PORT=$portal_port
+PORTAL_HOST=0.0.0.0
+MAX_BANDWIDTH_MBPS=$max_bandwidth
+HEARTBEAT_INTERVAL=30
+SYNC_INTERVAL=300
+EXPIRE_INTERVAL=60
+CACHE_DIR=/var/lib/jadslink/.cache
+EOF
+
+	chmod 600 "$env_file"
+
+	# Start agent with procd
+	procd_open_instance
+	procd_set_param command $PROG $AGENT
+	procd_set_param env_file "$env_file"
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+stop_service() {
+	# Cleanup firewall rules on stop
+	python3 -c "
+import sys
+sys.path.insert(0, '/usr/lib/jadslink')
+try:
+	from firewall import FirewallClient
+	firewall = FirewallClient()
+	firewall.cleanup()
+except Exception as e:
+	print(f'Cleanup error: {e}', file=sys.stderr)
+" 2>/dev/null || true
+}
+
+reload_service() {
+	restart
+}
+
+service_triggers() {
+	procd_add_reload_trigger jadslink
+}

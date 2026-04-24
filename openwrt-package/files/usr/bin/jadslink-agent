@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""
+JADSlink Agent entry point for OpenWrt package.
+Reads UCI configuration and starts the agent.
+"""
+
+import os
+import sys
+import subprocess
+import logging
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s"
+)
+log = logging.getLogger("jadslink.entry")
+
+def load_uci_config():
+    """Load configuration from UCI and set environment variables"""
+    try:
+        # Read UCI configuration
+        result = subprocess.run(
+            ["uci", "export", "jadslink"],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+
+        if result.returncode != 0:
+            log.warning("Failed to read UCI config, using defaults")
+            return
+
+        # Parse UCI output and set environment variables
+        for line in result.stdout.split("\n"):
+            if not line or line.startswith("#"):
+                continue
+
+            if "=" in line:
+                # UCI format: config.option='value'
+                parts = line.split("=", 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip().strip("'\"")
+
+                    # Map UCI keys to env vars
+                    mapping = {
+                        "jadslink.agent.node_id": "NODE_ID",
+                        "jadslink.agent.api_key": "API_KEY",
+                        "jadslink.agent.backend_url": "SERVER_URL",
+                        "jadslink.agent.portal_port": "PORTAL_PORT",
+                        "jadslink.agent.max_bandwidth_mbps": "MAX_BANDWIDTH_MBPS",
+                        "jadslink.agent.heartbeat_interval": "HEARTBEAT_INTERVAL",
+                        "jadslink.agent.sync_interval": "SYNC_INTERVAL",
+                        "jadslink.agent.expire_interval": "EXPIRE_INTERVAL",
+                    }
+
+                    if key in mapping:
+                        env_key = mapping[key]
+                        os.environ[env_key] = value
+                        if "KEY" not in env_key and "PASSWORD" not in env_key:
+                            log.debug(f"Set {env_key}={value}")
+
+        log.info("UCI configuration loaded")
+
+    except Exception as e:
+        log.warning(f"Failed to load UCI config: {e}")
+
+def set_default_env():
+    """Set default environment variables if not already set"""
+    defaults = {
+        "SERVER_URL": "https://api.jadslink.io",
+        "PORTAL_PORT": "80",
+        "PORTAL_HOST": "0.0.0.0",
+        "HEARTBEAT_INTERVAL": "30",
+        "SYNC_INTERVAL": "300",
+        "EXPIRE_INTERVAL": "60",
+        "CACHE_DIR": "/var/lib/jadslink/.cache",
+        "MAX_BANDWIDTH_MBPS": "100",
+    }
+
+    for key, value in defaults.items():
+        if key not in os.environ:
+            os.environ[key] = value
+
+def main():
+    """Main entry point"""
+    log.info("JADSlink Agent starting on OpenWrt")
+
+    # Load UCI configuration
+    load_uci_config()
+
+    # Set defaults for unset variables
+    set_default_env()
+
+    # Validate required environment variables
+    required = ["NODE_ID", "API_KEY"]
+    missing = [k for k in required if not os.environ.get(k)]
+
+    if missing:
+        log.error(f"Missing required configuration: {', '.join(missing)}")
+        log.error("Configure with: uci set jadslink.agent.node_id=YOUR_NODE_ID")
+        log.error("                 uci set jadslink.agent.api_key=YOUR_API_KEY")
+        log.error("                 uci commit jadslink")
+        sys.exit(1)
+
+    # Create cache directory
+    cache_dir = os.environ.get("CACHE_DIR", "/var/lib/jadslink/.cache")
+    os.makedirs(cache_dir, mode=0o755, exist_ok=True)
+
+    # Change to agent directory for relative imports
+    os.chdir("/usr/lib/jadslink")
+
+    # Add agent directory to Python path
+    sys.path.insert(0, "/usr/lib/jadslink")
+
+    # Import and run agent
+    try:
+        from agent import JADSLinkAgent
+        agent = JADSLinkAgent()
+        agent.run()
+    except KeyboardInterrupt:
+        log.info("Agent interrupted")
+        sys.exit(0)
+    except Exception as e:
+        log.error(f"Agent fatal error: {e}", exc_info=True)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

@@ -14,14 +14,24 @@ class JADSLinkAgent:
         self.cache   = TicketCache()     # SQLite local tickets.db
         self.firewall= FirewallClient(   # iptables firewall
                            portal_ip=self.cfg.ROUTER_IP,
-                           portal_port=self.cfg.PORTAL_PORT)
+                           portal_port=self.cfg.PORTAL_PORT,
+                           wan_interface=self.cfg.WAN_INTERFACE)
         self.sync    = ServerSync(self.cfg, self.cache)
         self.sessions= SessionManager(self.cache, self.firewall)
         self.portal  = None              # Portal HTTP server
         self.portal_thread = None         # Portal server thread
 
     def run(self):
-        log.info(f"JADSlink Agent iniciado | Nodo: {self.cfg.NODE_ID}")
+        log.info(
+            f"JADSlink Agent iniciado | Nodo: {self.cfg.NODE_ID} | "
+            f"Router: {self.cfg.ROUTER_IP} | "
+            f"WAN: {self.cfg.WAN_INTERFACE} | "
+            f"LAN: {self.cfg.LAN_INTERFACE}"
+        )
+
+        # Setup firewall persistence (OpenWrt)
+        self.firewall.install_firewall_user()
+        self.firewall.persist_rules()
 
         # Start portal server in background thread
         self._start_portal()
