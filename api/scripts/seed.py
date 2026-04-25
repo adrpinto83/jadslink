@@ -37,19 +37,19 @@ async def seed():
                 print(f"✓ Tenant ya existe: {jads_tenant.name}")
 
             # 2. Create superadmin user
-            result = await session.execute(select(User).where(User.email == "admin@jads.io"))
+            result = await session.execute(select(User).where(User.email == "admin@jads.com"))
             superadmin = result.scalar_one_or_none()
             if not superadmin:
                 superadmin = User(
                     id=uuid4(),
-                    email="admin@jads.io",
-                    password_hash=pwd_context.hash("admin123"),
+                    email="admin@jads.com",
+                    password_hash=pwd_context.hash("admin123456"),
                     role="superadmin",
                     tenant_id=jads_tenant.id, # Associate with JADS tenant
                     is_active=True,
                 )
                 session.add(superadmin)
-                print("✓ Superadmin creado: admin@jads.io (password: admin123)")
+                print("✓ Superadmin creado: admin@jads.com (password: admin123456)")
             else:
                 # Ensure existing superadmin is associated with the JADS tenant
                 if not superadmin.tenant_id:
@@ -74,19 +74,19 @@ async def seed():
                 print(f"✓ Tenant ya existe: {tenant.name}")
 
             # 3. Create operator user
-            result = await session.execute(select(User).where(User.email == "operator@test.io"))
+            result = await session.execute(select(User).where(User.email == "operator@test.com"))
             operator = result.scalar_one_or_none()
             if not operator:
                 operator = User(
                     id=uuid4(),
-                    email="operator@test.io",
-                    password_hash=pwd_context.hash("operator123"),
+                    email="operator@test.com",
+                    password_hash=pwd_context.hash("operator123456"),
                     role="operator",
                     tenant_id=tenant.id,
                     is_active=True,
                 )
                 session.add(operator)
-                print("✓ Operator creado: operator@test.io")
+                print("✓ Operator creado: operator@test.com (password: operator123456)")
             else:
                 print("✓ Operator ya existe")
 

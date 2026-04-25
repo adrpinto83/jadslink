@@ -1,4 +1,11 @@
 import schedule, time, logging, threading
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file
+env_file = Path(__file__).parent / ".env"
+load_dotenv(env_file)
+
 from config import AgentConfig
 from cache import TicketCache
 from firewall import FirewallClient

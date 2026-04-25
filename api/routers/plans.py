@@ -7,7 +7,7 @@ from models.tenant import Tenant
 from schemas.plan import PlanCreate, PlanUpdate, PlanResponse
 from database import get_db
 from models.user import User
-from deps import get_current_user, get_current_tenant
+from deps import get_current_user
 
 router = APIRouter()
 
@@ -17,15 +17,13 @@ async def list_plans(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Superadmin sees all active plans from all tenants
     if current_user.role == "superadmin":
-        query = select(Plan).where(Plan.is_active == True)
+        query = select(Plan)
     else:
         if not current_user.tenant_id:
             return []
-        query = select(Plan).where(
-            and_(Plan.tenant_id == current_user.tenant_id, Plan.is_active == True)
-        )
+        query = select(Plan).where(Plan.tenant_id == current_user.tenant_id)
+    
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -36,17 +34,12 @@ async def create_plan(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Regular operators can only create plans for their own tenant.
-    # Superadmins, for now, also create plans for their own primary tenant.
-    # This simplifies the UI as they don't need to select a tenant.
     if not current_user.tenant_id:
         raise HTTPException(status_code=403, detail="User is not associated with a tenant.")
 
     plan = Plan(
         tenant_id=current_user.tenant_id,
-        name=plan_in.name,
-        duration_minutes=plan_in.duration_minutes,
-        price_usd=plan_in.price_usd,
+        **plan_in.model_dump()
     )
     db.add(plan)
     await db.commit()
@@ -62,7 +55,6 @@ async def update_plan(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Plan).where(Plan.id == plan_id)
-    # Regular users can only update plans within their own tenant
     if current_user.role != "superadmin":
         query = query.where(Plan.tenant_id == current_user.tenant_id)
     
@@ -87,7 +79,6 @@ async def delete_plan(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Plan).where(Plan.id == plan_id)
-    # Regular users can only delete plans within their own tenant
     if current_user.role != "superadmin":
         query = query.where(Plan.tenant_id == current_user.tenant_id)
 
@@ -96,5 +87,6 @@ async def delete_plan(
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found or you do not have permission")
     
+    # This is a soft delete, we just deactivate the plan
     plan.is_active = False
     await db.commit()
