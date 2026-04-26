@@ -94,22 +94,23 @@ async def seed():
                 print("✓ Operator ya existe")
 
 
-            # 4. Create node
-            result = await session.execute(select(Node).where(Node.serial == "SN001"))
-            node = result.scalar_one_or_none()
-            if not node:
-                node = Node(
-                    id=uuid4(),
-                    tenant_id=tenant.id,
-                    name="Nodo 01 - Prueba",
-                    serial="SN001",
-                    api_key="sk_test_001",
-                    status="offline",
-                )
-                session.add(node)
-                print(f"✓ Nodo creado: {node.name}")
-            else:
-                print(f"✓ Nodo ya existe: {node.name}")
+            # 4. Create node (Opcional - comentado para evitar inconsistencias)
+            # result = await session.execute(select(Node).where(Node.serial == "SN001"))
+            # node = result.scalar_one_or_none()
+            # if not node:
+            #     node = Node(
+            #         id=uuid4(),
+            #         tenant_id=tenant.id,
+            #         name="Nodo 01 - Prueba",
+            #         serial="SN001",
+            #         api_key="sk_test_001",
+            #         status="offline",
+            #     )
+            #     session.add(node)
+            #     print(f"✓ Nodo creado: {node.name}")
+            # else:
+            #     print(f"✓ Nodo ya existe: {node.name}")
+            node_id = None  # For later use
 
 
             # 5. Create plans

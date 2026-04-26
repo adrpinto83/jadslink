@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = "sk_test_your_stripe_secret_key"
     STRIPE_WEBHOOK_SECRET: str = "whsec_your_stripe_webhook_secret"
 
+    # Email / Resend
+    RESEND_API_KEY: str = ""  # Leave empty to disable email sending
+    EMAIL_FROM: str = "noreply@jadslink.io"
+    EMAIL_FROM_NAME: str = "JADSlink"
+    SUPPORT_EMAIL: str = "support@jadslink.io"
+
     # API
     API_PREFIX: str = "/api/v1"
     API_TITLE: str = "JADSlink API"

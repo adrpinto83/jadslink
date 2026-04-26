@@ -14,12 +14,6 @@ class TicketStatus(str, enum.Enum):
     revoked = "revoked"
 
 
-class PaymentMethod(str, enum.Enum):
-    cash = "cash"
-    mobile_pay = "mobile_pay"
-    gateway = "gateway"
-
-
 class Ticket(BaseModel):
     __tablename__ = "tickets"
 
@@ -38,9 +32,6 @@ class Ticket(BaseModel):
     )
     status: Mapped[TicketStatus] = mapped_column(
         SQLEnum(TicketStatus), default=TicketStatus.pending, nullable=False
-    )
-    payment_method: Mapped[PaymentMethod] = mapped_column(
-        SQLEnum(PaymentMethod), default=PaymentMethod.cash, nullable=False
     )
     activated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

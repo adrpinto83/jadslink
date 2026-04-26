@@ -93,12 +93,12 @@ async def get_tenant_usage(
         "subscription_status": current_tenant.subscription_status,
         "nodes": {
             "used": nodes_used,
-            "limit": nodes_limit if nodes_limit != -1 else float('inf'),
+            "limit": nodes_limit if nodes_limit != -1 else 999999,
             "unlimited": nodes_limit == -1,
         },
         "tickets": {
             "used": tickets_used,
-            "limit": tickets_limit if tickets_limit != -1 else float('inf'),
+            "limit": tickets_limit if tickets_limit != -1 else 999999,
             "unlimited": tickets_limit == -1,
         },
     }

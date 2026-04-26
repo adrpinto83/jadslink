@@ -104,9 +104,21 @@ async def lifespan(app: FastAPI):
             for node in offline_nodes:
                 log.warning(f"NODO OFFLINE: {node.name} (ID: {node.id}) - Última vez visto: {node.last_seen_at}")
 
+    async def update_exchange_rate_job():
+        """Periodic job to update exchange rate from BCV."""
+        from database import async_session_maker
+        from services.exchange_rate_service import ExchangeRateService
+
+        log.info("Running exchange rate update job...")
+        async with async_session_maker() as db:
+            success, message = await ExchangeRateService.update_rate(db)
+            await db.commit()
+            log.info(f"Exchange rate job completed: {message}")
+
     scheduler.add_job(expire_sessions_job, "interval", seconds=60, id="expire_sessions")
     scheduler.add_job(backup_database_job, "cron", hour=3, minute=0, id="db_backup") # Run daily at 3 AM
     scheduler.add_job(check_offline_nodes_job, "interval", minutes=5, id="offline_check")
+    scheduler.add_job(update_exchange_rate_job, "cron", hour=9, minute=0, id="update_exchange_rate")  # Run daily at 9 AM
     
     scheduler.start()
     app.state.scheduler = scheduler
@@ -164,6 +176,8 @@ from routers import webhooks
 from routers import health
 from routers import sessions
 from routers import pricing
+from routers import utils
+from routers import uploads
 
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Auth"])
 app.include_router(tenants.router, prefix=f"{settings.API_PREFIX}/tenants", tags=["Tenants"])
@@ -178,6 +192,8 @@ app.include_router(tickets.router, prefix=f"{settings.API_PREFIX}/tickets", tags
 app.include_router(sessions.router, prefix=f"{settings.API_PREFIX}/sessions", tags=["Sessions"])
 app.include_router(portal.router, prefix=f"{settings.API_PREFIX}/portal", tags=["Portal"])
 app.include_router(agent.router, prefix=f"{settings.API_PREFIX}/agent", tags=["Agent"])
+app.include_router(uploads.router, prefix=f"{settings.API_PREFIX}/uploads", tags=["Uploads"])
+app.include_router(utils.router, prefix=f"{settings.API_PREFIX}/utils", tags=["Utilities"])
 app.include_router(health.router, tags=["Health & Monitoring"])
 
 # Serve static files (logos, etc.)

@@ -7,5 +7,6 @@ from .ticket import Ticket
 from .session import Session
 from .node_metric import NodeMetric
 from .pricing_config import PricingConfig
+from .exchange_rate import ExchangeRate
 
-__all__ = ["Base", "User", "Tenant", "Node", "Plan", "Ticket", "Session", "NodeMetric", "PricingConfig"]
+__all__ = ["Base", "User", "Tenant", "Node", "Plan", "Ticket", "Session", "NodeMetric", "PricingConfig", "ExchangeRate"]

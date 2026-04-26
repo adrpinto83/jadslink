@@ -57,6 +57,32 @@ async def request_upgrade(
     if not current_tenant:
         raise HTTPException(status_code=403, detail="No tenant found")
 
+    # Validar datos de pago si es Pago Móvil
+    if request.payment_method == "pago_movil" and request.payment_details:
+        from utils.validators import validate_cedula, validate_referencia, validate_banco
+
+        # Validate banco
+        banco = request.payment_details.get("banco_origen", "")
+        is_valid, error_or_value = validate_banco(banco)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Banco inválido: {error_or_value}")
+
+        # Validate cédula
+        cedula = request.payment_details.get("cédula_pagador", "")
+        is_valid, error_or_value = validate_cedula(cedula)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Cédula inválida: {error_or_value}")
+        # Update with normalized cédula
+        request.payment_details["cédula_pagador"] = error_or_value
+
+        # Validate referencia
+        referencia = request.payment_details.get("referencia_pago", "")
+        is_valid, error_or_value = validate_referencia(referencia)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Referencia inválida: {error_or_value}")
+        # Update with normalized referencia
+        request.payment_details["referencia_pago"] = error_or_value
+
     # Crear solicitud
     upgrade_request, message = await UpgradeService.create_upgrade_request(
         tenant=current_tenant,
@@ -75,6 +101,17 @@ async def request_upgrade(
     await db.refresh(upgrade_request)
 
     log.info(f"Upgrade request created: {upgrade_request.id} for tenant {current_tenant.id}")
+
+    # Enviar email de confirmación de recepción
+    from services.email_service import EmailService
+
+    tenant_email = current_tenant.users[0].email if current_tenant.users else None
+    if tenant_email:
+        await EmailService.send_payment_received(
+            tenant_email=tenant_email,
+            tenant_name=current_tenant.name,
+            amount_usd=float(upgrade_request.amount_usd),
+        )
 
     return upgrade_request
 

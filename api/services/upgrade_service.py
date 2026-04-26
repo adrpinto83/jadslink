@@ -16,15 +16,18 @@ class UpgradeService:
     """Service for managing tenant upgrades and payment requests."""
 
     @staticmethod
-    async def get_exchange_rate() -> Decimal:
+    async def get_exchange_rate(db: AsyncSession | None = None) -> Decimal:
         """
-        Get current official exchange rate USD -> VEF
-        TODO: Integrar con API oficial (BCV, Banco Central de Venezuela)
-        Por ahora usa tasa simulada
+        Get current official exchange rate USD -> VEF from database.
+        Dynamically updated via scraping + fallback API.
         """
-        # En producción, obtener de: https://www.bcv.org.ve/ o API autorizada
-        # Simulación: Tasa aproximada (actualizar según realidad)
-        return Decimal("36.50")  # 1 USD = 36.50 VEF (ajustar según tasa oficial)
+        if db is None:
+            # Fallback if no DB session provided
+            return Decimal("36.50")
+
+        from services.exchange_rate_service import ExchangeRateService
+
+        return await ExchangeRateService.get_current_rate(db)
 
     @staticmethod
     async def create_upgrade_request(
@@ -61,7 +64,7 @@ class UpgradeService:
             return None, "Tipo de upgrade inválido"
 
         # Obtener tasa de cambio
-        exchange_rate = await UpgradeService.get_exchange_rate()
+        exchange_rate = await UpgradeService.get_exchange_rate(db)
         amount_vef = amount_usd * exchange_rate
 
         # Crear solicitud
@@ -138,6 +141,20 @@ class UpgradeService:
                 await db.flush()
 
             log.info(f"Payment approved: {upgrade_request.id} by {admin_email}")
+
+            # Enviar email de aprobación
+            from services.email_service import EmailService
+
+            tenant_email = tenant.users[0].email if tenant.users else None
+            if tenant_email:
+                await EmailService.send_payment_approved(
+                    tenant_email=tenant_email,
+                    tenant_name=tenant.name,
+                    amount_usd=float(upgrade_request.amount_usd),
+                    amount_vef=float(upgrade_request.amount_vef or 0),
+                    upgrade_type=upgrade_request.upgrade_type,
+                )
+
             return True, message
 
         except Exception as e:
@@ -167,6 +184,19 @@ class UpgradeService:
                 await db.flush()
 
             log.info(f"Payment rejected: {upgrade_request.id} by {admin_email}")
+
+            # Enviar email de rechazo
+            from services.email_service import EmailService
+
+            tenant_email = upgrade_request.tenant.users[0].email if upgrade_request.tenant.users else None
+            if tenant_email:
+                await EmailService.send_payment_rejected(
+                    tenant_email=tenant_email,
+                    tenant_name=upgrade_request.tenant.name,
+                    amount_usd=float(upgrade_request.amount_usd),
+                    rejection_reason=rejection_reason,
+                )
+
             return True, "Pago rechazado correctamente"
 
         except Exception as e:
@@ -180,7 +210,6 @@ class UpgradeService:
     ) -> bool:
         """
         Envía recordatorio de pago pendiente.
-        TODO: Integrar con servicio de email (SendGrid, AWS SES, etc)
         """
 
         try:
@@ -188,13 +217,19 @@ class UpgradeService:
             upgrade_request.reminder_count = (upgrade_request.reminder_count or 0) + 1
             upgrade_request.last_reminder_at = datetime.now(timezone.utc).isoformat()
 
-            # TODO: Enviar email al tenant
-            # email_service.send_payment_reminder(
-            #     tenant_email=upgrade_request.tenant.users[0].email,
-            #     amount_usd=upgrade_request.amount_usd,
-            #     amount_vef=upgrade_request.amount_vef,
-            #     dias_pendiente=(datetime.now(timezone.utc) - upgrade_request.created_at).days
-            # )
+            # Enviar email al tenant
+            from services.email_service import EmailService
+
+            tenant_email = upgrade_request.tenant.users[0].email if upgrade_request.tenant.users else None
+            if tenant_email:
+                days_pending = (datetime.now(timezone.utc) - upgrade_request.created_at).days
+                await EmailService.send_payment_reminder(
+                    tenant_email=tenant_email,
+                    tenant_name=upgrade_request.tenant.name,
+                    amount_usd=float(upgrade_request.amount_usd),
+                    amount_vef=float(upgrade_request.amount_vef or 0),
+                    days_pending=days_pending,
+                )
 
             log.info(f"Reminder sent for: {upgrade_request.id} (count: {upgrade_request.reminder_count})")
 

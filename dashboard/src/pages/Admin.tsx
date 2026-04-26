@@ -2,10 +2,17 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, BarChart3, Settings } from 'lucide-react';
+import { DollarSign, BarChart3, Settings, CreditCard } from 'lucide-react';
 
 const Admin: React.FC = () => {
   const adminSections = [
+    {
+      title: 'Gestión de Pagos',
+      description: 'Revisa solicitudes de pago de clientes, aprueba o rechaza',
+      icon: CreditCard,
+      href: '/dashboard/admin/payments',
+      color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
+    },
     {
       title: 'Configuración de Precios',
       description: 'Modifica costos de tickets, nodos y límites de planes',
