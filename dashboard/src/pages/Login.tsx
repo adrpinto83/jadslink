@@ -1,20 +1,45 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/auth";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Wifi, Zap, Crown, CheckCircle2 } from "lucide-react";
+import apiClient from "@/api/client";
+
+interface TenantInfo {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+}
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
+  const [searchParams] = useSearchParams();
 
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
+
+  // Obtener información del tenant si se proporciona en la URL
+  useEffect(() => {
+    const tenantSlug = searchParams.get("tenant");
+    if (tenantSlug) {
+      apiClient
+        .get(`/tenants/public/logo/${tenantSlug}`)
+        .then((response) => {
+          setTenantInfo(response.data);
+        })
+        .catch((error) => {
+          console.error("Error cargando tenant:", error);
+        });
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,12 +110,24 @@ const Login: React.FC = () => {
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
-                <Wifi className="w-8 h-8 text-white" />
-              </div>
+              {tenantInfo?.logo_url ? (
+                <img
+                  src={tenantInfo.logo_url}
+                  alt={tenantInfo.name}
+                  className="w-16 h-16 object-contain rounded-lg shadow-lg"
+                />
+              ) : (
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <Wifi className="w-8 h-8 text-white" />
+                </div>
+              )}
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">JADSlink</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Conectividad Satelital Comercial</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {tenantInfo?.name || "JADSlink"}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {tenantInfo ? "Accede a tu cuenta" : "Conectividad Satelital Comercial"}
+            </p>
           </div>
 
           <Card className="border-0 shadow-xl">

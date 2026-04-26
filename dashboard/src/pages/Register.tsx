@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import apiClient from '@/api/client';
+
+interface TenantInfo {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+}
 
 interface RegisterForm {
   company_name: string;
@@ -18,6 +26,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
   const [formData, setFormData] = useState<RegisterForm>({
     company_name: '',
     email: '',
@@ -26,6 +36,21 @@ const Register: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Obtener información del tenant si se proporciona en la URL
+  useEffect(() => {
+    const tenantSlug = searchParams.get("tenant");
+    if (tenantSlug) {
+      apiClient
+        .get(`/tenants/public/logo/${tenantSlug}`)
+        .then((response) => {
+          setTenantInfo(response.data);
+        })
+        .catch((error) => {
+          console.error("Error cargando tenant:", error);
+        });
+    }
+  }, [searchParams]);
 
   const registerMutation = useMutation({
     mutationFn: async (data: Omit<RegisterForm, 'confirmPassword'>) => {
@@ -93,13 +118,25 @@ const Register: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 px-4 py-8">
       <Card className="w-full max-w-lg p-8 shadow-xl">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.251a.75.75 0 00.75-.75v-6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">JADSlink</h1>
-          <p className="text-gray-600 dark:text-gray-400">Crea tu cuenta en segundos</p>
+          {tenantInfo?.logo_url ? (
+            <img
+              src={tenantInfo.logo_url}
+              alt={tenantInfo.name}
+              className="w-14 h-14 object-contain rounded-lg shadow-lg mx-auto mb-4"
+            />
+          ) : (
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.251a.75.75 0 00.75-.75v-6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75z" />
+              </svg>
+            </div>
+          )}
+          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
+            {tenantInfo?.name || "JADSlink"}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            {tenantInfo ? "Crea tu cuenta y comienza ahora" : "Crea tu cuenta en segundos"}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

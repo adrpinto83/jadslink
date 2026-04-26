@@ -275,3 +275,31 @@ async def upload_tenant_logo(
         "message": "Logo actualizado exitosamente",
         "logo_url": current_tenant.settings.get("logo_url")
     }
+
+
+@router.get("/public/logo/{slug}")
+async def get_tenant_logo_public(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get tenant logo by slug (public endpoint, no authentication required).
+    Used for displaying logo in login/register pages.
+    """
+    result = await db.execute(
+        select(Tenant).where(Tenant.slug == slug)
+    )
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant no encontrado"
+        )
+
+    return {
+        "id": str(tenant.id),
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "logo_url": tenant.settings.get("logo_url") if tenant.settings else None,
+    }
