@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from uuid import UUID
+from datetime import datetime, timezone
 from models.plan import Plan
 from models.tenant import Tenant
 from schemas.plan import PlanCreate, PlanUpdate, PlanResponse
@@ -16,6 +17,7 @@ router = APIRouter()
 async def list_plans(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    include_deleted: bool = False,
 ):
     if current_user.role == "superadmin":
         query = select(Plan)
@@ -23,7 +25,11 @@ async def list_plans(
         if not current_user.tenant_id:
             return []
         query = select(Plan).where(Plan.tenant_id == current_user.tenant_id)
-    
+
+    # Filtrar eliminados por defecto
+    if not include_deleted:
+        query = query.where(Plan.deleted_at == None)
+
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -77,6 +83,7 @@ async def delete_plan(
     plan_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    permanent: bool = False,
 ):
     query = select(Plan).where(Plan.id == plan_id)
     if current_user.role != "superadmin":
@@ -86,7 +93,12 @@ async def delete_plan(
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found or you do not have permission")
-    
-    # This is a soft delete, we just deactivate the plan
-    plan.is_active = False
+
+    if permanent:
+        # Eliminar permanentemente
+        await db.delete(plan)
+    else:
+        # Soft delete: marcar como eliminado
+        plan.deleted_at = datetime.now(timezone.utc)
+
     await db.commit()
