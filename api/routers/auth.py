@@ -52,7 +52,7 @@ async def register(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(rate_limit(max_requests=5, window_seconds=300, endpoint="auth_register")),
 ):
-    """Register a new operator and their tenant."""
+    """Register a new operator and their tenant with Free plan active."""
     # Check if user already exists
     result = await db.execute(select(User).where(User.email == request.email))
     if result.scalar_one_or_none():
@@ -61,11 +61,19 @@ async def register(
             detail="Un usuario con este email ya existe",
         )
 
-    # Create new tenant
+    # Create new tenant with Free plan (auto-activated for demo)
     slug = slugify(request.company_name)
-    new_tenant = Tenant(name=request.company_name, slug=slug, is_active=False) # Inactive until approved
+    new_tenant = Tenant(
+        name=request.company_name,
+        slug=slug,
+        is_active=True,  # Auto-activate with Free plan for demo
+        plan_tier="free",
+        subscription_status="trialing",
+        free_tickets_limit=50,  # 50 free demo tickets
+        free_tickets_used=0,
+    )
     db.add(new_tenant)
-    await db.flush() # Flush to get the new_tenant.id
+    await db.flush()  # Flush to get the new_tenant.id
 
     # Create new user (operator)
     hashed_password = hash_password(request.password)
@@ -73,12 +81,13 @@ async def register(
         email=request.email,
         password_hash=hashed_password,
         role="operator",
-        tenant_id=new_tenant.id
+        tenant_id=new_tenant.id,
+        is_active=True,
     )
     db.add(new_user)
     await db.commit()
 
-    return RegisterResponse(status="pending_approval")
+    return RegisterResponse(status="success", message="Cuenta creada! Plan Free activado con 50 tickets de demostración. Actualiza tu logo en Settings después de actualizar a un plan pagado.")
 
 
 @router.post("/login", response_model=TokenResponse)

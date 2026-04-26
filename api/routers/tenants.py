@@ -1,14 +1,17 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import func
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+import aiofiles
+import imghdr
 
 from database import get_db
-from models.tenant import Tenant
+from models.tenant import Tenant, PlanTier
 from models.node import Node
 from models.ticket import Ticket
 from models.session import Session as SessionModel
@@ -197,3 +200,75 @@ async def get_tenant_analytics(
         "total_sessions": sum(s["count"] for s in sessions_by_plan),
         "total_nodes": sum(n["count"] for n in nodes_status),
     }  # Fixed: removed SessionModel.tenant_id check, using Ticket.tenant_id instead
+
+
+@router.post("/me/logo")
+async def upload_tenant_logo(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_tenant: Tenant = Depends(get_current_tenant),
+):
+    """
+    Upload company logo. Only available for tenants with paid plans (Basic or Pro).
+    """
+    # Check if tenant has paid plan
+    if current_tenant.plan_tier == PlanTier.free:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Logo upload solo disponible en planes pagados (Basic o Pro)"
+        )
+
+    # Validate file type
+    if not file.filename or not file.content_type:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Archivo inválido"
+        )
+
+    # Read file content
+    content = await file.read()
+
+    # Validate file size (max 5MB)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Archivo demasiado grande (máximo 5MB)"
+        )
+
+    # Validate image type
+    image_type = imghdr.what(None, h=content)
+    if image_type not in ["jpeg", "png", "gif", "webp"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se aceptan imágenes (JPEG, PNG, GIF, WebP)"
+        )
+
+    # Create uploads directory if it doesn't exist
+    uploads_dir = Path("uploads/logos")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate filename based on tenant ID and extension
+    file_extension = imghdr.what(None, h=content)
+    filename = f"{current_tenant.id}.{file_extension}"
+    file_path = uploads_dir / filename
+
+    # Save file
+    async with aiofiles.open(file_path, "wb") as f:
+        await f.write(content)
+
+    # Update tenant logo URL
+    if current_tenant.settings is None:
+        current_tenant.settings = {}
+
+    current_tenant.settings["logo_url"] = f"/uploads/logos/{filename}"
+    flag_modified(current_tenant, "settings")
+
+    db.add(current_tenant)
+    await db.commit()
+    await db.refresh(current_tenant)
+
+    return {
+        "status": "success",
+        "message": "Logo actualizado exitosamente",
+        "logo_url": current_tenant.settings.get("logo_url")
+    }

@@ -12,6 +12,7 @@ from schemas.ticket import TicketGenerateRequest, TicketResponse
 from database import get_db
 from deps import get_current_user, TICKET_LIMITS
 from services.ticket_service import generate_ticket_code, generate_qr_base64
+from services.limits_service import LimitsService
 from config import get_settings
 from schemas.ticket import BatchRevokeRequest
 
@@ -43,24 +44,15 @@ async def generate_tickets(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
 
-    # Check ticket limit for this plan
-    limit = TICKET_LIMITS.get(tenant.plan_tier, 0)
-    if limit != -1:
-        since = datetime.now(timezone.utc) - timedelta(days=30)
-        count_result = await db.execute(
-            select(func.count(Ticket.id)).where(
-                Ticket.tenant_id == tenant_id,
-                Ticket.created_at >= since
-            )
+    # Check ticket limits using the new service
+    can_generate, limit_message = await LimitsService.can_generate_tickets(
+        tenant, req.quantity, db
+    )
+    if not can_generate:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=limit_message
         )
-        ticket_count = count_result.scalar_one()
-        remaining = limit - ticket_count
-
-        if ticket_count + req.quantity > limit:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail=f"Límite de {limit} tickets/mes alcanzado. Disponibles: {remaining}. Upgrade requerido."
-            )
 
     # Verify plan belongs to the same tenant
     plan_result = await db.execute(
@@ -88,6 +80,9 @@ async def generate_tickets(
         )
         db.add(ticket)
         db_tickets.append(ticket)
+
+    # Record ticket generation and update tenant limits
+    usage_info = await LimitsService.record_ticket_generation(tenant, req.quantity, db)
 
     await db.commit()
 

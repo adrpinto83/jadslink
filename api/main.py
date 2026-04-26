@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from config import get_settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -161,10 +162,12 @@ from routers import subscriptions
 from routers import webhooks
 from routers import health
 from routers import sessions
+from routers import pricing
 
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Auth"])
 app.include_router(tenants.router, prefix=f"{settings.API_PREFIX}/tenants", tags=["Tenants"])
 app.include_router(admin.router, prefix=f"{settings.API_PREFIX}/admin", tags=["Admin"])
+app.include_router(pricing.router, prefix=f"{settings.API_PREFIX}/admin/pricing", tags=["Admin"])
 app.include_router(subscriptions.router, prefix=f"{settings.API_PREFIX}/subscriptions", tags=["Subscriptions"])
 app.include_router(webhooks.router, prefix=f"{settings.API_PREFIX}/webhooks", tags=["Webhooks"])
 app.include_router(nodes.router, prefix=f"{settings.API_PREFIX}/nodes", tags=["Nodes"])
@@ -174,6 +177,11 @@ app.include_router(sessions.router, prefix=f"{settings.API_PREFIX}/sessions", ta
 app.include_router(portal.router, prefix=f"{settings.API_PREFIX}/portal", tags=["Portal"])
 app.include_router(agent.router, prefix=f"{settings.API_PREFIX}/agent", tags=["Agent"])
 app.include_router(health.router, tags=["Health & Monitoring"])
+
+# Serve static files (logos, etc.)
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 if __name__ == "__main__":

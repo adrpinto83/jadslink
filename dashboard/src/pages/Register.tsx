@@ -62,17 +62,26 @@ const Register: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-        <Card className="w-full max-w-md p-8">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 px-4">
+        <Card className="w-full max-w-md p-8 shadow-xl">
           <div className="text-center">
             <div className="mb-4 text-6xl">✓</div>
-            <h1 className="text-2xl font-bold mb-4">Registro Exitoso</h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Tu cuenta ha sido creada y está pendiente de aprobación por el administrador.
-              Recibirás un correo cuando tu cuenta sea activada.
-            </p>
-            <Button onClick={() => navigate('/login')} className="w-full">
-              Ir a Iniciar Sesión
+            <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">¡Bienvenido a JADSlink!</h1>
+            <div className="mb-6 space-y-3 text-left">
+              <p className="text-gray-600 dark:text-gray-400">
+                Tu cuenta ha sido creada exitosamente con <span className="font-semibold text-blue-600 dark:text-blue-400">Plan Free</span>.
+              </p>
+              <p className="text-gray-600 dark:text-gray-400 font-semibold mb-2">
+                Incluye:
+              </p>
+              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-4">
+                <li>✓ 1 nodo para comenzar</li>
+                <li>✓ 50 tickets gratis para demostración</li>
+                <li>✓ Acceso inmediato al dashboard</li>
+              </ul>
+            </div>
+            <Button onClick={() => navigate('/login')} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+              Iniciar Sesión Ahora
             </Button>
           </div>
         </Card>
@@ -81,16 +90,21 @@ const Register: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-      <Card className="w-full max-w-md p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 px-4 py-8">
+      <Card className="w-full max-w-lg p-8 shadow-xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">JADSlink</h1>
-          <p className="text-gray-600 dark:text-gray-400">Registro de Operador</p>
+          <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.251a.75.75 0 00.75-.75v-6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">JADSlink</h1>
+          <p className="text-gray-600 dark:text-gray-400">Crea tu cuenta en segundos</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <Label htmlFor="company_name">Nombre de la Empresa</Label>
+            <Label htmlFor="company_name" className="text-sm font-medium">Nombre de la Empresa *</Label>
             <Input
               id="company_name"
               type="text"
@@ -101,11 +115,12 @@ const Register: React.FC = () => {
               placeholder="Mi Empresa S.A."
               required
               autoComplete="organization"
+              className="h-10"
             />
           </div>
 
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium">Email *</Label>
             <Input
               id="email"
               type="email"
@@ -114,11 +129,12 @@ const Register: React.FC = () => {
               placeholder="email@empresa.com"
               required
               autoComplete="email"
+              className="h-10"
             />
           </div>
 
           <div>
-            <Label htmlFor="password">Contraseña</Label>
+            <Label htmlFor="password" className="text-sm font-medium">Contraseña *</Label>
             <Input
               id="password"
               type="password"
@@ -128,12 +144,13 @@ const Register: React.FC = () => {
               required
               minLength={8}
               autoComplete="new-password"
+              className="h-10"
             />
-            <p className="text-sm text-gray-500 mt-1">Mínimo 8 caracteres</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Mínimo 8 caracteres</p>
           </div>
 
           <div>
-            <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+            <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirmar Contraseña *</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -145,32 +162,34 @@ const Register: React.FC = () => {
               required
               minLength={8}
               autoComplete="new-password"
+              className="h-10"
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded">
-              {error}
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg flex items-start gap-2">
+              <span className="text-lg">⚠️</span>
+              <span className="text-sm">{error}</span>
             </div>
           )}
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
             disabled={registerMutation.isPending}
           >
-            {registerMutation.isPending ? 'Registrando...' : 'Registrarse'}
+            {registerMutation.isPending ? 'Creando cuenta...' : 'Crear Cuenta'}
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center border-t border-gray-200 dark:border-gray-700 pt-6">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             ¿Ya tienes una cuenta?{' '}
             <Link
               to="/login"
-              className="text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
             >
-              Iniciar Sesión
+              Inicia sesión aquí
             </Link>
           </p>
         </div>

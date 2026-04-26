@@ -25,6 +25,7 @@ class RefreshRequest(BaseModel):
 
 class RegisterResponse(BaseModel):
     status: str
+    message: str | None = None
 
 
 class UserResponse(BaseModel):

@@ -19,18 +19,41 @@ from models.ticket import Ticket
 settings = get_settings()
 security = HTTPBearer()
 
+# Plan definitions with new pricing model
+"""
+PLAN TIERS:
+- free: Gratuito para demostración
+  * 1 nodo máximo
+  * 50 tickets gratis incluidos
+  * Soporte por email
+
+- basic: Pago por uso (Pay-as-you-go)
+  * 1 nodo máximo
+  * $0.50 por cada 50 tickets generados (después de los 50 gratis iniciales)
+  * Soporte prioritario
+
+- pro: Plan empresarial
+  * Nodos ilimitados
+  * Tickets ilimitados
+  * API pública
+  * Soporte 24/7
+  * Planes personalizados
+"""
+
 # Plan limits: nodes
 NODE_LIMITS = {
-    "starter": 1,
-    "pro": 5,
-    "enterprise": -1,  # Unlimited
+    "free": 1,        # 1 node máximo
+    "basic": 1,       # 1 node máximo
+    "pro": -1,        # Unlimited
 }
 
 # Plan limits: tickets per month
+# For free and basic: limited to 50 free tickets per month
+# For pro: unlimited
 TICKET_LIMITS = {
-    "starter": 50,
-    "pro": 500,
-    "enterprise": -1,  # Unlimited
+    "free": 50,       # 50 free tickets per month
+    "basic": 50,      # After 50 free, charges $0.50 per 50 tickets
+    "pro": -1,        # Unlimited tickets
 }
 
 # Backward compatibility
@@ -118,22 +141,14 @@ async def check_node_limit(
     if not tenant:
         return
 
-    limit = NODE_LIMITS.get(tenant.plan_tier, 0)
-    if limit == -1:
-        return
+    # Import here to avoid circular imports
+    from services.limits_service import LimitsService
 
-    count_result = await db.execute(
-        select(func.count(Node.id)).where(
-            Node.tenant_id == tenant.id,
-            Node.deleted_at == None
-        )
-    )
-    node_count = count_result.scalar_one()
-
-    if node_count >= limit:
+    can_create, message = await LimitsService.can_create_node(tenant, db)
+    if not can_create:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Límite de nodos ({limit}) alcanzado para el plan '{tenant.plan_tier}'. Upgrade requerido."
+            detail=message
         )
 
 async def check_ticket_limit(
@@ -149,6 +164,7 @@ async def check_ticket_limit(
     if limit == -1:
         return
 
+    # For free and basic plans: enforce the free tier limit (50 tickets)
     since = datetime.now(timezone.utc) - timedelta(days=30)
     count_result = await db.execute(
         select(func.count(Ticket.id)).where(
@@ -160,17 +176,34 @@ async def check_ticket_limit(
     remaining = limit - ticket_count
 
     if ticket_count + quantity > limit:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Límite de {limit} tickets/mes excedido. Disponibles: {remaining}. Upgrade requerido."
-        )
+        if tenant.plan_tier == "free":
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"Límite de {limit} tickets/mes alcanzado en el plan Gratuito. Upgrade a Básico o Pro para continuar."
+            )
+        elif tenant.plan_tier == "basic":
+            # For basic plan: after 50 free tickets, charge $0.50 per 50 tickets
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"Límite de {limit} tickets gratis/mes alcanzado en el plan Básico. Cada 50 tickets adicionales cuesta $0.50. Contacta a soporte para habilitar cobro automático o upgrade a Pro."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"Límite de {limit} tickets/mes alcanzado. Upgrade requerido."
+            )
 
 
-def get_superadmin(current_user: User = Depends(get_current_user)) -> User:
-    """Dependency to ensure user is a superadmin."""
+async def get_superadmin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    Dependency to ensure current user is a superadmin.
+    Raises 403 if user is not a superadmin.
+    """
     if current_user.role != "superadmin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado. Se requiere rol de superadministrador."
+            detail="Solo superadmin puede acceder a este recurso",
         )
     return current_user

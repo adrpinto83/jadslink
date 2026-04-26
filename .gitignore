@@ -49,3 +49,7 @@ htmlcov/
 
 # Backups
 /api/backups/
+
+# User uploads
+/api/uploads/
+uploads/

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Upload, AlertCircle } from 'lucide-react';
 
 interface Tenant {
   id: string;
@@ -36,6 +37,8 @@ interface SettingsForm {
 const Settings: React.FC = () => {
   const queryClient = useQueryClient();
   const [hasChanges, setHasChanges] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   const { data: tenant, isLoading } = useQuery<Tenant>({
     queryKey: ['tenant', 'me'],
@@ -52,6 +55,20 @@ const Settings: React.FC = () => {
     ssid: tenant?.settings?.ssid || '',
     contact_email: tenant?.settings?.contact_email || '',
     contact_phone: tenant?.settings?.contact_phone || '',
+  });
+
+  const logoUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formDataObj = new FormData();
+      formDataObj.append('file', file);
+      return await apiClient.post('/tenants/me/logo', formDataObj, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant', 'me'] });
+      setLogoPreview(null);
+    },
   });
 
   React.useEffect(() => {
@@ -122,6 +139,54 @@ const Settings: React.FC = () => {
     setHasChanges(false);
   };
 
+  const handleLogoChange = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona una imagen válida');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no debe exceder 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setLogoPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    logoUploadMutation.mutate(file);
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      handleLogoChange(files[0]);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files[0]) {
+      handleLogoChange(files[0]);
+    }
+  };
+
   if (isLoading) return <div>Cargando configuración...</div>;
 
   return (
@@ -173,20 +238,104 @@ const Settings: React.FC = () => {
 
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">Personalización</h2>
+
+          {/* Logo Upload Section */}
+          <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+            <Label className="text-sm font-medium mb-3 block">Logo de la Empresa</Label>
+
+            {tenant?.plan_tier === 'free' ? (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
+                    Plan Free
+                  </p>
+                  <p className="text-xs text-blue-800 dark:text-blue-200 mt-1">
+                    El upload de logo está disponible solo en planes pagados (Basic o Pro). Actualiza tu plan para personalizar tu presencia.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {tenant?.settings?.logo_url && !logoPreview && (
+                  <div className="relative">
+                    <img
+                      src={tenant.settings.logo_url}
+                      alt="Logo actual"
+                      className="w-32 h-32 object-contain border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-gray-50 dark:bg-gray-800"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">Logo actual</p>
+                  </div>
+                )}
+
+                {logoPreview && (
+                  <div className="relative">
+                    <img
+                      src={logoPreview}
+                      alt="Preview"
+                      className="w-32 h-32 object-contain border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-gray-50 dark:bg-gray-800"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">Preview</p>
+                  </div>
+                )}
+
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition ${
+                    dragActive
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                  }`}
+                >
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Arrastra tu logo aquí
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    o
+                  </p>
+                  <label className="mt-2 inline-block">
+                    <span className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium">
+                      haz click para seleccionar
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileInputChange}
+                      className="hidden"
+                      disabled={logoUploadMutation.isPending}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Máximo 5MB. Formatos: JPEG, PNG, GIF, WebP
+                  </p>
+                </div>
+
+                {logoUploadMutation.isPending && (
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Subiendo logo...
+                  </div>
+                )}
+
+                {logoUploadMutation.isSuccess && (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-3 py-2 rounded text-sm">
+                    Logo actualizado exitosamente
+                  </div>
+                )}
+
+                {logoUploadMutation.isError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-3 py-2 rounded text-sm">
+                    Error al subir el logo. Intenta nuevamente.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="logo_url">URL del Logo</Label>
-              <Input
-                id="logo_url"
-                type="url"
-                value={formData.logo_url}
-                onChange={(e) => handleInputChange('logo_url', e.target.value)}
-                placeholder="https://ejemplo.com/logo.png"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Se mostrará en el portal de tickets
-              </p>
-            </div>
 
             <div>
               <Label htmlFor="primary_color">Color Primario</Label>

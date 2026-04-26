@@ -1,13 +1,13 @@
-from sqlalchemy import String, Boolean, Enum as SQLEnum, JSON
+from sqlalchemy import String, Boolean, Enum as SQLEnum, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import BaseModel
 import enum
 
 
 class PlanTier(str, enum.Enum):
-    starter = "starter"
-    pro = "pro"
-    enterprise = "enterprise"
+    free = "free"        # Gratuito: 1 nodo, 50 tickets/mes
+    basic = "basic"      # Pago por uso: 1 nodo, $0.50 c/50 tickets
+    pro = "pro"          # Empresarial: nodos y tickets ilimitados
 
 
 class SubscriptionStatus(str, enum.Enum):
@@ -27,7 +27,7 @@ class Tenant(BaseModel):
 
     # Subscription details
     plan_tier: Mapped[PlanTier] = mapped_column(
-        SQLEnum(PlanTier, name="plantier"), default=PlanTier.starter, nullable=False
+        SQLEnum(PlanTier, name="plantier"), default=PlanTier.free, nullable=False
     )
     subscription_status: Mapped[SubscriptionStatus] = mapped_column(
         SQLEnum(SubscriptionStatus, name="subscriptionstatus"),
@@ -37,6 +37,11 @@ class Tenant(BaseModel):
     stripe_customer_id: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=True
     )
+
+    # Tracking para planes free y basic
+    free_tickets_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    free_tickets_limit: Mapped[int] = mapped_column(Integer, default=50, nullable=False)  # 50 tickets de prueba
+    extra_tickets_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)  # Múltiplos de 50 pagos
 
     # Settings
     settings: Mapped[dict] = mapped_column(
@@ -65,6 +70,28 @@ class Tenant(BaseModel):
     tickets: Mapped[list["Ticket"]] = relationship(
         "Ticket", back_populates="tenant", cascade="all, delete-orphan"
     )
+
+    def get_max_nodes(self) -> int:
+        """Retorna el máximo número de nodos según el plan"""
+        if self.plan_tier == PlanTier.free or self.plan_tier == PlanTier.basic:
+            return 1
+        return 999999  # Pro tiene ilimitados
+
+    def get_available_tickets(self) -> int:
+        """Retorna cuántos tickets puede generar sin costo adicional"""
+        if self.plan_tier == PlanTier.free:
+            return max(0, self.free_tickets_limit - self.free_tickets_used)
+        elif self.plan_tier == PlanTier.basic:
+            return max(0, self.free_tickets_limit - self.free_tickets_used)
+        return 999999  # Pro es ilimitado
+
+    def get_total_available_tickets(self) -> int:
+        """Retorna tickets gratuitos + pagos disponibles"""
+        free_available = self.get_available_tickets()
+        if self.plan_tier in [PlanTier.free, PlanTier.basic]:
+            paid_available = self.extra_tickets_count * 50
+            return free_available + paid_available
+        return 999999
 
     def __repr__(self) -> str:
         return f"<Tenant id={self.id} slug={self.slug} plan_tier={self.plan_tier}>"

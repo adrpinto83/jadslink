@@ -20,6 +20,7 @@ import Billing from './pages/Billing.tsx';
 import Reports from './pages/Reports.tsx';
 import DashboardAnalytics from './pages/DashboardAnalytics.tsx';
 import Admin from './pages/Admin.tsx';
+import AdminPricing from './pages/AdminPricing.tsx';
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "sonner";
 
@@ -89,6 +90,10 @@ const router = createBrowserRouter([
           {
             path: "admin",
             element: <Admin />,
+          },
+          {
+            path: "admin/pricing",
+            element: <AdminPricing />,
           }
         ]
       }

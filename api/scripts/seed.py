@@ -29,7 +29,7 @@ async def seed():
                     name="JADS Studio",
                     slug="jads-studio",
                     is_active=True,
-                    plan_tier="enterprise", # The main company has the highest tier
+                    plan_tier="pro", # The main company has the highest tier
                 )
                 session.add(jads_tenant)
                 print(f"✓ Tenant creado: {jads_tenant.name}")
@@ -57,7 +57,7 @@ async def seed():
                     print("✓ Superadmin actualizado con tenant_id de JADS Studio")
                 print("✓ Superadmin ya existe")
 
-            # 3. Create tenant (operator)
+            # 3. Create tenant (operator) with Free plan
             result = await session.execute(select(Tenant).where(Tenant.slug == "test-operator"))
             tenant = result.scalar_one_or_none()
             if not tenant:
@@ -66,10 +66,13 @@ async def seed():
                     name="Test Operator",
                     slug="test-operator",
                     is_active=True,
-                    plan_tier="starter",
+                    plan_tier="free",
+                    subscription_status="trialing",
+                    free_tickets_limit=50,
+                    free_tickets_used=0,
                 )
                 session.add(tenant)
-                print(f"✓ Tenant creado: {tenant.name}")
+                print(f"✓ Tenant creado: {tenant.name} (Plan Free - 50 tickets de demostración)")
             else:
                 print(f"✓ Tenant ya existe: {tenant.name}")
 
