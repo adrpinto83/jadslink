@@ -15,12 +15,80 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @router.get("/plans")
 async def get_subscription_plans():
     """Get the available SaaS subscription plans."""
-    # Prices are defined in the Stripe dashboard
+    # En desarrollo, retornar datos mock si la clave Stripe no está configurada
+    if settings.STRIPE_SECRET_KEY == "sk_test_your_stripe_secret_key" or not settings.STRIPE_SECRET_KEY.startswith("sk_"):
+        # Mock data para desarrollo
+        return [
+            {
+                "id": "price_starter",
+                "object": "price",
+                "billing_scheme": "per_unit",
+                "created": 1704067200,
+                "currency": "usd",
+                "custom_unit_amount": None,
+                "lookup_key": "starter_plan",
+                "metadata": {
+                    "plan_name": "Starter",
+                    "max_nodes": "3",
+                    "max_tickets": "1000",
+                },
+                "nickname": "Starter Plan",
+                "product": {
+                    "id": "prod_starter",
+                    "object": "product",
+                    "name": "Starter Plan",
+                    "description": "3 nodos, 1,000 tickets/mes",
+                },
+                "recurring": {
+                    "aggregate_usage": None,
+                    "interval": "month",
+                    "interval_count": 1,
+                    "trial_period_days": 14,
+                    "usage_type": "licensed",
+                },
+                "type": "recurring",
+                "unit_amount": 2900,  # $29/mes
+                "unit_amount_decimal": "2900",
+            },
+            {
+                "id": "price_pro",
+                "object": "price",
+                "billing_scheme": "per_unit",
+                "created": 1704067200,
+                "currency": "usd",
+                "custom_unit_amount": None,
+                "lookup_key": "pro_plan",
+                "metadata": {
+                    "plan_name": "Pro",
+                    "max_nodes": "10",
+                    "max_tickets": "5000",
+                },
+                "nickname": "Pro Plan",
+                "product": {
+                    "id": "prod_pro",
+                    "object": "product",
+                    "name": "Pro Plan",
+                    "description": "10 nodos, 5,000 tickets/mes",
+                },
+                "recurring": {
+                    "aggregate_usage": None,
+                    "interval": "month",
+                    "interval_count": 1,
+                    "trial_period_days": 14,
+                    "usage_type": "licensed",
+                },
+                "type": "recurring",
+                "unit_amount": 9900,  # $99/mes
+                "unit_amount_decimal": "9900",
+            },
+        ]
+
+    # Producción: llamar a Stripe API
     try:
         prices = stripe.Price.list(lookup_keys=["starter_plan", "pro_plan"], expand=["data.product"])
         return prices.data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error conectando con Stripe: {str(e)}")
 
 
 @router.post("/checkout-session")
