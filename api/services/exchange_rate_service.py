@@ -35,10 +35,28 @@ class ExchangeRateService:
                 html = response.text
                 soup = BeautifulSoup(html, "html.parser")
 
-                # Strategy 1: Look for specific divs/spans with id or class
+                import re
                 rate_element = None
 
-                # Try multiple ID/class combinations
+                # Strategy 1: Look for div with class "col-sm-6 col-xs-6 centrado"
+                # This is where BCV puts the official rate
+                rate_element = soup.find("div", class_="col-sm-6 col-xs-6 centrado")
+
+                if rate_element:
+                    strong_tag = rate_element.find("strong")
+                    if strong_tag:
+                        rate_text = strong_tag.get_text().strip()
+                        # Convert comma to decimal point (484,74040000 -> 484.74040000)
+                        rate_str = rate_text.replace(",", ".")
+                        try:
+                            rate = Decimal(rate_str)
+                            if rate > 0:
+                                log.info(f"BCV scraping successful (col-sm-6 strategy): {rate}")
+                                return True, rate, "bcv_scraping"
+                        except Exception as e:
+                            log.warning(f"Could not parse rate from col-sm-6: {rate_str}, error: {e}")
+
+                # Strategy 2: Look for specific divs/spans with id or class
                 selectors = [
                     {"id": "dolar"},
                     {"class": "dolar"},
@@ -54,7 +72,7 @@ class ExchangeRateService:
                     if rate_element:
                         break
 
-                # Strategy 2: Search for any element containing "USD" or "dolar"
+                # Strategy 3: Search for any element containing "USD" or "dolar"
                 if not rate_element:
                     for tag in soup.find_all(["div", "span"]):
                         text = tag.get_text().lower()
@@ -68,7 +86,6 @@ class ExchangeRateService:
                 if rate_element:
                     rate_text = rate_element.get_text()
                     # Extract first number found
-                    import re
                     numbers = re.findall(r"\d+[.,]\d+", rate_text)
 
                     if numbers:
