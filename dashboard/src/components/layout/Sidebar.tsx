@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { Home, Wifi, Ticket, BookUser, BarChart, Settings, CreditCard, Shield, LogOut, Package } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { ModeToggle } from '@/components/theme-toggle';
-import TenantLogo from '@/components/TenantLogo';
+import AppLogo from '@/components/AppLogo';
 
 const Sidebar: React.FC = () => {
   const logout = useAuthStore((state) => state.logout);
@@ -16,7 +16,7 @@ const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 flex-shrink-0 p-4 bg-white border-r border-gray-200 shadow-sm">
       <div className="flex items-center mb-8">
-        <TenantLogo size="sm" className="mr-2" />
+        <AppLogo size="sm" className="mr-2" />
         <h1 className="text-xl font-bold text-gray-900">JADSlink</h1>
       </div>
       <nav className="space-y-2">
