@@ -275,7 +275,8 @@ const Tickets: React.FC = () => {
 
   const handleBatchPrint = useReactToPrint({
     contentRef: batchPrintRef,
-    onAfterPrint: () => setTicketsToPrintBatch([]),  });
+    onAfterPrint: () => setTicketsToPrintBatch([]),
+  });
 
   // Effect to trigger single ticket print
   useEffect(() => {
@@ -284,7 +285,8 @@ const Tickets: React.FC = () => {
       const timer = setTimeout(() => {
         handlePrint();
       }, 200);
-      return () => clearTimeout(timer);    }
+      return () => clearTimeout(timer);
+    }
   }, [selectedTicketForPrint, handlePrint]);
 
   // Effect to trigger batch print
@@ -293,7 +295,8 @@ const Tickets: React.FC = () => {
       const timer = setTimeout(() => {
         handleBatchPrint();
       }, 200);
-      return () => clearTimeout(timer);    }
+      return () => clearTimeout(timer);
+    }
   }, [ticketsToPrintBatch, handleBatchPrint]);
 
   const triggerPrint = useCallback((ticket: GeneratedTicket | TicketData) => {
@@ -731,7 +734,7 @@ Conéctate y disfruta!`;
                                   }}
                                   className="text-red-600 dark:text-red-400"
                                 >
-                                  <Ban className="mr-2 h-4 w-4" /> Eliminar
+                                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
