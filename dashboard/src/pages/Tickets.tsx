@@ -38,6 +38,7 @@ import {
   Wifi,
   DollarSign,
   Share2,
+  Trash2,
 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -229,6 +230,34 @@ const Tickets: React.FC = () => {
     }
   });
 
+  const deleteSingleTicketMutation = useMutation({
+    mutationFn: async (ticketId: string) => {
+      await apiClient.delete(`/tickets/${ticketId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-tickets'] });
+      toast.success('Ticket eliminado permanentemente');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Error al eliminar ticket');
+    }
+  });
+
+  const deleteMultipleTicketsMutation = useMutation({
+    mutationFn: async (ticketIds: string[]) => {
+      await apiClient.delete('/tickets/delete-multiple', { data: { ticket_ids: ticketIds } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-tickets'] });
+      setSelectedTicketsForBatchPrint(new Set());
+      setBatchRevokeDialogOpen(false);
+      toast.success('Tickets eliminados permanentemente');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Error al eliminar tickets');
+    }
+  });
+
   // --- Handlers ---
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,6 +316,11 @@ const Tickets: React.FC = () => {
 
   const deselectAllTickets = () => {
     setSelectedTicketsForBatchPrint(new Set());
+  };
+
+  const selectAllTickets = () => {
+    const allIds = new Set(filteredTickets.map(t => t.id));
+    setSelectedTicketsForBatchPrint(allIds);
   };
 
   const copyToClipboard = (text: string) => {
@@ -622,6 +656,20 @@ Conéctate y disfruta!`;
                         <Ban className="h-4 w-4 mr-2" />
                         Revocar Selección
                      </Button>
+                     <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Estás seguro que deseas eliminar ${selectedTicketsForBatchPrint.size} tickets permanentemente? Esta acción no se puede deshacer.`)) {
+                            deleteMultipleTicketsMutation.mutate(Array.from(selectedTicketsForBatchPrint));
+                          }
+                        }}
+                        disabled={selectedTicketsForBatchPrint.size === 0}
+                        className="bg-red-700 hover:bg-red-800"
+                        >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar Selección
+                     </Button>
                   </div>
                </div>
             </CardHeader>
@@ -675,6 +723,16 @@ Conéctate y disfruta!`;
                                 <DropdownMenuItem onClick={() => triggerPrint(ticket)}><Printer className="mr-2 h-4 w-4" /> Imprimir</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => copyToClipboard(ticket.code)}><Copy className="mr-2 h-4 w-4" /> Copiar</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => shareWhatsApp(ticket as TicketData)}><Share2 className="mr-2 h-4 w-4" /> Compartir</DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (confirm('¿Estás seguro que deseas eliminar este ticket permanentemente?')) {
+                                      deleteSingleTicketMutation.mutate(ticket.id);
+                                    }
+                                  }}
+                                  className="text-red-600 dark:text-red-400"
+                                >
+                                  <Ban className="mr-2 h-4 w-4" /> Eliminar
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

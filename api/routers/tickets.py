@@ -216,3 +216,68 @@ async def revoke_multiple_tickets(
     await db.commit()
 
     return {"message": f"{revoked_count} tickets revocados exitosamente"}
+
+
+@router.delete("/delete-multiple", status_code=status.HTTP_200_OK)
+async def delete_multiple_tickets(
+    req: BatchRevokeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Permanently delete multiple tickets from the database.
+    """
+    if not req.ticket_ids:
+        raise HTTPException(status_code=400, detail="No se proporcionaron IDs de tickets")
+
+    query = select(Ticket).where(Ticket.id.in_(req.ticket_ids))
+
+    if current_user.role != "superadmin":
+        if not current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Usuario no asociado a un tenant")
+        query = query.where(Ticket.tenant_id == current_user.tenant_id)
+
+    result = await db.execute(query)
+    tickets_to_delete = result.scalars().all()
+
+    if len(tickets_to_delete) != len(req.ticket_ids):
+        raise HTTPException(status_code=404, detail="Algunos tickets no se encontraron o no pertenecen a tu tenant")
+
+    deleted_count = len(tickets_to_delete)
+    for ticket in tickets_to_delete:
+        await db.delete(ticket)
+
+    await db.commit()
+
+    return {"message": f"{deleted_count} tickets eliminados permanentemente"}
+
+
+@router.delete("/{ticket_id}", status_code=status.HTTP_200_OK)
+async def delete_ticket(
+    ticket_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Permanently delete a ticket from the database.
+    Only the operator who owns the ticket or superadmin can delete.
+    """
+    query = select(Ticket).where(Ticket.id == ticket_id)
+
+    # Filter by tenant if not superadmin
+    if current_user.role != "superadmin":
+        if not current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Usuario no asociado a un tenant")
+        query = query.where(Ticket.tenant_id == current_user.tenant_id)
+
+    result = await db.execute(query)
+    ticket = result.scalar_one_or_none()
+
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+
+    # Delete the ticket permanently
+    await db.delete(ticket)
+    await db.commit()
+
+    return {"message": "Ticket eliminado permanentemente", "ticket_id": str(ticket.id)}
