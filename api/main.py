@@ -159,6 +159,7 @@ from routers import agent
 from routers import tenants
 from routers import admin
 from routers import subscriptions
+from routers import upgrades
 from routers import webhooks
 from routers import health
 from routers import sessions
@@ -169,6 +170,7 @@ app.include_router(tenants.router, prefix=f"{settings.API_PREFIX}/tenants", tags
 app.include_router(admin.router, prefix=f"{settings.API_PREFIX}/admin", tags=["Admin"])
 app.include_router(pricing.router, prefix=f"{settings.API_PREFIX}/admin/pricing", tags=["Admin"])
 app.include_router(subscriptions.router, prefix=f"{settings.API_PREFIX}/subscriptions", tags=["Subscriptions"])
+app.include_router(upgrades.router, prefix=f"{settings.API_PREFIX}/subscriptions", tags=["Subscriptions"])
 app.include_router(webhooks.router, prefix=f"{settings.API_PREFIX}/webhooks", tags=["Webhooks"])
 app.include_router(nodes.router, prefix=f"{settings.API_PREFIX}/nodes", tags=["Nodes"])
 app.include_router(plans.router, prefix=f"{settings.API_PREFIX}/plans", tags=["Plans"])
