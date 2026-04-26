@@ -20,7 +20,10 @@ const DashboardAnalytics: React.FC = () => {
   const { data: analytics, isLoading } = useQuery<AnalyticsData>({
     queryKey: ['analytics-data'],
     queryFn: async () => {
-      // Generate mock data for demo
+      const response = await apiClient.get('/tenants/me/analytics');
+      const analyticsData = response.data;
+
+      // Generate revenue trend based on tickets (mock for now)
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
@@ -28,23 +31,12 @@ const DashboardAnalytics: React.FC = () => {
       });
 
       return {
-        tickets_by_day: days.map(date => ({
+        tickets_by_day: analyticsData.tickets_by_day || [],
+        sessions_by_plan: analyticsData.sessions_by_plan || [],
+        nodes_status: analyticsData.nodes_status || [],
+        revenue_trend: days.map((date, idx) => ({
           date: date.split('-').slice(1).join('/'),
-          count: Math.floor(Math.random() * 150) + 20
-        })),
-        sessions_by_plan: [
-          { plan: 'Free', count: 45 },
-          { plan: 'Pro', count: 120 },
-          { plan: 'Enterprise', count: 35 }
-        ],
-        nodes_status: [
-          { status: 'Online', count: 14 },
-          { status: 'Offline', count: 2 },
-          { status: 'Maintenance', count: 1 }
-        ],
-        revenue_trend: days.map(date => ({
-          date: date.split('-').slice(1).join('/'),
-          revenue: Math.floor(Math.random() * 5000) + 500
+          revenue: analyticsData.total_revenue ? Math.round(analyticsData.total_revenue / 7) : 0
         }))
       };
     },
@@ -72,9 +64,9 @@ const DashboardAnalytics: React.FC = () => {
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">$8,420</div>
+            <div className="text-3xl font-bold text-green-600">${analytics?.revenue_trend?.[0]?.revenue ? (analytics.revenue_trend.reduce((sum, d) => sum + (d.revenue || 0), 0)).toFixed(2) : '0.00'}</div>
             <p className="text-xs text-gray-600">
-              <span className="text-green-600 font-semibold">+12%</span> vs semana anterior
+              Ingresos totales
             </p>
           </CardContent>
         </Card>
@@ -85,22 +77,22 @@ const DashboardAnalytics: React.FC = () => {
             <Zap className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">1,247</div>
+            <div className="text-3xl font-bold text-blue-600">{analytics?.tickets_by_day ? analytics.tickets_by_day.reduce((sum, d) => sum + (d.count || 0), 0) : 0}</div>
             <p className="text-xs text-gray-600">
-              +89 esta semana
+              Últimos 7 días
             </p>
           </CardContent>
         </Card>
 
         <Card className="animate-in fade-in slide-in-from-left duration-500" style={{ animationDelay: '200ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sesiones Activas</CardTitle>
+            <CardTitle className="text-sm font-medium">Sesiones Totales</CardTitle>
             <Activity className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600">342</div>
+            <div className="text-3xl font-bold text-purple-600">{analytics?.sessions_by_plan ? analytics.sessions_by_plan.reduce((sum, s) => sum + (s.count || 0), 0) : 0}</div>
             <p className="text-xs text-gray-600">
-              En los últimos 30 minutos
+              Sesiones activas
             </p>
           </CardContent>
         </Card>
@@ -108,10 +100,14 @@ const DashboardAnalytics: React.FC = () => {
         <Card className="animate-in fade-in slide-in-from-left duration-500" style={{ animationDelay: '300ms' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Nodos Online</CardTitle>
-            <Badge className="bg-emerald-100 text-emerald-800">14/17</Badge>
+            <Badge className="bg-emerald-100 text-emerald-800">
+              {analytics?.nodes_status?.find(n => n.status === 'online')?.count || 0}/{analytics?.total_nodes || 0}
+            </Badge>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-emerald-600">82%</div>
+            <div className="text-3xl font-bold text-emerald-600">
+              {analytics?.total_nodes ? Math.round(((analytics.nodes_status?.find(n => n.status === 'online')?.count || 0) / analytics.total_nodes) * 100) : 0}%
+            </div>
             <p className="text-xs text-gray-600">
               Disponibilidad
             </p>
