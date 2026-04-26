@@ -240,38 +240,22 @@ const Tickets: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
-<<<<<<< HEAD
     contentRef: ticketToPrintRef,
     onAfterPrint: () => setSelectedTicketForPrint(null),
   });
 
   const handleBatchPrint = useReactToPrint({
     contentRef: batchPrintRef,
-    onAfterPrint: () => setTicketsToPrintBatch([]),
-=======
-    content: () => ticketToPrintRef.current,
-  });
-
-  const handleBatchPrint = useReactToPrint({
-    content: () => batchPrintRef.current,
->>>>>>> 77eed95 (Refactorización de la lógica de planes y actualización del dashboard)
-  });
+    onAfterPrint: () => setTicketsToPrintBatch([]),  });
 
   // Effect to trigger single ticket print
   useEffect(() => {
-<<<<<<< HEAD
     if (selectedTicketForPrint && ticketToPrintRef.current) {
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         handlePrint();
       }, 200);
-      return () => clearTimeout(timer);
-=======
-    if (selectedTicketForPrint) {
-      handlePrint();
-      setSelectedTicketForPrint(null);
->>>>>>> 77eed95 (Refactorización de la lógica de planes y actualización del dashboard)
-    }
+      return () => clearTimeout(timer);    }
   }, [selectedTicketForPrint, handlePrint]);
 
   // Effect to trigger batch print
@@ -279,13 +263,8 @@ const Tickets: React.FC = () => {
     if (ticketsToPrintBatch.length > 0 && batchPrintRef.current) {
       const timer = setTimeout(() => {
         handleBatchPrint();
-<<<<<<< HEAD
       }, 200);
-      return () => clearTimeout(timer);
-=======
-        setTicketsToPrintBatch([]);
->>>>>>> 77eed95 (Refactorización de la lógica de planes y actualización del dashboard)
-    }
+      return () => clearTimeout(timer);    }
   }, [ticketsToPrintBatch, handleBatchPrint]);
 
   const triggerPrint = useCallback((ticket: GeneratedTicket | TicketData) => {

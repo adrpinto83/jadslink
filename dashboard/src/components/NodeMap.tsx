@@ -25,6 +25,7 @@ interface Node {
   location: {
     lat: number | null;
     lng: number | null;
+    address?: string;
   } | null;
 }
 

@@ -156,7 +156,6 @@ const Plans: React.FC = () => {
 
   return (
     <div className="space-y-6">
-<<<<<<< HEAD
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Planes de Tickets</h1>
@@ -204,37 +203,7 @@ const Plans: React.FC = () => {
                 {template.name}
               </Button>
             ))}
-          </div>
-=======
-        <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Planes de Tickets</h1>
-            <Button onClick={() => { setShowForm(!showForm); setEditingPlan(null); }}>
-            <Plus className="mr-2 h-4 w-4" /> {showForm ? 'Cancelar' : 'Nuevo Plan'}
-            </Button>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-            <StatCard title="Planes Totales" value={plans.length} icon={Wifi} />
-            <StatCard title="Planes Activos" value={activePlans} icon={CheckCircle} />
-            <StatCard title="Planes Inactivos" value={plans.length - activePlans} icon={XCircle} />
-        </div>
-
-      {/* Plan Templates */}
-      {!showForm && (
-        <Card>
-            <CardHeader>
-                <CardTitle>Plantillas</CardTitle>
-                <CardDescription>Crea planes rápidamente usando plantillas predefinidas.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-                {planTemplates.map(template => (
-                    <Button key={template.name} variant="outline" size="sm" onClick={() => handleTemplateClick(template)}>
-                        {template.name}
-                    </Button>
-                ))}
-            </CardContent>
->>>>>>> 77eed95 (Refactorización de la lógica de planes y actualización del dashboard)
-        </Card>
+          </div>        </Card>
       )}
 
       {showForm && (
@@ -242,7 +211,6 @@ const Plans: React.FC = () => {
           <h2 className="text-2xl font-bold mb-6">
             {editingPlan ? 'Editar Plan' : 'Crear Nuevo Plan'}
           </h2>
-<<<<<<< HEAD
           <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">Nombre del Plan</Label>
@@ -300,43 +268,7 @@ const Plans: React.FC = () => {
             </div>
 
             <div className="flex gap-2 pt-4">
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="flex-1">
-=======
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre del Plan</Label>
-              <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="ej. 30 Minutos" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="duration">Duración (minutos)</Label>
-              <Input id="duration" type="number" value={formData.duration_minutes} onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })} min="1" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="price">Precio (USD)</Label>
-              <Input id="price" type="number" step="0.01" value={formData.price_usd} onChange={(e) => setFormData({ ...formData, price_usd: e.target.value })} min="0" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max_devices">Máx. Dispositivos</Label>
-              <Input id="max_devices" type="number" value={formData.max_devices} onChange={(e) => setFormData({ ...formData, max_devices: parseInt(e.target.value) })} min="1" required />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="bw_down">Velocidad de Bajada (Kbps)</Label>
-                <Input id="bw_down" type="number" value={formData.bandwidth_down_kbps} onChange={(e) => setFormData({...formData, bandwidth_down_kbps: parseInt(e.target.value)})} min="0" />
-                <p className="text-xs text-muted-foreground">0 para ilimitado.</p>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="bw_up">Velocidad de Subida (Kbps)</Label>
-                <Input id="bw_up" type="number" value={formData.bandwidth_up_kbps} onChange={(e) => setFormData({...formData, bandwidth_up_kbps: parseInt(e.target.value)})} min="0" />
-                <p className="text-xs text-muted-foreground">0 para ilimitado.</p>
-            </div>
-            <div className="flex items-center space-x-2 md:col-span-2">
-                <input type="checkbox" id="is_active" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} />
-                <Label htmlFor="is_active">Plan Activo</Label>
-            </div>
-            <div className="flex gap-2 md:col-span-2">
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
->>>>>>> 77eed95 (Refactorización de la lógica de planes y actualización del dashboard)
-                {editingPlan ? 'Actualizar Plan' : 'Crear Plan'}
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="flex-1">                {editingPlan ? 'Actualizar Plan' : 'Crear Plan'}
               </Button>
               <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                 Cancelar
@@ -346,7 +278,6 @@ const Plans: React.FC = () => {
         </Card>
       )}
 
-<<<<<<< HEAD
       {plans && plans.length > 0 && (
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Tus Planes Activos</h3>
@@ -393,61 +324,7 @@ const Plans: React.FC = () => {
             ))}
           </div>
         </Card>
-      )}
-=======
-      <Card>
-        <CardHeader>
-            <CardTitle>Todos los Planes</CardTitle>
-            <div className="mt-4 relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar por nombre..." className="pl-8 w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
-        </CardHeader>
-        <CardContent>
-            <Table>
-            <TableHeader>
-                <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Duración</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead><div className="flex items-center"><ArrowDown className="h-4 w-4 mr-1" /> (Kbps)</div></TableHead>
-                <TableHead><div className="flex items-center"><ArrowUp className="h-4 w-4 mr-1" /> (Kbps)</div></TableHead>
-                <TableHead><div className="flex items-center"><Users className="h-4 w-4 mr-1" /></div></TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {filteredPlans.map((plan) => (
-                <TableRow key={plan.id}>
-                    <TableCell className="font-medium">{plan.name}</TableCell>
-                    <TableCell>{formatDuration(plan.duration_minutes)}</TableCell>
-                    <TableCell>${plan.price_usd}</TableCell>
-                    <TableCell>{plan.bandwidth_down_kbps === 0 ? 'Ilimitado' : plan.bandwidth_down_kbps}</TableCell>
-                    <TableCell>{plan.bandwidth_up_kbps === 0 ? 'Ilimitado' : plan.bandwidth_up_kbps}</TableCell>
-                    <TableCell>{plan.max_devices}</TableCell>
-                    <TableCell>
-                        <Badge variant={plan.is_active ? 'default' : 'secondary'}>
-                            {plan.is_active ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(plan)} className="mr-2">Editar</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(plan.id)} disabled={deleteMutation.isPending}>
-                            Eliminar
-                        </Button>
-                    </TableCell>
-                </TableRow>
-                ))}
-            </TableBody>
-            </Table>
-            {!filteredPlans.length && (
-            <p className="text-center py-8 text-gray-500">No se encontraron planes.</p>
-            )}
-        </CardContent>
-      </Card>
->>>>>>> 77eed95 (Refactorización de la lógica de planes y actualización del dashboard)
-    </div>
+      )}    </div>
   );
 };
 
