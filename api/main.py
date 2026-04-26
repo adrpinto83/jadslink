@@ -145,8 +145,8 @@ app.add_middleware(
 )
 
 # Add metrics middleware for Prometheus
-from utils.metrics import MetricsMiddleware
-app.add_middleware(MetricsMiddleware)
+# from utils.metrics import MetricsMiddleware
+# app.add_middleware(MetricsMiddleware)
 
 
 from routers import auth

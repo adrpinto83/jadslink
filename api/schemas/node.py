@@ -22,6 +22,7 @@ class NodeConfigUpdate(BaseModel):
 class NodeUpdate(BaseModel):
     name: str | None = None
     config: NodeConfigUpdate | None = None
+    location: NodeLocation | None = None
 
 
 class NodeResponse(BaseModel):

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from uuid import UUID
@@ -70,20 +70,27 @@ class AgentConfigResponse(BaseModel):
 @router.post("/heartbeat", response_model=HeartbeatResponse)
 async def agent_heartbeat(
     req: HeartbeatRequest,
+    request: Request,
     node: Node = Depends(get_node_by_api_key),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Agent heartbeat: update node status and record metrics.
     Protegido con X-Node-Key header.
+    Detecta y almacena la IP WAN del nodo.
     """
     # Verify node_id matches
     if node.id != req.node_id:
         raise HTTPException(status_code=403, detail="Node ID mismatch")
 
+    # Get client IP (this is the WAN IP of the node)
+    client_ip = request.client.host if request.client else None
+
     # Update node
     node.last_seen_at = datetime.now(timezone.utc)
     node.status = NodeStatus.online
+    if client_ip:
+        node.wan_ip = client_ip
 
     # Record metric
     metric = NodeMetric(

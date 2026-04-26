@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -12,6 +12,7 @@ from models.node_metric import NodeMetric
 from schemas.node import NodeCreate, NodeUpdate, NodeResponse, NodeMetricResponse
 from database import get_db
 from deps import get_current_user, get_current_tenant, check_node_limit
+from utils.geolocation import get_location_from_ip
 import secrets
 import asyncio
 import json
@@ -40,6 +41,36 @@ async def list_nodes(
 
     result = await db.execute(query.order_by(Node.created_at.desc()))
     return result.scalars().all()
+
+
+@router.get("/location", tags=["Geolocation"])
+async def get_user_location(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the current user's location based on their IP address.
+    Uses free ip-api.com service (no API key required).
+    """
+    # Get client IP address
+    client_ip = request.client.host if request.client else None
+
+    if not client_ip:
+        raise HTTPException(status_code=400, detail="Could not determine client IP address")
+
+    # Get location from IP
+    location = await get_location_from_ip(client_ip)
+
+    if not location:
+        raise HTTPException(
+            status_code=503,
+            detail="Geolocation service temporarily unavailable"
+        )
+
+    return {
+        "ip": client_ip,
+        "location": location,
+    }
 
 
 @router.post("", response_model=NodeResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(check_node_limit)])
@@ -114,8 +145,73 @@ async def update_node(
         config_update = {k: v for k, v in update_data['config'].items() if v is not None}
         node.config.update(config_update)
 
+    if 'location' in update_data and update_data['location'] is not None:
+        if node.location is None:
+            node.location = {}
+        # Get non-None values from the input location
+        location_update = {k: v for k, v in update_data['location'].items() if v is not None}
+        node.location.update(location_update)
+
     await db.commit()
     await db.refresh(node)
+    return node
+
+
+@router.post("/{node_id}/detect-location", response_model=NodeResponse)
+async def detect_node_location(
+    node_id: UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Detect the node's location based on its WAN IP address.
+    Uses the WAN IP reported by the node's agent (stored when agent sends heartbeat).
+    Updates the node's location automatically using geolocation service.
+    """
+    # Get the node
+    query = select(Node).where(Node.id == node_id, Node.deleted_at == None)
+    if current_user.role != "superadmin":
+        query = query.where(Node.tenant_id == current_user.tenant_id)
+
+    result = await db.execute(query)
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail="Nodo no encontrado")
+
+    # Use the stored WAN IP from the node (reported via heartbeat)
+    # If not available, fallback to current request IP (for newly created nodes)
+    node_ip = node.wan_ip or (request.client.host if request.client else None)
+
+    if not node_ip:
+        raise HTTPException(status_code=400, detail="No se pudo determinar la IP WAN del nodo. Asegúrate de que el nodo esté conectado y haya reportado su ubicación.")
+
+    # Get geolocation for this IP
+    location = await get_location_from_ip(node_ip)
+
+    if not location:
+        raise HTTPException(
+            status_code=503,
+            detail="Servicio de geolocalización no disponible"
+        )
+
+    # Update node with detected location
+    # Note: We need to reassign the entire location dict for SQLAlchemy to detect the change
+    new_location = node.location.copy() if node.location else {}
+    new_location.update({
+        "lat": location["lat"],
+        "lng": location["lng"],
+        "address": location["address"],
+        "description": f"Auto-detectado: {location['city']}, {location['country']}"
+    })
+
+    node.location = new_location
+
+    await db.commit()
+    await db.refresh(node)
+
+    log.info(f"Node {node.id} ({node_ip}) location auto-detected: {location['address']}")
+
     return node
 
 

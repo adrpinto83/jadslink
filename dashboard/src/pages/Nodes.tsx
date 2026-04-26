@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '@/api/client';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -85,7 +86,10 @@ const Nodes: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [newNodeData, setNewNodeData] = useState({ name: '', serial: '' });
+  const [geoLocation, setGeoLocation] = useState<any | null>(null);
+  const [loadingGeo, setLoadingGeo] = useState(false);
   const queryClient = useQueryClient();
+  const { data: userLocation } = useGeolocation();
 
   const { data: nodes, isLoading, error, refetch, isRefetching } = useQuery<Node[], Error>({
     queryKey: ['nodes'],
@@ -146,12 +150,46 @@ const Nodes: React.FC = () => {
     },
   });
 
+  // Detect location mutation
+  const detectLocationMutation = useMutation({
+    mutationFn: async (nodeId: string) => {
+      const response = await apiClient.post(`/nodes/${nodeId}/detect-location`);
+      return response.data;
+    },
+    onSuccess: (updatedNode: any) => {
+      queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      toast.success(`✓ Ubicación detectada: ${updatedNode.location?.address}`);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Error al detectar ubicación');
+    },
+  });
+
   const handleCreateNode = () => {
     if (!newNodeData.name || !newNodeData.serial) {
       toast.error('Por favor completa todos los campos');
       return;
     }
     createNodeMutation.mutate(newNodeData);
+  };
+
+  const handleAutoLocation = async () => {
+    setLoadingGeo(true);
+    try {
+      // Set name to location if empty
+      if (!newNodeData.name && userLocation?.location) {
+        setNewNodeData(prev => ({
+          ...prev,
+          name: `${userLocation.location.city}, ${userLocation.location.country}`
+        }));
+      }
+      setGeoLocation(userLocation?.location);
+      toast.success(`Ubicación detectada: ${userLocation?.location.address}`);
+    } catch (error) {
+      toast.error('No se pudo obtener la ubicación');
+    } finally {
+      setLoadingGeo(false);
+    }
   };
 
   const handleUpdateNode = () => {
@@ -165,6 +203,11 @@ const Nodes: React.FC = () => {
   const handleDeleteNode = () => {
     if (!selectedNode) return;
     deleteNodeMutation.mutate(selectedNode.id);
+  };
+
+  const handleDetectLocation = (nodeId: string) => {
+    if (detectLocationMutation.isPending) return;
+    detectLocationMutation.mutate(nodeId);
   };
 
   const copyApiKey = (apiKey: string) => {
@@ -300,13 +343,30 @@ const Nodes: React.FC = () => {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nombre</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="name">Nombre</Label>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleAutoLocation}
+                      disabled={loadingGeo}
+                      className="text-xs"
+                    >
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {loadingGeo ? 'Detectando...' : 'Auto-ubicación'}
+                    </Button>
+                  </div>
                   <Input
                     id="name"
                     placeholder="Ej: Bus 101, Playa La Guaira"
                     value={newNodeData.name}
                     onChange={(e) => setNewNodeData({ ...newNodeData, name: e.target.value })}
                   />
+                  {geoLocation && (
+                    <p className="text-xs text-gray-500">
+                      📍 {geoLocation.address}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="serial">Serial</Label>
@@ -547,6 +607,13 @@ const Nodes: React.FC = () => {
                               >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDetectLocation(node.id)}
+                                disabled={detectLocationMutation.isPending}
+                              >
+                                <MapPin className="h-4 w-4 mr-2" />
+                                {detectLocationMutation.isPending ? 'Detectando...' : 'Detectar Ubicación'}
                               </DropdownMenuItem>
                               {node.api_key && (
                                 <DropdownMenuItem onClick={() => copyApiKey(node.api_key!)}>

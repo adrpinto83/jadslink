@@ -33,6 +33,9 @@ class Node(BaseModel):
     last_seen_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    wan_ip: Mapped[str | None] = mapped_column(
+        String(45), nullable=True
+    )
     config: Mapped[dict] = mapped_column(
         JSON,
         default={
