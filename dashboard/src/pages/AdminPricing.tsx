@@ -25,7 +25,7 @@ interface PricingConfig {
 }
 
 const AdminPricing: React.FC = () => {
-  const token = useAuthStore((state) => state.token);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const [formData, setFormData] = useState<Partial<PricingConfig>>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -35,7 +35,7 @@ const AdminPricing: React.FC = () => {
     queryKey: ['pricing-config'],
     queryFn: async () => {
       const response = await axios.get(`${API_BASE_URL}/admin/pricing`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       return response.data as PricingConfig;
     },
@@ -53,7 +53,7 @@ const AdminPricing: React.FC = () => {
   const updatePricingMutation = useMutation({
     mutationFn: async (data: Partial<PricingConfig>) => {
       return await axios.patch(`${API_BASE_URL}/admin/pricing`, data, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
     },
     onSuccess: (response) => {

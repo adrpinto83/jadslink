@@ -375,11 +375,6 @@ Conéctate y disfruta!`;
     setTicketsToPrintBatch(ticketsToPrint);
   };
 
-  const selectAllTickets = () => {
-    const allIds = new Set(filteredTickets.map(t => t.id));
-    setSelectedTicketsForBatchPrint(allIds);
-  };
-
   const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'active': return 'default';
