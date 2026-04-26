@@ -68,6 +68,20 @@ interface UpgradeRequest {
   reminder_count: number;
 }
 
+interface PricingConfig {
+  id: string;
+  ticket_pack_size: number;
+  ticket_pack_price_usd: string | number;
+  additional_node_price_usd: string | number;
+  free_plan_max_nodes: number;
+  free_plan_max_tickets: number;
+  basic_plan_max_nodes: number;
+  basic_plan_max_free_tickets: number;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const Billing: React.FC = () => {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -94,6 +108,16 @@ const Billing: React.FC = () => {
       setExchangeRate(Number(exchangeRateData.rate));
     }
   }, [exchangeRateData]);
+
+  // Query para obtener configuración de precios dinámica
+  const { data: pricingConfig } = useQuery<PricingConfig>({
+    queryKey: ['pricing-config'],
+    queryFn: async () => {
+      const response = await apiClient.get('/admin/pricing');
+      return response.data;
+    },
+    refetchInterval: 60000, // Refrescar cada minuto
+  });
 
   const { data: tenant, refetch: refetchTenant } = useQuery<Tenant>({
     queryKey: ['tenant', 'me'],
@@ -355,6 +379,7 @@ const Billing: React.FC = () => {
               ticketsAvailable={tenant?.extra_tickets_count || 0}
               onSelect={setSelectedPlan}
               isLoading={upgradeRequestMutation.isPending}
+              pricingConfig={pricingConfig}
             />
           </div>
 
@@ -379,10 +404,10 @@ const Billing: React.FC = () => {
                     exchangeRate={exchangeRate}
                     amountUsd={
                       selectedPlan === 'extra_tickets'
-                        ? 0.5
+                        ? Number(pricingConfig?.ticket_pack_price_usd || 0.5)
                         : selectedPlan === 'plan_basic'
-                        ? 29
-                        : 99
+                        ? Number(pricingConfig?.additional_node_price_usd || 29)
+                        : Number(pricingConfig?.additional_node_price_usd || 99) * 2
                     }
                   />
                 </div>

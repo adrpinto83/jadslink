@@ -17,12 +17,19 @@ interface UpgradeOption {
   disabledReason?: string;
 }
 
+interface PricingConfig {
+  ticket_pack_size: number;
+  ticket_pack_price_usd: string | number;
+  additional_node_price_usd: string | number;
+}
+
 interface UpgradeOptionsProps {
   currentPlan?: 'free' | 'basic' | 'pro';
   ticketsAvailable?: number;
   ticketsUsed?: number;
   onSelect: (type: 'extra_tickets' | 'plan_basic' | 'plan_pro') => void;
   isLoading?: boolean;
+  pricingConfig?: PricingConfig;
 }
 
 export const UpgradeOptions: React.FC<UpgradeOptionsProps> = ({
@@ -31,15 +38,20 @@ export const UpgradeOptions: React.FC<UpgradeOptionsProps> = ({
   ticketsUsed = 0,
   onSelect,
   isLoading = false,
+  pricingConfig,
 }) => {
+  // Obtener precios del config o usar defaults
+  const ticketPackPrice = Number(pricingConfig?.ticket_pack_price_usd || 0.5);
+  const additionalNodePrice = Number(pricingConfig?.additional_node_price_usd || 29);
+
   const options: UpgradeOption[] = [
     {
       type: 'extra_tickets',
-      title: 'Comprar 50 Tickets',
+      title: `Comprar ${pricingConfig?.ticket_pack_size || 50} Tickets`,
       description: 'Pago por uso - Solo cuando los necesites',
-      price: 0.5,
+      price: ticketPackPrice,
       currency: 'USD',
-      features: ['50 tickets adicionales', 'Pago único', 'Sin suscripción mensual', 'Tasa oficial aplicada'],
+      features: [`${pricingConfig?.ticket_pack_size || 50} tickets adicionales`, 'Pago único', 'Sin suscripción mensual', 'Tasa oficial aplicada'],
       icon: <Zap className="w-6 h-6" />,
       disabled: ticketsAvailable > 0 && currentPlan === 'free',
       disabledReason: 'Aún tienes tickets disponibles',
@@ -48,7 +60,7 @@ export const UpgradeOptions: React.FC<UpgradeOptionsProps> = ({
       type: 'plan_basic',
       title: 'Plan Básico',
       description: 'Para empresas en crecimiento',
-      price: 29,
+      price: additionalNodePrice,
       currency: 'USD/mes',
       features: ['1 nodo máximo', '50 tickets gratis + pago por uso', 'Soporte por email', 'Tasa oficial'],
       icon: <TrendingUp className="w-6 h-6" />,
@@ -60,7 +72,7 @@ export const UpgradeOptions: React.FC<UpgradeOptionsProps> = ({
       type: 'plan_pro',
       title: 'Plan Pro',
       description: 'Ilimitado - Para empresas grandes',
-      price: 99,
+      price: additionalNodePrice * 2,
       currency: 'USD/mes',
       features: ['Nodos ilimitados', 'Tickets ilimitados', 'API pública', 'Soporte 24/7'],
       icon: <Rocket className="w-6 h-6" />,
