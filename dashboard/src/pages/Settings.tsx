@@ -61,12 +61,23 @@ const Settings: React.FC = () => {
     mutationFn: async (file: File) => {
       const formDataObj = new FormData();
       formDataObj.append('file', file);
-      return await apiClient.post('/tenants/me/logo', formDataObj, {
+      const response = await apiClient.post('/tenants/me/logo', formDataObj, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      return response.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tenant', 'me'] });
+    onSuccess: (data: any) => {
+      // Actualizar el estado del tenant con el nuevo logo_url
+      queryClient.setQueryData(['tenant', 'me'], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          settings: {
+            ...oldData.settings,
+            logo_url: data.logo_url,
+          },
+        };
+      });
       setLogoPreview(null);
     },
   });

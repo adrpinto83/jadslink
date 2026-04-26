@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api/v1"
     API_TITLE: str = "JADSlink API"
     API_VERSION: str = "1.0"
+    API_BASE_URL: str = "http://localhost:8000"  # Base URL for serving static files and redirects
 
     class Config:
         env_file = ".env"

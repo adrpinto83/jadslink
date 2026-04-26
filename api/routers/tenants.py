@@ -11,6 +11,7 @@ import aiofiles
 import imghdr
 
 from database import get_db
+from config import get_settings
 from models.tenant import Tenant, PlanTier
 from models.node import Node
 from models.ticket import Ticket
@@ -20,6 +21,7 @@ from schemas.tenant import TenantResponse, TenantUpdate
 from deps import get_current_tenant, NODE_LIMITS, TICKET_LIMITS
 
 router = APIRouter()
+settings = get_settings()
 
 @router.get("/me", response_model=TenantResponse)
 async def read_tenant_me(current_tenant: Tenant = Depends(get_current_tenant)):
@@ -256,11 +258,12 @@ async def upload_tenant_logo(
     async with aiofiles.open(file_path, "wb") as f:
         await f.write(content)
 
-    # Update tenant logo URL
+    # Update tenant logo URL with absolute path to API server
     if current_tenant.settings is None:
         current_tenant.settings = {}
 
-    current_tenant.settings["logo_url"] = f"/uploads/logos/{filename}"
+    # Use absolute URL that points to the API server
+    current_tenant.settings["logo_url"] = f"{settings.API_BASE_URL}/uploads/logos/{filename}"
     flag_modified(current_tenant, "settings")
 
     db.add(current_tenant)
