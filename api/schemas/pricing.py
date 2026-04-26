@@ -3,6 +3,7 @@
 from pydantic import BaseModel, Field
 from decimal import Decimal
 from uuid import UUID
+from datetime import datetime
 
 
 class PricingConfigUpdate(BaseModel):
@@ -28,8 +29,8 @@ class PricingConfigResponse(BaseModel):
     basic_plan_max_nodes: int
     basic_plan_max_free_tickets: int
     description: str
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
