@@ -8,16 +8,25 @@ class NodeLocation(BaseModel):
     address: str | None = None
     description: str | None = None
 
-class NodeCreate(BaseModel):
-    name: str
-    serial: str
-
 
 class NodeConfigUpdate(BaseModel):
+    # WiFi Configuration
     ssid: str | None = None
     channel: int | None = None
     max_clients: int | None = None
     bandwidth_default: int | None = None
+    # Router Communication
+    api_endpoint: str | None = None
+    heartbeat_interval: int | None = None  # seconds
+    metrics_interval: int | None = None    # seconds
+    enable_metrics: bool | None = None
+
+
+class NodeCreate(BaseModel):
+    name: str
+    serial: str
+    config: NodeConfigUpdate | None = None
+
 
 class NodeUpdate(BaseModel):
     name: str | None = None
@@ -31,6 +40,7 @@ class NodeResponse(BaseModel):
     serial: str
     status: str
     location: NodeLocation | None = None
+    config: NodeConfigUpdate | None = None
     last_seen_at: datetime | None = None
     created_at: datetime
 

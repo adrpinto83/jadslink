@@ -85,7 +85,20 @@ const Nodes: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [newNodeData, setNewNodeData] = useState({ name: '', serial: '' });
+  const [newNodeData, setNewNodeData] = useState({
+    name: '',
+    serial: '',
+    config: {
+      ssid: 'JADSlink',
+      channel: 6,
+      max_clients: 10,
+      bandwidth_default: 2000,
+      api_endpoint: 'https://api.jadslink.io',
+      heartbeat_interval: 30,
+      metrics_interval: 60,
+      enable_metrics: true,
+    }
+  });
   const [geoLocation, setGeoLocation] = useState<any | null>(null);
   const [loadingGeo, setLoadingGeo] = useState(false);
   const queryClient = useQueryClient();
@@ -102,14 +115,27 @@ const Nodes: React.FC = () => {
 
   // Create node mutation
   const createNodeMutation = useMutation({
-    mutationFn: async (data: { name: string; serial: string }) => {
+    mutationFn: async (data: { name: string; serial: string; config: any }) => {
       const response = await apiClient.post('/nodes', data);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
       setCreateDialogOpen(false);
-      setNewNodeData({ name: '', serial: '' });
+      setNewNodeData({
+        name: '',
+        serial: '',
+        config: {
+          ssid: 'JADSlink',
+          channel: 6,
+          max_clients: 10,
+          bandwidth_default: 2000,
+          api_endpoint: 'https://api.jadslink.io',
+          heartbeat_interval: 30,
+          metrics_interval: 60,
+          enable_metrics: true,
+        }
+      });
       toast.success('Nodo creado exitosamente');
     },
     onError: (error: any) => {
@@ -376,6 +402,204 @@ const Nodes: React.FC = () => {
                     value={newNodeData.serial}
                     onChange={(e) => setNewNodeData({ ...newNodeData, serial: e.target.value })}
                   />
+                </div>
+
+                {/* WiFi Configuration Section */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Wifi className="h-4 w-4 text-blue-600" />
+                    <h4 className="font-semibold text-sm">Configuración WiFi</h4>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="ssid">SSID (Nombre de Red)</Label>
+                      <Input
+                        id="ssid"
+                        placeholder="JADSlink"
+                        value={newNodeData.config?.ssid || 'JADSlink'}
+                        onChange={(e) =>
+                          setNewNodeData({
+                            ...newNodeData,
+                            config: { ...newNodeData.config, ssid: e.target.value }
+                          })
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Nombre de la red WiFi visible a los usuarios
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="channel">Canal WiFi</Label>
+                        <Input
+                          id="channel"
+                          type="number"
+                          min="1"
+                          max="13"
+                          value={newNodeData.config?.channel || 6}
+                          onChange={(e) =>
+                            setNewNodeData({
+                              ...newNodeData,
+                              config: {
+                                ...newNodeData.config,
+                                channel: parseInt(e.target.value) || 6
+                              }
+                            })
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          1-13
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="max-clients">Máx. Clientes</Label>
+                        <Input
+                          id="max-clients"
+                          type="number"
+                          min="1"
+                          value={newNodeData.config?.max_clients || 10}
+                          onChange={(e) =>
+                            setNewNodeData({
+                              ...newNodeData,
+                              config: {
+                                ...newNodeData.config,
+                                max_clients: parseInt(e.target.value) || 10
+                              }
+                            })
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Conexiones simultáneas
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="bandwidth">Ancho de Banda Predeterminado (Kbps)</Label>
+                      <Input
+                        id="bandwidth"
+                        type="number"
+                        min="256"
+                        step="256"
+                        value={newNodeData.config?.bandwidth_default || 2000}
+                        onChange={(e) =>
+                          setNewNodeData({
+                            ...newNodeData,
+                            config: {
+                              ...newNodeData.config,
+                              bandwidth_default: parseInt(e.target.value) || 2000
+                            }
+                          })
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Velocidad asignada por defecto a cada usuario
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Router Communication Section */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Activity className="h-4 w-4 text-green-600" />
+                    <h4 className="font-semibold text-sm">Comunicación del Router</h4>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="api-endpoint">API Endpoint</Label>
+                      <Input
+                        id="api-endpoint"
+                        placeholder="https://api.jadslink.io"
+                        value={newNodeData.config?.api_endpoint || 'https://api.jadslink.io'}
+                        onChange={(e) =>
+                          setNewNodeData({
+                            ...newNodeData,
+                            config: {
+                              ...newNodeData.config,
+                              api_endpoint: e.target.value
+                            }
+                          })
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        URL del servidor backend para sincronización
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="heartbeat">Intervalo Heartbeat (seg)</Label>
+                        <Input
+                          id="heartbeat"
+                          type="number"
+                          min="10"
+                          max="300"
+                          value={newNodeData.config?.heartbeat_interval || 30}
+                          onChange={(e) =>
+                            setNewNodeData({
+                              ...newNodeData,
+                              config: {
+                                ...newNodeData.config,
+                                heartbeat_interval: parseInt(e.target.value) || 30
+                              }
+                            })
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Frecuencia de latidos (10-300)
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="metrics">Intervalo Métricas (seg)</Label>
+                        <Input
+                          id="metrics"
+                          type="number"
+                          min="30"
+                          max="600"
+                          value={newNodeData.config?.metrics_interval || 60}
+                          onChange={(e) =>
+                            setNewNodeData({
+                              ...newNodeData,
+                              config: {
+                                ...newNodeData.config,
+                                metrics_interval: parseInt(e.target.value) || 60
+                              }
+                            })
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Frecuencia de reportes (30-600)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-2 bg-muted rounded">
+                      <input
+                        type="checkbox"
+                        id="enable-metrics"
+                        checked={newNodeData.config?.enable_metrics !== false}
+                        onChange={(e) =>
+                          setNewNodeData({
+                            ...newNodeData,
+                            config: {
+                              ...newNodeData.config,
+                              enable_metrics: e.target.checked
+                            }
+                          })
+                        }
+                        className="rounded"
+                      />
+                      <label htmlFor="enable-metrics" className="text-sm cursor-pointer flex-1">
+                        Reportar métricas al servidor
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
               <DialogFooter>

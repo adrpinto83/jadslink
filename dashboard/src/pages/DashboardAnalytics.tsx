@@ -14,6 +14,9 @@ interface AnalyticsData {
   sessions_by_plan: Array<{ plan: string; count: number }>;
   nodes_status: Array<{ status: string; count: number }>;
   revenue_trend: Array<{ date: string; revenue: number }>;
+  total_nodes?: number;
+  total_sessions?: number;
+  total_revenue?: number;
 }
 
 const DashboardAnalytics: React.FC = () => {

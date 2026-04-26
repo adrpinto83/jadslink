@@ -39,10 +39,16 @@ class Node(BaseModel):
     config: Mapped[dict] = mapped_column(
         JSON,
         default={
+            # WiFi Configuration
             "ssid": "JADSlink",
             "channel": 6,
             "max_clients": 10,
             "bandwidth_default": 2000,
+            # Router Communication
+            "api_endpoint": "https://api.jadslink.io",
+            "heartbeat_interval": 30,
+            "metrics_interval": 60,
+            "enable_metrics": True,
         },
         nullable=True,
     )

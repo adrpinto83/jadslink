@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from models.node import Node
@@ -81,13 +82,35 @@ async def create_node(
 ):
     if not tenant:
         raise HTTPException(status_code=403, detail="No active tenant found for user")
+
+    # Prepare config with defaults
+    config = {
+        # WiFi Configuration
+        "ssid": "JADSlink",
+        "channel": 6,
+        "max_clients": 10,
+        "bandwidth_default": 2000,
+        # Router Communication
+        "api_endpoint": "https://api.jadslink.io",
+        "heartbeat_interval": 30,      # seconds
+        "metrics_interval": 60,         # seconds
+        "enable_metrics": True,
+    }
+
+    # Override with provided config if any
+    if node_in.config:
+        config_data = node_in.config.model_dump(exclude_unset=True)
+        config.update({k: v for k, v in config_data.items() if v is not None})
+
     node = Node(
         tenant_id=tenant.id,
         name=node_in.name,
         serial=node_in.serial,
         api_key=f"sk_live_{secrets.token_hex(16).upper()}",
+        config=config,
     )
     db.add(node)
+    flag_modified(node, "config")
     await db.commit()
     await db.refresh(node)
     return node
