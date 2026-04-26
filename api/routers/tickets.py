@@ -116,6 +116,7 @@ async def generate_tickets(
 async def list_tickets(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    include_deleted: bool = False,
 ):
     if current_user.role == "superadmin":
         query = select(Ticket, Plan, Tenant).join(Plan, Ticket.plan_id == Plan.id).join(Tenant, Ticket.tenant_id == Tenant.id)
@@ -123,6 +124,10 @@ async def list_tickets(
         if not current_user.tenant_id:
             return []
         query = select(Ticket, Plan, Tenant).join(Plan, Ticket.plan_id == Plan.id).join(Tenant, Ticket.tenant_id == Tenant.id).where(Ticket.tenant_id == current_user.tenant_id)
+
+    # Filtrar eliminados por defecto
+    if not include_deleted:
+        query = query.where(Ticket.deleted_at == None)
 
     result = await db.execute(query)
     
