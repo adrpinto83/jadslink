@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/auth";
 import { useNavigate, Link } from "react-router-dom";
-import { Zap, Crown, CheckCircle2 } from "lucide-react";
+import { Wifi, Zap, Crown, CheckCircle2 } from "lucide-react";
 import AppLogo from "@/components/AppLogo";
 
 const Login: React.FC = () => {
