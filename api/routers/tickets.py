@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import joinedload
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from models.ticket import Ticket
@@ -87,8 +88,8 @@ async def generate_tickets(
     await db.commit()
 
     response_tickets = []
+    # No need to refresh tickets - all data is already in memory after commit()
     for ticket in db_tickets:
-        await db.refresh(ticket)
         qr_base64 = generate_qr_base64(ticket.qr_data)
         response_tickets.append(
             TicketResponse(
@@ -96,7 +97,7 @@ async def generate_tickets(
                 code=ticket.code,
                 qr_data=ticket.qr_data,
                 qr_base64_png=qr_base64,
-                status=ticket.status.value,  # Correctly use the enum's value
+                status=ticket.status.value,
                 created_at=ticket.created_at,
                 plan_name=plan.name,
                 tenant_logo_url=tenant.settings.get("logo_url"),
@@ -113,21 +114,28 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
     include_deleted: bool = False,
 ):
-    if current_user.role == "superadmin":
-        query = select(Ticket, Plan, Tenant).join(Plan, Ticket.plan_id == Plan.id).join(Tenant, Ticket.tenant_id == Tenant.id)
-    else:
+    # Use eager loading instead of manual JOINs for better SQLAlchemy patterns
+    query = select(Ticket).options(
+        joinedload(Ticket.plan),
+        joinedload(Ticket.tenant)
+    )
+
+    if current_user.role != "superadmin":
         if not current_user.tenant_id:
             return []
-        query = select(Ticket, Plan, Tenant).join(Plan, Ticket.plan_id == Plan.id).join(Tenant, Ticket.tenant_id == Tenant.id).where(Ticket.tenant_id == current_user.tenant_id)
+        query = query.where(Ticket.tenant_id == current_user.tenant_id)
 
-    # Filtrar eliminados por defecto
+    # Filter deleted by default
     if not include_deleted:
         query = query.where(Ticket.deleted_at == None)
 
     result = await db.execute(query)
-    
+
+    # Use unique() to handle potential duplicates from multiple joinedloads
+    tickets = result.unique().scalars().all()
+
     response_tickets = []
-    for ticket, plan, tenant in result.all():
+    for ticket in tickets:
         qr_base64 = generate_qr_base64(ticket.qr_data)
         response_tickets.append(
             TicketResponse(
@@ -137,9 +145,9 @@ async def list_tickets(
                 qr_base64_png=qr_base64,
                 status=ticket.status.value,
                 created_at=ticket.created_at,
-                plan_name=plan.name,
-                tenant_logo_url=tenant.settings.get("logo_url"),
-                tenant_ssid=tenant.settings.get("ssid"),
+                plan_name=ticket.plan.name,
+                tenant_logo_url=ticket.tenant.settings.get("logo_url"),
+                tenant_ssid=ticket.tenant.settings.get("ssid"),
             )
         )
 
