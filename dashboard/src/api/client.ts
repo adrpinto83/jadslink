@@ -41,6 +41,7 @@ apiClient.interceptors.request.use(
     }
 
     // Add CSRF token to headers for state-changing requests
+    // (Only if available - Bearer token provides additional protection)
     if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(config.method?.toUpperCase() || '')) {
       if (csrfToken) {
         config.headers['X-CSRF-Token'] = csrfToken;

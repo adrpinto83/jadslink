@@ -35,12 +35,19 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         # Validate CSRF token for state-changing methods (except skipped paths)
         if request.method in ["POST", "PATCH", "DELETE", "PUT"] and not skip_validation:
-            csrf_token = request.headers.get("X-CSRF-Token")
-            if not csrf_token or len(csrf_token) < 20:
-                return JSONResponse(
-                    status_code=403,
-                    content={"detail": "CSRF token missing or invalid"},
-                )
+            # Check if request has valid Bearer token (API authentication)
+            # If it does, CSRF token is not required (Bearer token is the protection)
+            auth_header = request.headers.get("Authorization", "")
+            has_bearer_token = auth_header.startswith("Bearer ")
+
+            # If no Bearer token, CSRF token is required
+            if not has_bearer_token:
+                csrf_token = request.headers.get("X-CSRF-Token")
+                if not csrf_token or len(csrf_token) < 20:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "CSRF token missing or invalid"},
+                    )
 
         # Process the request
         response = await call_next(request)
