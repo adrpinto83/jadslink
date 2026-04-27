@@ -34,6 +34,12 @@ export async function initializeCSRFToken() {
 // Request interceptor to add CSRF token and authorization
 apiClient.interceptors.request.use(
   (config) => {
+    // Add authorization token (Bearer token from auth store)
+    const accessToken = useAuthStore.getState().accessToken;
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
     // Add CSRF token to headers for state-changing requests
     if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(config.method?.toUpperCase() || '')) {
       if (csrfToken) {
