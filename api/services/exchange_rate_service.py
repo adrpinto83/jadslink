@@ -19,94 +19,74 @@ class ExchangeRateService:
     async def scrape_bcv_rate() -> tuple[bool, Decimal | None, str]:
         """
         Scrape BCV website for official exchange rate.
-        BCV's HTML structure changes frequently, so we try multiple parsing strategies.
+        BCV's HTML structure: <div class="col-sm-6 col-xs-6 centrado"><strong>484,74040000</strong></div>
         Returns (success, rate, source_or_error_message)
         """
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.get(
-                    "https://www.bcv.org.ve/",
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                    },
-                )
-                response.raise_for_status()
+            # Try with longer timeout and multiple User-Agents
+            user_agents = [
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Mozilla/5.0 (compatible; JADSlink/1.0)",
+            ]
 
-                html = response.text
-                soup = BeautifulSoup(html, "html.parser")
+            import re
 
-                import re
-                rate_element = None
+            for user_agent in user_agents:
+                try:
+                    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+                        response = await client.get(
+                            "https://www.bcv.org.ve/",
+                            headers={"User-Agent": user_agent},
+                        )
+                        response.raise_for_status()
 
-                # Strategy 1: Look for div with class "col-sm-6 col-xs-6 centrado"
-                # This is where BCV puts the official rate
-                rate_element = soup.find("div", class_="col-sm-6 col-xs-6 centrado")
+                        html = response.text
+                        soup = BeautifulSoup(html, "html.parser")
 
-                if rate_element:
-                    strong_tag = rate_element.find("strong")
-                    if strong_tag:
-                        rate_text = strong_tag.get_text().strip()
-                        # Convert comma to decimal point (484,74040000 -> 484.74040000)
-                        rate_str = rate_text.replace(",", ".")
-                        try:
-                            rate = Decimal(rate_str)
-                            if rate > 0:
-                                log.info(f"BCV scraping successful (col-sm-6 strategy): {rate}")
-                                return True, rate, "bcv_scraping"
-                        except Exception as e:
-                            log.warning(f"Could not parse rate from col-sm-6: {rate_str}, error: {e}")
+                        # Strategy 1: Look for the exact div class "col-sm-6 col-xs-6 centrado"
+                        # This is the official rate container on BCV website
+                        rate_element = soup.find("div", class_="col-sm-6 col-xs-6 centrado")
 
-                # Strategy 2: Look for specific divs/spans with id or class
-                selectors = [
-                    {"id": "dolar"},
-                    {"class": "dolar"},
-                    {"class": "cotizacion-dolar"},
-                    {"class": "tasa-dolar"},
-                ]
+                        if rate_element:
+                            strong_tag = rate_element.find("strong")
+                            if strong_tag:
+                                rate_text = strong_tag.get_text().strip()
+                                # Convert comma to decimal point (484,74040000 -> 484.74040000)
+                                rate_str = rate_text.replace(",", ".")
+                                try:
+                                    rate = Decimal(rate_str)
+                                    if rate > 0:
+                                        log.info(f"✅ BCV scraping successful: {rate} (User-Agent: {user_agent})")
+                                        return True, rate, "bcv_scraping"
+                                except Exception as e:
+                                    log.debug(f"Could not parse rate from col-sm-6: {rate_str}, error: {e}")
 
-                for selector in selectors:
-                    rate_element = soup.find("div", selector)
-                    if rate_element:
-                        break
-                    rate_element = soup.find("span", selector)
-                    if rate_element:
-                        break
+                        # Strategy 2: Regex search for numbers in HTML (backup)
+                        numbers = re.findall(r"\d+[.,]\d{2,}", html)
+                        if numbers:
+                            # Filter likely rates (3-4 digit numbers)
+                            for num in numbers:
+                                try:
+                                    rate_str = num.replace(",", ".")
+                                    rate = Decimal(rate_str)
+                                    if 100 < rate < 1000:  # Reasonable BCV rate range
+                                        log.info(f"✅ BCV scraping successful (regex): {rate}")
+                                        return True, rate, "bcv_scraping"
+                                except:
+                                    continue
 
-                # Strategy 3: Search for any element containing "USD" or "dolar"
-                if not rate_element:
-                    for tag in soup.find_all(["div", "span"]):
-                        text = tag.get_text().lower()
-                        if "usd" in text or "dólar" in text or "dolar" in text:
-                            # Check if it contains a number
-                            numbers = [char for char in tag.get_text() if char.isdigit() or char in ".,"]
-                            if len(numbers) > 3:  # At least a few digits
-                                rate_element = tag
-                                break
+                except (httpx.TimeoutException, httpx.ConnectError) as e:
+                    log.debug(f"Timeout/Connection error with User-Agent {user_agent}: {e}")
+                    continue
+                except Exception as e:
+                    log.debug(f"Error with User-Agent {user_agent}: {e}")
+                    continue
 
-                if rate_element:
-                    rate_text = rate_element.get_text()
-                    # Extract first number found
-                    numbers = re.findall(r"\d+[.,]\d+", rate_text)
+            log.warning("❌ All BCV scraping strategies failed")
+            return False, None, "All scraping strategies failed"
 
-                    if numbers:
-                        rate_str = numbers[0].replace(",", ".")
-                        try:
-                            rate = Decimal(rate_str)
-                            if rate > 0:
-                                log.info(f"BCV scraping successful: {rate}")
-                                return True, rate, "bcv_scraping"
-                        except Exception as e:
-                            log.warning(f"Could not parse rate: {rate_str}, error: {e}")
-
-                log.warning("Could not find rate element in BCV website")
-                return False, None, "Rate element not found in HTML"
-
-        except httpx.TimeoutException:
-            log.error("BCV scraping timeout (15 seconds)")
-            return False, None, "Timeout connecting to BCV"
-        except httpx.HTTPError as e:
-            log.error(f"HTTP error scraping BCV: {e}")
-            return False, None, f"HTTP error: {str(e)}"
         except Exception as e:
             log.error(f"Unexpected error scraping BCV: {e}")
             return False, None, f"Scraping error: {str(e)}"
