@@ -8,5 +8,6 @@ from .session import Session
 from .node_metric import NodeMetric
 from .pricing_config import PricingConfig
 from .exchange_rate import ExchangeRate
+from .upgrade_request import UpgradeRequest
 
-__all__ = ["Base", "User", "Tenant", "Node", "Plan", "Ticket", "Session", "NodeMetric", "PricingConfig", "ExchangeRate"]
+__all__ = ["Base", "User", "Tenant", "Node", "Plan", "Ticket", "Session", "NodeMetric", "PricingConfig", "ExchangeRate", "UpgradeRequest"]

@@ -118,7 +118,7 @@ class EmailService:
               <p>Los beneficios de tu compra han sido aplicados a tu cuenta. Ahora puedes acceder a todas las funcionalidades incluidas en tu plan.</p>
 
               <p style="text-align: center; margin: 30px 0;">
-                <a href="http://localhost:5173/dashboard" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                <a href="https://link.jadsstudio.com.ve/dashboard" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   Ir al Dashboard
                 </a>
               </p>
@@ -217,7 +217,7 @@ class EmailService:
               <p>Si ya realizaste la transferencia, nuestro equipo la estará procesando. Si tienes preguntas sobre el estado de tu pago, contáctanos.</p>
 
               <p style="text-align: center; margin: 30px 0;">
-                <a href="http://localhost:5173/dashboard/billing" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                <a href="https://link.jadsstudio.com.ve/dashboard/billing" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   Ver Estado del Pago
                 </a>
               </p>
@@ -270,7 +270,7 @@ class EmailService:
               </div>
 
               <p style="text-align: center; margin: 30px 0;">
-                <a href="http://localhost:5173/dashboard/billing" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                <a href="https://link.jadsstudio.com.ve/dashboard/billing" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   Ver solicitudes de pago
                 </a>
               </p>

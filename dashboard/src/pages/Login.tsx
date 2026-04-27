@@ -161,10 +161,13 @@ const Login: React.FC = () => {
 
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                  Credenciales de demo:
+                  Credenciales de demostración:
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-300 text-center mt-1 font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded">
-                  admin@jads.com / admin123456
+                  demo@jadslink.com / demo123456
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                  📱 Accede desde: <span className="font-semibold">link.jadsstudio.com.ve</span>
                 </p>
               </div>
             </CardContent>

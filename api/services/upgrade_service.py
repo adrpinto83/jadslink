@@ -81,7 +81,7 @@ class UpgradeService:
         )
 
         # Guardar detalles de pago según método
-        if payment_method == "pago_movil":
+        if payment_method == "mobile_pay":
             upgrade_request.banco_origen = payment_details.get("banco_origen")
             upgrade_request.cédula_pagador = payment_details.get("cédula_pagador")
             upgrade_request.referencia_pago = payment_details.get("referencia_pago")

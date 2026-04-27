@@ -58,7 +58,7 @@ async def request_upgrade(
         raise HTTPException(status_code=403, detail="No tenant found")
 
     # Validar datos de pago si es Pago Móvil
-    if request.payment_method == "pago_movil" and request.payment_details:
+    if request.payment_method == "mobile_pay" and request.payment_details:
         from utils.validators import validate_cedula, validate_referencia, validate_banco
 
         # Validate banco
@@ -105,7 +105,13 @@ async def request_upgrade(
     # Enviar email de confirmación de recepción
     from services.email_service import EmailService
 
-    tenant_email = current_tenant.users[0].email if current_tenant.users else None
+    # Obtener email del tenant (query directo sin lazy-load)
+    user_result = await db.execute(
+        select(User).where(User.tenant_id == current_tenant.id).limit(1)
+    )
+    tenant_user = user_result.scalar_one_or_none()
+    tenant_email = tenant_user.email if tenant_user else None
+
     if tenant_email:
         await EmailService.send_payment_received(
             tenant_email=tenant_email,

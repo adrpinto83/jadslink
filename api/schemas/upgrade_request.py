@@ -9,12 +9,12 @@ import uuid
 
 class PaymentDetailsBase(BaseModel):
     """Base for payment details"""
-    payment_method: Literal["pago_movil", "card"]
+    payment_method: Literal["mobile_pay", "gateway"]
 
 
 class PaymentDetailsPagoMovil(PaymentDetailsBase):
     """Details for Pago Móvil payment"""
-    payment_method: Literal["pago_movil"] = "pago_movil"
+    payment_method: Literal["mobile_pay"] = "mobile_pay"
     banco_origen: str = Field(..., description="Banco emisor (BDO, Banesco, etc)")
     cédula_pagador: str = Field(..., description="Cédula del pagador")
     referencia_pago: str = Field(..., description="Referencia de 10 dígitos")
@@ -23,7 +23,7 @@ class PaymentDetailsPagoMovil(PaymentDetailsBase):
 
 class PaymentDetailsCard(PaymentDetailsBase):
     """Details for Card payment"""
-    payment_method: Literal["card"] = "card"
+    payment_method: Literal["gateway"] = "gateway"
     token: str = Field(..., description="Stripe token")
 
 
@@ -32,7 +32,7 @@ class UpgradeRequestCreate(BaseModel):
     upgrade_type: Literal["extra_tickets", "plan_upgrade"]
     ticket_quantity: Optional[int] = None  # For extra_tickets
     new_plan_tier: Optional[str] = None    # For plan_upgrade (basic, pro)
-    payment_method: Literal["pago_movil", "card"]
+    payment_method: Literal["mobile_pay", "gateway"]
     payment_details: Optional[dict] = None
 
 

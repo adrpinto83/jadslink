@@ -37,11 +37,14 @@ async def drop_all_tables():
 
         # Drop all tables in reverse order of dependencies
         tables_to_drop = [
+            "upgrade_requests",  # Debe ser primero por ForeignKey a tenants
+            "exchange_rates",
             "node_metrics",
             "sessions",
             "tickets",
             "plans",
             "nodes",
+            "pricing_configs",
             "users",
             "tenants",
         ]
@@ -52,6 +55,20 @@ async def drop_all_tables():
                 print(f"  ✓ Tabla '{table}' eliminada")
             except Exception as e:
                 print(f"  ⚠️  Error al eliminar '{table}': {e}")
+
+        # Drop all enums
+        enums_to_drop = [
+            "upgradetype",
+            "paymentmethod",
+            "paymentstatus",
+        ]
+
+        for enum_name in enums_to_drop:
+            try:
+                await conn.execute(text(f"DROP TYPE IF EXISTS {enum_name} CASCADE"))
+                print(f"  ✓ Enum '{enum_name}' eliminado")
+            except Exception as e:
+                print(f"  ⚠️  Error al eliminar enum '{enum_name}': {e}")
 
         await conn.commit()
         print("✅ Base de datos limpia\n")
@@ -263,7 +280,7 @@ async def seed_demo_data():
             print("  • Password: admin123456")
             print("  • Uso:      Para gestión del sistema")
             print()
-            print("🌐 Accede en: http://localhost:5173/login")
+            print("🌐 Accede en: https://link.jadsstudio.com.ve/login")
             print()
 
 

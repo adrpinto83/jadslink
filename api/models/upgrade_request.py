@@ -12,8 +12,9 @@ import enum
 
 class PaymentMethod(str, enum.Enum):
     """Métodos de pago disponibles en Venezuela"""
-    pago_movil = "pago_movil"  # Transferencia bancaria
-    card = "card"              # Tarjeta de crédito/débito
+    cash = "cash"                    # Efectivo
+    mobile_pay = "mobile_pay"        # Pago Móvil (Transferencia bancaria)
+    gateway = "gateway"              # Pasarela (Tarjeta de crédito/débito)
 
 
 class UpgradeType(str, enum.Enum):
