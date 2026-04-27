@@ -14,6 +14,7 @@ from schemas.node import NodeCreate, NodeUpdate, NodeResponse, NodeMetricRespons
 from database import get_db
 from deps import get_current_user, get_current_tenant, check_node_limit
 from utils.geolocation import get_location_from_ip
+from utils.cache import get_cache
 import secrets
 import asyncio
 import json
@@ -320,17 +321,27 @@ async def stream_node_metrics(
         raise HTTPException(status_code=404, detail="Nodo no encontrado o sin acceso")
 
     async def event_generator():
-        """Generate SSE events with node metrics every 30 seconds"""
+        """Generate SSE events with node metrics every 30 seconds (cached)"""
+        cache = get_cache()
+        cache_key = f"node_metric:{node_id}"
+
         try:
             while True:
-                # Get latest metric
-                result = await db.execute(
-                    select(NodeMetric)
-                    .where(NodeMetric.node_id == node_id)
-                    .order_by(NodeMetric.recorded_at.desc())
-                    .limit(1)
-                )
-                latest_metric = result.scalar_one_or_none()
+                # Try to get cached metric first (TTL: 15 seconds)
+                # This reduces DB queries: 1 query per 15s instead of 1 per 30s
+                latest_metric = cache.get(cache_key)
+
+                if latest_metric is None:
+                    # Cache miss - fetch from DB and cache for 15 seconds
+                    result = await db.execute(
+                        select(NodeMetric)
+                        .where(NodeMetric.node_id == node_id)
+                        .order_by(NodeMetric.recorded_at.desc())
+                        .limit(1)
+                    )
+                    latest_metric = result.scalar_one_or_none()
+                    if latest_metric:
+                        cache.set(cache_key, latest_metric, ttl_seconds=15)
 
                 # Prepare event data
                 event_data = {
