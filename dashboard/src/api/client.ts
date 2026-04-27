@@ -14,6 +14,23 @@ const apiClient = axios.create({
   withCredentials: true,  // Send cookies with every request
 });
 
+// Initialize CSRF token on app startup
+export async function initializeCSRFToken() {
+  try {
+    // Make a simple GET request to obtain CSRF token
+    // Using a public endpoint that doesn't require authentication
+    const response = await apiClient.get('/subscriptions/plans');
+    const token = response.headers['x-csrf-token'];
+    if (token) {
+      csrfToken = token;
+      console.debug('CSRF token initialized');
+    }
+  } catch (error) {
+    console.warn('Failed to initialize CSRF token:', error);
+    // Continue anyway - token will be obtained on first successful request
+  }
+}
+
 // Request interceptor to add CSRF token and authorization
 apiClient.interceptors.request.use(
   (config) => {

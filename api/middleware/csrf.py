@@ -45,8 +45,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         # Process the request
         response = await call_next(request)
 
-        # Add CSRF token to response header (for GET requests and others)
-        if request.method == "GET" or response.status_code == 200:
+        # Add CSRF token to response header for all successful responses
+        # This ensures the client always has a fresh token for the next request
+        if response.status_code < 400:  # Success responses (2xx and 3xx)
             csrf_token = generate_csrf_token()
             response.headers["X-CSRF-Token"] = csrf_token
 

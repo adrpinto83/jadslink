@@ -24,8 +24,12 @@ import AdminPricing from './pages/AdminPricing.tsx';
 import AdminPayments from './pages/AdminPayments.tsx';
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "sonner";
+import { initializeCSRFToken } from './api/client';
 
 const queryClient = new QueryClient();
+
+// Initialize CSRF token when app starts
+initializeCSRFToken().catch(err => console.warn('CSRF initialization failed:', err));
 
 const router = createBrowserRouter([
   {
