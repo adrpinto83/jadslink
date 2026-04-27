@@ -25,19 +25,28 @@ const Login: React.FC = () => {
     loadDemoPlans();
   }, []);
 
+  const addIconsToPlan = (plan: any, index: number) => ({
+    ...plan,
+    icon: plan.icon || getPlanIcon(index),
+  });
+
   const loadDemoPlans = async () => {
     try {
       // Check cache first
       const cached = cacheService.get("subscription_plans");
       if (cached) {
-        setPlans(cached);
+        // Reconstruct icons (they're not serializable to JSON)
+        const plansWithIcons = cached.map((plan: any, index: number) =>
+          addIconsToPlan(plan, index)
+        );
+        setPlans(plansWithIcons);
         return;
       }
 
       // Load subscription plans from API
       const response = await apiClient.get("/subscriptions/plans");
       if (response.data && response.data.length > 0) {
-        // Map Stripe pricing plans to display format
+        // Map Stripe pricing plans to display format (without icons for caching)
         const formattedPlans = response.data.map((plan: any) => ({
           name: plan.metadata?.plan_name || plan.nickname || plan.product?.name || "Plan",
           description: plan.product?.description || "Plan description",
@@ -47,13 +56,17 @@ const Login: React.FC = () => {
             { text: `Nodos: ${plan.metadata?.max_nodes || "N/A"}`, included: true },
             { text: `Tickets/mes: ${plan.metadata?.max_tickets || "N/A"}`, included: true },
           ],
-          icon: Wifi,
-          highlight: false,
+          // Don't cache icons - they're functions and can't be serialized
         }));
 
-        // Cache the plans for 1 hour
+        // Cache the plans for 1 hour (without icons)
         cacheService.set("subscription_plans", formattedPlans, 60);
-        setPlans(formattedPlans);
+
+        // Add icons back before setting state
+        const plansWithIcons = formattedPlans.map((plan: any, index: number) =>
+          addIconsToPlan(plan, index)
+        );
+        setPlans(plansWithIcons);
         return;
       }
     } catch (error) {
