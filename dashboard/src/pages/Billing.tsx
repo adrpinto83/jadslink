@@ -141,6 +141,8 @@ const Billing: React.FC = () => {
       const response = await apiClient.get('/subscriptions/plans');
       return response.data;
     },
+    staleTime: 60 * 60 * 1000, // 1 hour cache
+    refetchInterval: false, // Don't auto-refetch
   });
 
   const { data: upgradeRequests = [], refetch: refetchRequests, isLoading: isLoadingRequests } = useQuery<UpgradeRequest[]>({
@@ -230,6 +232,27 @@ const Billing: React.FC = () => {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount / 100);
+  };
+
+  const convertToVEF = (usdAmount: number): number => {
+    return Math.round(usdAmount * exchangeRate * 100) / 100;
+  };
+
+  const renderPlanPrice = (plan: SubscriptionPlan) => {
+    const priceUSD = plan.unit_amount / 100;
+    const priceVEF = convertToVEF(priceUSD);
+
+    return (
+      <div className="space-y-1">
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-bold">${priceUSD.toFixed(2)}</span>
+          <span className="text-gray-600 dark:text-gray-400">USD</span>
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          ≈ Bs. {priceVEF.toLocaleString('es-ES')}
+        </div>
+      </div>
+    );
   };
 
   const getProgressColor = (percentage: number) => {
@@ -450,63 +473,129 @@ const Billing: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Planes SaaS Stripe (opcional) */}
+      {/* Planes SaaS Stripe - Mejorado */}
       {plans && plans.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Planes SaaS (Facturación Mensual)</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold">Planes SaaS (Facturación Mensual)</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Tasas actualizadas: 1 USD = Bs. {exchangeRate.toFixed(2)}
+              </p>
+            </div>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-3">
-            {plans.map((plan) => (
-              <Card key={plan.id} className="p-6 relative">
-                {tenant?.plan_tier === plan.product.name.toLowerCase() && (
-                  <Badge className="absolute top-4 right-4 bg-blue-500">Plan Actual</Badge>
-                )}
-                <h3 className="text-xl font-bold mb-2">{plan.product.name}</h3>
-                {plan.product.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    {plan.product.description}
-                  </p>
-                )}
-                <div className="mb-6">
-                  <span className="text-3xl font-bold">
-                    {formatPrice(plan.unit_amount, plan.currency)}
-                  </span>
-                  <span className="text-gray-600 dark:text-gray-400">
-                    /{plan.recurring.interval}
-                  </span>
-                </div>
-                <ul className="space-y-2 mb-6 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    {plan.product.name === 'Free' && '1 nodo'}
-                    {plan.product.name === 'Pro' && '5 nodos'}
-                    {plan.product.name === 'Enterprise' && 'Nodos ilimitados'}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    {plan.product.name === 'Free' && '50 tickets/mes'}
-                    {plan.product.name === 'Pro' && '500 tickets/mes'}
-                    {plan.product.name === 'Enterprise' && 'Tickets ilimitados'}
-                  </li>
-                </ul>
-                <Button
-                  className="w-full"
-                  variant={
-                    tenant?.plan_tier === plan.product.name.toLowerCase()
-                      ? 'outline'
-                      : 'default'
-                  }
-                  disabled={
-                    tenant?.plan_tier === plan.product.name.toLowerCase() ||
-                    checkoutMutation.isPending
-                  }
-                  onClick={() => checkoutMutation.mutate(plan.id)}
-                >
-                  {tenant?.plan_tier === plan.product.name.toLowerCase()
-                    ? 'Plan Actual'
-                    : 'Seleccionar Plan'}
-                </Button>
-              </Card>
-            ))}
+            {plans.map((plan) => {
+              const planNameLower = plan.product.name.toLowerCase();
+              const isCurrentPlan = tenant?.plan_tier === planNameLower;
+
+              return (
+                <Card key={plan.id} className={`p-6 relative transition-all ${
+                  isCurrentPlan ? 'ring-2 ring-blue-500' : ''
+                }`}>
+                  {isCurrentPlan && (
+                    <Badge className="absolute top-4 right-4 bg-blue-500">
+                      ✓ Plan Actual
+                    </Badge>
+                  )}
+
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold mb-2 capitalize">{plan.product.name}</h3>
+                    {plan.product.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {plan.product.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Pricing en USD y VEF */}
+                  <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+                    {renderPlanPrice(plan)}
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Renovación automática cada {plan.recurring.interval}
+                    </p>
+                  </div>
+
+                  {/* Features */}
+                  <ul className="space-y-2 mb-6 text-sm">
+                    {planNameLower === 'free' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>Siempre gratis</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>1 nodo incluido</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>50 tickets/mes</span>
+                        </li>
+                      </>
+                    )}
+                    {planNameLower === 'starter' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>3 nodos máximo</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>1,000 tickets/mes</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>14 días prueba gratis</span>
+                        </li>
+                      </>
+                    )}
+                    {planNameLower === 'pro' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>10 nodos máximo</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>5,000 tickets/mes</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>Reportes avanzados</span>
+                        </li>
+                      </>
+                    )}
+                    {planNameLower === 'enterprise' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>Nodos ilimitados</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>Tickets ilimitados</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>Soporte prioritario 24/7</span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+
+                  <Button
+                    className="w-full"
+                    variant={isCurrentPlan ? 'outline' : 'default'}
+                    disabled={isCurrentPlan || checkoutMutation.isPending}
+                    onClick={() => checkoutMutation.mutate(plan.id)}
+                  >
+                    {isCurrentPlan ? 'Plan Activo' : 'Suscribirse Ahora'}
+                  </Button>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}

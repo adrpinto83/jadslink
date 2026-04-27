@@ -8,6 +8,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Wifi, Zap, Crown, CheckCircle2 } from "lucide-react";
 import AppLogo from "@/components/AppLogo";
 import apiClient from "@/api/client";
+import { cacheService } from "@/utils/cache";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -26,7 +27,14 @@ const Login: React.FC = () => {
 
   const loadDemoPlans = async () => {
     try {
-      // Load subscription plans (available publicly in development)
+      // Check cache first
+      const cached = cacheService.get("subscription_plans");
+      if (cached) {
+        setPlans(cached);
+        return;
+      }
+
+      // Load subscription plans from API
       const response = await apiClient.get("/subscriptions/plans");
       if (response.data && response.data.length > 0) {
         // Map Stripe pricing plans to display format
@@ -42,6 +50,9 @@ const Login: React.FC = () => {
           icon: Wifi,
           highlight: false,
         }));
+
+        // Cache the plans for 1 hour
+        cacheService.set("subscription_plans", formattedPlans, 60);
         setPlans(formattedPlans);
         return;
       }
