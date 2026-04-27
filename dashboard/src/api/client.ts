@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
@@ -7,21 +8,8 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,  // Send cookies with every request
 });
-
-// Request interceptor to add JWT token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // Response interceptor to handle token expiration/refresh
 apiClient.interceptors.response.use(
@@ -30,31 +18,27 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+
     // If error is 401 and not a refresh token request
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) {
-          // Redirect to login if no refresh token
-          window.location.href = '/login'; 
-          return Promise.reject(error);
-        }
-
-        const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
+        // Call refresh endpoint (refresh_token comes from HttpOnly cookie automatically)
+        const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
+          withCredentials: true,
         });
 
-        const { access_token, refresh_token: newRefreshToken } = refreshResponse.data;
-        localStorage.setItem('access_token', access_token);
-        localStorage.setItem('refresh_token', newRefreshToken);
+        const { access_token } = refreshResponse.data;
+
+        // Update access token in memory via auth store
+        useAuthStore.getState().setAccessToken(access_token);
 
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh token failed, redirect to login
-        localStorage.clear();
+        // Refresh token failed (or expired), redirect to login
+        useAuthStore.getState().logout();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }

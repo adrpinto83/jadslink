@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, join
 from sqlalchemy.orm import joinedload
@@ -90,14 +91,14 @@ async def register(
     return RegisterResponse(status="success", message="Cuenta creada! Plan Free activado con 50 tickets de demostración. Actualiza tu logo en Settings después de actualizar a un plan pagado.")
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 async def login(
     http_request: Request,
     credentials: LoginRequest,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(rate_limit(max_requests=5, window_seconds=60, endpoint="auth_login")),
-) -> TokenResponse:
-    """Authenticate user and return JWT tokens"""
+):
+    """Authenticate user and return JWT access token + refresh token (HttpOnly cookie)"""
     result = await db.execute(
         select(User).options(joinedload(User.tenant)).where(User.email == credentials.email)
     )
@@ -114,7 +115,7 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario inactivo",
         )
-    
+
     if user.role != "superadmin" and (not user.tenant or not user.tenant.is_active):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -133,15 +134,38 @@ async def login(
         expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRATION_DAYS),
     )
 
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    # Create response with access token
+    response = JSONResponse(
+        content={"access_token": access_token, "token_type": "bearer"}
+    )
+    # Set refresh token in HttpOnly cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60,
+    )
+
+    return response
 
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh(request: RefreshRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    """Refresh access token using refresh token"""
+@router.post("/refresh")
+async def refresh(http_request: Request, db: AsyncSession = Depends(get_db)):
+    """Refresh access token using refresh token from HttpOnly cookie"""
+    # Get refresh token from cookie
+    refresh_token = http_request.cookies.get("refresh_token")
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de refresco no encontrado",
+        )
+
     try:
         payload = jwt.decode(
-            request.refresh_token,
+            refresh_token,
             settings.SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
@@ -171,12 +195,26 @@ async def refresh(request: RefreshRequest, db: AsyncSession = Depends(get_db)) -
             "role": user.role,
         }
     )
-    refresh_token = create_access_token(
+    new_refresh_token = create_access_token(
         data={"sub": str(user.id), "type": "refresh"},
         expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRATION_DAYS),
     )
 
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    # Create response with new access token
+    response = JSONResponse(
+        content={"access_token": access_token, "token_type": "bearer"}
+    )
+    # Set new refresh token in HttpOnly cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60,
+    )
+
+    return response
 
 
 @router.get("/me", response_model=UserResponse)
