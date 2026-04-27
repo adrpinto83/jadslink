@@ -93,9 +93,4 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Fetch initial CSRF token
-apiClient.get('/auth/me').catch(() => {
-  // It's ok if this fails, we'll get CSRF token from next request
-});
-
 export default apiClient;
