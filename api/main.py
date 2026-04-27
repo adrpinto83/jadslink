@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from config import get_settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from middleware.csrf import CSRFMiddleware
 import redis.asyncio as redis
 import logging
 
@@ -156,6 +157,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# CSRF protection middleware
+app.add_middleware(CSRFMiddleware)
 
 # Add metrics middleware for Prometheus
 # from utils.metrics import MetricsMiddleware
