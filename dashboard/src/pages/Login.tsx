@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,15 +7,50 @@ import { useAuthStore } from "@/stores/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { Wifi, Zap, Crown, CheckCircle2 } from "lucide-react";
 import AppLogo from "@/components/AppLogo";
+import apiClient from "@/api/client";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [plans, setPlans] = useState<any[]>([]);
 
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Load demo plans on component mount
+    loadDemoPlans();
+  }, []);
+
+  const loadDemoPlans = async () => {
+    try {
+      // Load subscription plans (available publicly in development)
+      const response = await apiClient.get("/subscriptions/plans");
+      if (response.data && response.data.length > 0) {
+        // Map Stripe pricing plans to display format
+        const formattedPlans = response.data.map((plan: any) => ({
+          name: plan.metadata?.plan_name || plan.nickname || plan.product?.name || "Plan",
+          description: plan.product?.description || "Plan description",
+          price: plan.unit_amount ? `$${(plan.unit_amount / 100).toFixed(2)}` : "$0",
+          period: "/mes",
+          features: [
+            { text: `Nodos: ${plan.metadata?.max_nodes || "N/A"}`, included: true },
+            { text: `Tickets/mes: ${plan.metadata?.max_tickets || "N/A"}`, included: true },
+          ],
+          icon: Wifi,
+          highlight: false,
+        }));
+        setPlans(formattedPlans);
+        return;
+      }
+    } catch (error) {
+      // Fall back to default plans if API call fails
+      console.error("Failed to load subscription plans:", error);
+    }
+    setPlans(defaultPlans);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,53 +66,62 @@ const Login: React.FC = () => {
     setIsLoading(false);
   };
 
-  const plans = [
-    {
-      name: "Gratuito",
-      description: "Perfecto para probar",
-      price: "$0",
-      period: "Siempre gratis",
-      features: [
-        { text: "1 Nodo incluido", included: true },
-        { text: "Demo con 50 tickets gratis", included: true },
-        { text: "Soporte por email", included: true },
-        { text: "Más nodos", included: false },
-        { text: "Tickets ilimitados", included: false },
-      ],
-      icon: Wifi,
-      highlight: false,
-    },
-    {
-      name: "Básico",
-      description: "Pay-as-you-go",
-      price: "$0.50",
-      period: "por cada 50 tickets",
-      features: [
-        { text: "1 Nodo máximo", included: true },
-        { text: "Tickets pagos después de demo", included: true },
-        { text: "$0.50 c/50 tickets generados", included: true },
-        { text: "Soporte prioritario", included: true },
-        { text: "Más nodos", included: false },
-      ],
-      icon: Zap,
-      highlight: false,
-    },
-    {
-      name: "Pro",
-      description: "Para empresas",
-      price: "Contactar",
-      period: "Planes personalizados",
-      features: [
-        { text: "Nodos ilimitados", included: true },
-        { text: "Tickets ilimitados", included: true },
-        { text: "API publica", included: true },
-        { text: "Soporte 24/7", included: true },
-        { text: "Consultoría técnica", included: true },
-      ],
-      icon: Crown,
-      highlight: true,
-    },
-  ];
+  const getPlanIcon = (index: number) => {
+    const icons = [Wifi, Zap, Crown];
+    return icons[index] || Wifi;
+  };
+
+  const getDefaultPlans = () => {
+    return [
+      {
+        name: "Gratuito",
+        description: "Perfecto para probar",
+        price: "$0",
+        period: "Siempre gratis",
+        features: [
+          { text: "1 Nodo incluido", included: true },
+          { text: "Demo con 50 tickets gratis", included: true },
+          { text: "Soporte por email", included: true },
+          { text: "Más nodos", included: false },
+          { text: "Tickets ilimitados", included: false },
+        ],
+        icon: Wifi,
+        highlight: false,
+      },
+      {
+        name: "Básico",
+        description: "Pay-as-you-go",
+        price: "$0.50",
+        period: "por cada 50 tickets",
+        features: [
+          { text: "1 Nodo máximo", included: true },
+          { text: "Tickets pagos después de demo", included: true },
+          { text: "$0.50 c/50 tickets generados", included: true },
+          { text: "Soporte prioritario", included: true },
+          { text: "Más nodos", included: false },
+        ],
+        icon: Zap,
+        highlight: false,
+      },
+      {
+        name: "Pro",
+        description: "Para empresas",
+        price: "Contactar",
+        period: "Planes personalizados",
+        features: [
+          { text: "Nodos ilimitados", included: true },
+          { text: "Tickets ilimitados", included: true },
+          { text: "API publica", included: true },
+          { text: "Soporte 24/7", included: true },
+          { text: "Consultoría técnica", included: true },
+        ],
+        icon: Crown,
+        highlight: true,
+      },
+    ];
+  };
+
+  const defaultPlans = getDefaultPlans();
 
   return (
     <div className="h-screen flex overflow-hidden">
@@ -190,13 +234,25 @@ const Login: React.FC = () => {
 
             {/* Plans Grid */}
             <div className="grid grid-cols-3 gap-4 mb-8">
-              {plans.map((plan, index) => {
-                const Icon = plan.icon;
+              {plans.length > 0 && plans.map((plan, index) => {
+                // Support both API format and formatted format
+                const planData = {
+                  name: plan.name || "Plan",
+                  description: plan.description || "",
+                  price: plan.price_usd ? `$${parseFloat(plan.price_usd).toFixed(2)}` : plan.price || "$0",
+                  period: plan.period || (plan.name ? `por ${plan.name}` : ""),
+                  features: plan.features || [
+                    { text: "Acceso a plataforma", included: true },
+                  ],
+                  icon: plan.icon || getPlanIcon(index),
+                  highlight: plan.highlight || index === 1,
+                };
+                const Icon = planData.icon;
                 return (
                   <div
                     key={index}
                     className={`rounded-xl p-6 backdrop-blur-sm border transition-all h-full flex flex-col ${
-                      plan.highlight
+                      planData.highlight
                         ? "bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-yellow-400/50 ring-2 ring-yellow-400/50 scale-105"
                         : "bg-white/10 border-white/20 hover:bg-white/15 hover:border-white/30"
                     }`}
@@ -204,24 +260,24 @@ const Login: React.FC = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <div
                         className={`p-2 rounded-lg flex-shrink-0 ${
-                          plan.highlight
+                          planData.highlight
                             ? "bg-yellow-500/30"
                             : "bg-blue-500/30"
                         }`}
                       >
                         <Icon className={`w-5 h-5 ${
-                          plan.highlight
+                          planData.highlight
                             ? "text-yellow-300"
                             : "text-blue-300"
                         }`} />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-base font-bold text-white">{plan.name}</h3>
-                        <p className="text-xs text-blue-200">{plan.description}</p>
+                        <h3 className="text-base font-bold text-white">{planData.name}</h3>
+                        <p className="text-xs text-blue-200">{planData.description}</p>
                       </div>
                     </div>
 
-                    {plan.highlight && (
+                    {planData.highlight && (
                       <div className="mb-2 flex justify-center">
                         <span className="px-2 py-0.5 bg-yellow-500/30 text-yellow-300 text-xs font-semibold rounded-full">
                           ⭐ RECOMENDADO
@@ -230,12 +286,12 @@ const Login: React.FC = () => {
                     )}
 
                     <div className="mb-4">
-                      <p className="text-2xl font-bold text-white">{plan.price}</p>
-                      <p className="text-xs text-blue-200 mt-0.5">{plan.period}</p>
+                      <p className="text-2xl font-bold text-white">{planData.price}</p>
+                      <p className="text-xs text-blue-200 mt-0.5">{planData.period}</p>
                     </div>
 
                     <ul className="space-y-1.5 flex-1">
-                      {plan.features.map((feature, fIndex) => (
+                      {planData.features.map((feature: any, fIndex: number) => (
                         <li key={fIndex} className="flex items-start gap-2">
                           <CheckCircle2
                             className={`w-3 h-3 flex-shrink-0 mt-0.5 ${
@@ -258,31 +314,27 @@ const Login: React.FC = () => {
             </div>
 
             {/* Features Section */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-                <h4 className="text-white font-semibold mb-2 text-sm flex items-center gap-2">
-                  ✨ Plan Básico
-                </h4>
-                <ul className="text-blue-100 text-xs space-y-1">
-                  <li>✓ 50 tickets gratis</li>
-                  <li>✓ $0.50 por 50 tickets</li>
-                  <li>✓ 1 nodo máximo</li>
-                  <li>✓ Pago por uso</li>
-                </ul>
+            {plans.length > 0 && (
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                {plans.slice(0, 2).map((plan, index) => {
+                  const icon = index === 0 ? "✨" : "🚀";
+                  const planName = plan.name || (index === 0 ? "Plan Básico" : "Plan Pro");
+                  const features = plan.features || [];
+                  return (
+                    <div key={index} className="p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                      <h4 className="text-white font-semibold mb-2 text-sm flex items-center gap-2">
+                        {icon} {planName}
+                      </h4>
+                      <ul className="text-blue-100 text-xs space-y-1">
+                        {features.slice(0, 4).map((feature: any, fIndex: number) => (
+                          <li key={fIndex}>✓ {feature.text}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
-
-              <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-                <h4 className="text-white font-semibold mb-2 text-sm flex items-center gap-2">
-                  🚀 Plan Pro
-                </h4>
-                <ul className="text-blue-100 text-xs space-y-1">
-                  <li>✓ Nodos ilimitados</li>
-                  <li>✓ Tickets ilimitados</li>
-                  <li>✓ API pública</li>
-                  <li>✓ Soporte 24/7</li>
-                </ul>
-              </div>
-            </div>
+            )}
 
             {/* CTA Section */}
             <div className="text-center p-6 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 backdrop-blur-sm rounded-xl border border-blue-400/30">
