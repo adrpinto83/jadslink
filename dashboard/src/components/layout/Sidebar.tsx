@@ -21,50 +21,50 @@ const Sidebar: React.FC = () => {
         <h1 className="text-xl font-bold text-gray-900">JADSlink</h1>
       </div>
       <nav className="space-y-2">
-        <NavLink to="/dashboard" end className={navLinkClass}>
+        <NavLink to="/" end className={navLinkClass}>
           <Home className="w-5 h-5 mr-3" />
           Inicio
         </NavLink>
-        <NavLink to="/dashboard/nodes" className={navLinkClass}>
+        <NavLink to="/nodes" className={navLinkClass}>
           <Wifi className="w-5 h-5 mr-3" />
           Nodos
         </NavLink>
-        <NavLink to="/dashboard/tickets" className={navLinkClass}>
+        <NavLink to="/tickets" className={navLinkClass}>
           <Ticket className="w-5 h-5 mr-3" />
           Tickets
         </NavLink>
-        <NavLink to="/dashboard/sessions" className={navLinkClass}>
+        <NavLink to="/sessions" className={navLinkClass}>
           <BookUser className="w-5 h-5 mr-3" />
           Sesiones
         </NavLink>
-        <NavLink to="/dashboard/plans" className={navLinkClass}>
+        <NavLink to="/plans" className={navLinkClass}>
           <Package className="w-5 h-5 mr-3" />
           Planes
         </NavLink>
-        <NavLink to="/dashboard/reports" className={navLinkClass}>
+        <NavLink to="/reports" className={navLinkClass}>
           <BarChart className="w-5 h-5 mr-3" />
           Reportes
         </NavLink>
-        <NavLink to="/dashboard/analytics" className={navLinkClass}>
+        <NavLink to="/analytics" className={navLinkClass}>
           <BarChart className="w-5 h-5 mr-3" />
           Analytics
         </NavLink>
-        <NavLink to="/dashboard/settings" className={navLinkClass}>
+        <NavLink to="/settings" className={navLinkClass}>
           <Settings className="w-5 h-5 mr-3" />
           Ajustes
         </NavLink>
-        <NavLink to="/dashboard/billing" className={navLinkClass}>
+        <NavLink to="/billing" className={navLinkClass}>
           <CreditCard className="w-5 h-5 mr-3" />
           Facturación
         </NavLink>
         {/* Equipo: Solo visible para operadores (no superadmin) */}
         {user?.role !== 'superadmin' && (
-          <NavLink to="/dashboard/team" className={navLinkClass}>
+          <NavLink to="/team" className={navLinkClass}>
             <Users className="w-5 h-5 mr-3" />
             Equipo
           </NavLink>
         )}
-        <NavLink to="/dashboard/admin" className={navLinkClass}>
+        <NavLink to="/admin" className={navLinkClass}>
           <Shield className="w-5 h-5 mr-3" />
           Admin
         </NavLink>
