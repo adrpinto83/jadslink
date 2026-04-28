@@ -1,21 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/api/client';
 
 export const ReactQueryTest: React.FC = () => {
   const queryClient = useQueryClient();
+  const [cleared, setCleared] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
-  const { data: plans, isLoading, error } = useQuery({
+  const { data: plans, isLoading, error, refetch } = useQuery({
     queryKey: ['test-plans'],
     queryFn: async () => {
+      console.log('[ReactQueryTest] Fetching plans...');
       const response = await apiClient.get('/plans');
+      console.log('[ReactQueryTest] Plans loaded:', response.data);
       return response.data;
     }
   });
 
-  const handleClearCache = () => {
-    queryClient.clear();
-    queryClient.refetchQueries();
+  const handleClearCache = async () => {
+    try {
+      setIsClearing(true);
+      console.log('[ReactQueryTest] Clearing cache...');
+      await queryClient.clear();
+      console.log('[ReactQueryTest] Cache cleared');
+      setCleared(true);
+      setTimeout(() => setCleared(false), 3000);
+
+      // Force refetch
+      await refetch();
+      console.log('[ReactQueryTest] Refetch completed');
+    } catch (err) {
+      console.error('[ReactQueryTest] Error clearing cache:', err);
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   return (
@@ -24,9 +42,10 @@ export const ReactQueryTest: React.FC = () => {
 
       <button
         onClick={handleClearCache}
-        className="mb-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        disabled={isClearing}
+        className="mb-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400"
       >
-        Clear React Query Cache
+        {isClearing ? 'Clearing...' : cleared ? '✓ Cache Cleared!' : 'Clear React Query Cache'}
       </button>
 
       {isLoading && <p className="text-blue-600">Loading with React Query...</p>}
