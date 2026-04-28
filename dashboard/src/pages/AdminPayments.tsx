@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdminPaymentConfirm } from '@/components/AdminPaymentConfirm';
 import { AlertCircle, DollarSign, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import AdminGuard from '@/components/AdminGuard';
 
 interface PendingPayment {
   id: string;
@@ -52,25 +53,35 @@ const AdminPayments: React.FC = () => {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<'pending' | 'all'>('pending');
 
-  const { data: pendingPayments = [], isLoading: isLoadingPending, refetch: refetchPending } = useQuery<PendingPayment[]>({
+  const { data: pendingPayments = [], isLoading: isLoadingPending, error: pendingError, refetch: refetchPending } = useQuery<PendingPayment[]>({
     queryKey: ['admin', 'pending-payments'],
     queryFn: async () => {
-      const response = await apiClient.get('/subscriptions/admin/pending-payments');
-      return response.data;
+      try {
+        const response = await apiClient.get('/subscriptions/admin/pending-payments');
+        return response.data;
+      } catch (error: any) {
+        console.warn('Error fetching pending payments:', error);
+        return [];
+      }
     },
     refetchInterval: 30000, // Refetch cada 30 segundos
   });
 
-  const { data: paymentHistory = [], isLoading: isLoadingHistory } = useQuery<PaymentHistoryItem[]>({
+  const { data: paymentHistory = [], isLoading: isLoadingHistory, error: historyError } = useQuery<PaymentHistoryItem[]>({
     queryKey: ['admin', 'payment-history', statusFilter],
     queryFn: async () => {
-      const response = await apiClient.get('/subscriptions/admin/payment-history', {
-        params: {
-          status_filter: statusFilter === 'pending' ? 'pending_payment' : undefined,
-          limit: 100,
-        },
-      });
-      return response.data;
+      try {
+        const response = await apiClient.get('/subscriptions/admin/payment-history', {
+          params: {
+            status_filter: statusFilter === 'pending' ? 'pending_payment' : undefined,
+            limit: 100,
+          },
+        });
+        return response.data;
+      } catch (error: any) {
+        console.warn('Error fetching payment history:', error);
+        return [];
+      }
     },
   });
 
@@ -90,6 +101,16 @@ const AdminPayments: React.FC = () => {
           Revisa y confirma solicitudes de pago de clientes
         </p>
       </div>
+
+      {(pendingError || historyError) && (
+        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800 dark:text-amber-200">
+            Adviso: Algunos datos podrían no estar disponibles. Los módulos de pagos aún se están inicializando.
+            Por favor, recarga la página si los datos no aparecen.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Resumen de Pagos Pendientes */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -276,4 +297,11 @@ const AdminPayments: React.FC = () => {
   );
 };
 
-export default AdminPayments;
+// Wrap with AdminGuard to check superadmin role
+const AdminPaymentsProtected: React.FC = () => (
+  <AdminGuard>
+    <AdminPayments />
+  </AdminGuard>
+);
+
+export default AdminPaymentsProtected;
