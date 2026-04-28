@@ -14,12 +14,10 @@
 # Configurar headers correctos para MIME types
 <FilesMatch "\.js$">
   AddType application/javascript .js
-  AddEncoding gzip .js
 </FilesMatch>
 
 <FilesMatch "\.css$">
   AddType text/css .css
-  AddEncoding gzip .css
 </FilesMatch>
 
 # Cache headers para assets con hash
