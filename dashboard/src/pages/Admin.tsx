@@ -10,14 +10,14 @@ const Admin: React.FC = () => {
       title: 'Gestión de Pagos',
       description: 'Revisa solicitudes de pago de clientes, aprueba o rechaza',
       icon: CreditCard,
-      href: '/dashboard/admin/payments',
+      href: 'admin/payments',
       color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
     },
     {
       title: 'Configuración de Precios',
       description: 'Modifica costos de tickets, nodos y límites de planes',
       icon: DollarSign,
-      href: '/dashboard/admin/pricing',
+      href: 'admin/pricing',
       color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
     },
     {
@@ -40,14 +40,14 @@ const Admin: React.FC = () => {
       title: 'Gestión de Empleados',
       description: 'Administra empleados y roles de cualquier operador',
       icon: Users,
-      href: '/dashboard/admin/users',
+      href: 'admin/users',
       color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
     },
     {
       title: 'Suscripciones Gratuitas',
       description: 'Otorga planes PRO gratis a operadores (pruebas, promociones)',
       icon: Gift,
-      href: '/dashboard/admin/subscriptions',
+      href: 'admin/subscriptions',
       color: 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400',
     },
   ];
