@@ -464,7 +464,22 @@ ssh -p 65002 u938946830@217.65.147.159 "ls -la ~/jadslink-deploy/api/"
 
 ### Verificar Uvicorn Corriendo
 ```bash
-ssh -p 65002 u938946830@217.65.147.159 "ps aux | grep uvicorn"
+ssh -p 65002 u938946830@217.65.147.159 "ps aux | grep 'uvicorn main' | grep -v grep"
+```
+
+### Reiniciar Uvicorn (si está caído)
+```bash
+ssh -p 65002 u938946830@217.65.147.159 \
+  "cd ~/jadslink-deploy/api && \
+   pkill -f 'uvicorn main' 2>/dev/null || true && \
+   sleep 1 && \
+   nohup python3 -m uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &"
+```
+
+### Verificar que Uvicorn está corriendo
+```bash
+sleep 3 && ssh -p 65002 u938946830@217.65.147.159 \
+  "tail -20 /tmp/uvicorn.log | grep -E 'Application startup complete|Started server process'"
 ```
 
 ### Ver Últimas Líneas del Log
@@ -547,25 +562,31 @@ curl -s -H "Authorization: Bearer TOKEN" \
 
 ## 📊 Estado Actual del Sistema
 
+**Última actualización:** 28 de abril de 2026, 08:22 UTC
+
 ### ✅ Funcional
 - [x] Dashboard carga correctamente
 - [x] Navegación entre módulos funciona
 - [x] Autenticación persiste en refresh
 - [x] Assets (JS/CSS) cargan correctamente
-- [x] API conectada y respondiendo
-- [x] Planes de Stripe visibles
+- [x] API conectada y respondiendo (Uvicorn corriendo)
+- [x] Planes de Stripe visibles en login
 - [x] Módulos: Nodos, Tickets, Sesiones, Planes, Reportes, etc.
+- [x] Frontend deploy automático con cache-busting
+- [x] AdminGuard protegiendo páginas admin
 
 ### ⚠️ Pendiente
 - [ ] Tabla `upgrade_requests` (falta migración Alembic)
 - [ ] Historial de solicitudes de facturación (depende de ↑)
+- [ ] Páginas Admin totalmente funcionales (errores API 404/403)
 - [ ] Validación de Pago Móvil en Facturación
 - [ ] Cache Redis (no disponible en Hostinger)
 
 ### 🐛 Problemas Conocidos
 1. Redis no disponible en Hostinger → Rate limiting deshabilitado
-2. Migraciones Alembic pendientes → algunos endpoints retornan 500
+2. Migraciones Alembic pendientes → endpoints admin retornan 404
 3. Mail/SMTP no configurado → emails de confirmación no se envían
+4. Uvicorn se detiene ocasionalmente → necesita reinicio manual
 
 ---
 
