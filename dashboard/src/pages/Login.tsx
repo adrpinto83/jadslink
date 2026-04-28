@@ -97,7 +97,8 @@ const Login: React.FC = () => {
         return DEFAULT_PLANS;
       }
     },
-    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
+    staleTime: 0, // No cachear - siempre obtener datos frescos
+    refetchInterval: 60000, // Refrescar cada minuto automáticamente
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
