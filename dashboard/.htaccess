@@ -1,37 +1,39 @@
-<IfModule mod_deflate.c>
-  # Deshabilitar completamente deflate para assets
-  SetEnvIfNoCase Request_URI "^/dashboard/assets/" no-gzip
-  SetEnvIfNoCase Request_URI "^/dashboard/assets/" no-deflate
-</IfModule>
-
+# Habilitar mod_rewrite
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /dashboard/
 
-  # Servir archivos y carpetas que existen
+  # No reescribir si es un archivo real
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
+  RewriteRule ^.*$ - [L]
 
-  # Redirigir todas las demás peticiones a index.html (SPA)
-  RewriteRule ^ index.html [QSA,L]
+  # Reescribir todas las demás URLs a index.html (SPA)
+  RewriteCond %{REQUEST_URI} !^/dashboard/index\.html$
+  RewriteRule ^(.*)$ index.html [L]
 </IfModule>
 
-# Configurar headers correctos para MIME types
+# Deshabilitar compresión automática para JS/CSS compilados
+<IfModule mod_deflate.c>
+  SetEnvIfNoCase Request_URI "\.js$" no-gzip
+  SetEnvIfNoCase Request_URI "\.css$" no-gzip
+</IfModule>
+
+# MIME types correctos
 <FilesMatch "\.js$">
   AddType application/javascript .js
+  Header set Content-Type "application/javascript"
 </FilesMatch>
 
 <FilesMatch "\.css$">
   AddType text/css .css
 </FilesMatch>
 
-# Cache headers para assets con hash
-<FilesMatch "assets/.*\.(js|css)$">
+# Cache headers
+<FilesMatch "\.(js|css)$">
   Header set Cache-Control "public, max-age=31536000, immutable"
 </FilesMatch>
 
-# Cache headers para index.html (sin cache)
 <FilesMatch "index\.html$">
   Header set Cache-Control "public, max-age=0, must-revalidate"
 </FilesMatch>
