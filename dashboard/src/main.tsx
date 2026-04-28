@@ -22,6 +22,9 @@ import DashboardAnalytics from './pages/DashboardAnalytics.tsx';
 import Admin from './pages/Admin.tsx';
 import AdminPricing from './pages/AdminPricing.tsx';
 import AdminPayments from './pages/AdminPayments.tsx';
+import AdminUsers from './pages/AdminUsers.tsx';
+import AdminSubscriptions from './pages/AdminSubscriptions.tsx';
+import TeamMembers from './pages/TeamMembers.tsx';
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "sonner";
 import { initializeCSRFToken } from './api/client';
@@ -45,7 +48,7 @@ const router = createBrowserRouter([
     element: <Root />,
   },
   {
-    path: "/dashboard",
+    path: "/",
     element: <App />,
     children: [
       {
@@ -103,6 +106,18 @@ const router = createBrowserRouter([
           {
             path: "admin/payments",
             element: <AdminPayments />,
+          },
+          {
+            path: "admin/users",
+            element: <AdminUsers />,
+          },
+          {
+            path: "admin/subscriptions",
+            element: <AdminSubscriptions />,
+          },
+          {
+            path: "team",
+            element: <TeamMembers />,
           }
         ]
       }
@@ -112,7 +127,7 @@ const router = createBrowserRouter([
     path: "*",
     element: <Navigate to="/" replace />
   } // Fallback route
-]);
+], { basename: "/dashboard" });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

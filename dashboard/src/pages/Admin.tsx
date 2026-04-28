@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, BarChart3, Settings, CreditCard } from 'lucide-react';
+import { DollarSign, BarChart3, Settings, CreditCard, Users, Gift } from 'lucide-react';
 
 const Admin: React.FC = () => {
   const adminSections = [
@@ -35,6 +35,20 @@ const Admin: React.FC = () => {
       href: '#',
       color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
       disabled: true,
+    },
+    {
+      title: 'Gestión de Empleados',
+      description: 'Administra empleados y roles de cualquier operador',
+      icon: Users,
+      href: '/dashboard/admin/users',
+      color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
+    },
+    {
+      title: 'Suscripciones Gratuitas',
+      description: 'Otorga planes PRO gratis a operadores (pruebas, promociones)',
+      icon: Gift,
+      href: '/dashboard/admin/subscriptions',
+      color: 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400',
     },
   ];
 

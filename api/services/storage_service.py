@@ -4,8 +4,10 @@ from pathlib import Path
 from uuid import uuid4
 from datetime import datetime
 import logging
+from config import get_settings
 
 log = logging.getLogger("jadslink.storage")
+settings = get_settings()
 
 # Upload directory for comprobantes
 UPLOADS_BASE_DIR = Path("uploads")
@@ -60,9 +62,10 @@ class StorageService:
 
             log.info(f"File uploaded successfully: {new_filename}")
 
-            # Return relative URL (for serving via /uploads/comprobantes/...)
-            url = f"/uploads/comprobantes/{new_filename}"
-            return True, url
+            # Return absolute URL
+            relative_url = f"/uploads/comprobantes/{new_filename}"
+            absolute_url = f"{settings.API_BASE_URL}{relative_url}"
+            return True, absolute_url
 
         except Exception as e:
             log.error(f"Error uploading file: {e}")

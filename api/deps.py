@@ -1,5 +1,6 @@
 from __future__ import annotations
-from fastapi import Depends, HTTPException, status, Header
+from typing import Optional
+from fastapi import Depends, HTTPException, status, Header, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -17,7 +18,7 @@ from models.ticket import Ticket
 
 
 settings = get_settings()
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)  # Don't auto-error, we'll handle missing credentials manually
 
 # Plan definitions with new pricing model
 """
@@ -60,11 +61,43 @@ TICKET_LIMITS = {
 PLAN_LIMITS = NODE_LIMITS
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> "User":
-    """Extract and verify JWT token, return current user"""
-    token = credentials.credentials
+    """Extract and verify JWT token, return current user
+
+    Supports multiple token sources (in order of priority):
+    1. Authorization: Bearer <token> header (standard)
+    2. X-Authorization header (for proxy compatibility)
+    3. Authorization query parameter (for debugging)
+    4. Access token cookie (for SPA compatibility)
+    """
+    token = None
+
+    # Try standard Authorization header first (with HTTPBearer)
+    if credentials:
+        token = credentials.credentials
+
+    # If no token from HTTPBearer, try alternative sources
+    if not token and request:
+        # Try X-Authorization header (for proxy compatibility)
+        token = request.headers.get("X-Authorization", "").replace("Bearer ", "")
+
+        # Try Authorization query parameter
+        if not token:
+            token = request.query_params.get("access_token", "")
+
+        # Try cookie
+        if not token:
+            token = request.cookies.get("access_token", "")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No token provided",
+        )
+
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]

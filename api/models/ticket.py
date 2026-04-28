@@ -5,6 +5,7 @@ from .base import BaseModel
 from datetime import datetime
 import enum
 import uuid
+from typing import Optional
 
 
 class TicketStatus(str, enum.Enum):
@@ -42,13 +43,13 @@ class Ticket(BaseModel):
     payment_method: Mapped[PaymentMethod] = mapped_column(
         SQLEnum(PaymentMethod), default=PaymentMethod.cash, nullable=False
     )
-    activated_at: Mapped[datetime | None] = mapped_column(
+    activated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    expires_at: Mapped[datetime | None] = mapped_column(
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    device_mac: Mapped[str | None] = mapped_column(String(17), nullable=True)
+    device_mac: Mapped[Optional[str]] = mapped_column(String(17), nullable=True)
 
     # Relationships
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="tickets")

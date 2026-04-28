@@ -2,6 +2,7 @@ from sqlalchemy import Column, DateTime, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
+from typing import Optional
 import uuid
 
 
@@ -30,6 +31,6 @@ class BaseModel(Base):
         onupdate=func.now(),
         default=datetime.utcnow,
     )
-    deleted_at: Mapped[datetime | None] = mapped_column(
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )

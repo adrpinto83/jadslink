@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from .base import BaseModel
 from datetime import datetime
 import uuid
+from typing import Optional
 
 
 class NodeMetric(BaseModel):
@@ -22,9 +23,9 @@ class NodeMetric(BaseModel):
     bytes_total_day: Mapped[int] = mapped_column(
         BigInteger, default=0, nullable=False
     )
-    signal_quality: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    cpu_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
-    ram_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    signal_quality: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cpu_percent: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    ram_percent: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # Relationships
     node: Mapped["Node"] = relationship("Node", back_populates="metrics")

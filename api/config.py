@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://jads:jadspass@db:5432/jadslink"
+    # Database (MySQL/MariaDB for Hostinger compatibility)
+    DATABASE_URL: str = "mysql+aiomysql://user:password@localhost:3306/jadslink"
 
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"

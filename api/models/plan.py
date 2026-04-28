@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from .base import BaseModel
 from decimal import Decimal
 import uuid
+from typing import Optional
 
 
 class Plan(BaseModel):
@@ -15,7 +16,7 @@ class Plan(BaseModel):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     price_usd: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    price_bs: Mapped[Decimal | None] = mapped_column(
+    price_bs: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(14, 2), nullable=True
     )
     bandwidth_down_kbps: Mapped[int] = mapped_column(

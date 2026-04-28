@@ -30,7 +30,9 @@ class RegisterResponse(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     email: EmailStr
+    full_name: str | None = None
     role: str
+    tenant_role: str | None = None  # owner, admin, collaborator, viewer
     is_active: bool
     tenant_id: UUID | None = None
 

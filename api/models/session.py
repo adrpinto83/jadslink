@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from .base import BaseModel
 from datetime import datetime
 import uuid
+from typing import Optional
 
 
 class Session(BaseModel):
@@ -16,7 +17,7 @@ class Session(BaseModel):
         UUID(as_uuid=True), ForeignKey("nodes.id"), nullable=False
     )
     device_mac: Mapped[str] = mapped_column(String(17), nullable=False)
-    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     bytes_down: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)

@@ -310,7 +310,7 @@ const Billing: React.FC = () => {
 
     let upgradeData: any = {
       upgrade_type: selectedPlan === 'extra_tickets' ? 'extra_tickets' : 'plan_upgrade',
-      payment_method: 'pago_movil',
+      payment_method: 'mobile_pay',
       payment_details: data,
     };
 

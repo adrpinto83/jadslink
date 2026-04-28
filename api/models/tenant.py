@@ -1,7 +1,9 @@
-from sqlalchemy import String, Boolean, Enum as SQLEnum, JSON, Integer
+from sqlalchemy import String, Boolean, Enum as SQLEnum, JSON, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import BaseModel
 import enum
+from datetime import datetime
+from typing import Optional
 
 
 class PlanTier(str, enum.Enum):
@@ -37,6 +39,17 @@ class Tenant(BaseModel):
     stripe_customer_id: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=True
     )
+
+    # Free/Pro subscriptions granted by superadmin
+    free_subscription_until: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )  # Cuándo vence la suscripción gratuita pro
+    free_subscription_plan: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )  # Qué plan se otorgó gratuitamente (pro, basic, etc)
+    free_subscription_reason: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )  # Razón por la cual se otorgó (prueba, promoción, etc)
 
     # Tracking para planes free y basic
     free_tickets_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

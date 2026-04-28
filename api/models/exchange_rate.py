@@ -4,6 +4,7 @@ from sqlalchemy import String, Numeric, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import BaseModel
 from decimal import Decimal
+from typing import Optional
 
 
 class ExchangeRate(BaseModel):
@@ -15,10 +16,10 @@ class ExchangeRate(BaseModel):
     source: Mapped[str] = mapped_column(
         String(50), nullable=False
     )  # 'bcv_scraping', 'manual', 'api_fallback'
-    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     def __repr__(self) -> str:
         return f"<ExchangeRate rate={self.rate} source={self.source} active={self.is_active}>"

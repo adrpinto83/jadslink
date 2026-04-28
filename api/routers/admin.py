@@ -5,14 +5,22 @@ from uuid import UUID
 from pathlib import Path
 import aiofiles
 import imghdr
+import logging
+from datetime import datetime, timedelta
 
 from database import get_db
 from config import get_settings
-from models.tenant import Tenant
-from schemas.tenant import TenantResponse
+from models.tenant import Tenant, PlanTier
+from models.user import User, UserRole, TenantRole
+from schemas.tenant import TenantResponse, GrantFreeSubscriptionRequest, SubscriptionInfo
+from schemas.user import (
+    UserResponse, TeamMemberResponse, EmployeeListResponse,
+    ChangeRoleRequest, RemoveUserRequest
+)
 from deps import get_superadmin
-from models.user import User
 from services.subscription_service import create_stripe_customer
+
+log = logging.getLogger("jadslink.admin")
 
 router = APIRouter()
 settings = get_settings()
@@ -123,3 +131,308 @@ async def get_app_logo_public():
             "logo_url": None,
             "has_custom_logo": False
         }
+
+
+# ============================================================================
+# GESTIÓN DE TENANTS POR SUPERADMIN
+# ============================================================================
+
+@router.get("/tenants")
+async def admin_list_tenants(
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Superadmin lista todos los tenants/operadores.
+    """
+    result = await db.execute(select(Tenant).order_by(Tenant.created_at.desc()))
+    tenants = result.scalars().all()
+
+    return [
+        {
+            "id": str(tenant.id),
+            "name": tenant.name,
+            "slug": tenant.slug,
+            "is_active": tenant.is_active,
+        }
+        for tenant in tenants
+    ]
+
+
+# ============================================================================
+# GESTIÓN DE EMPLEADOS POR SUPERADMIN (para cualquier tenant)
+# ============================================================================
+
+@router.get("/tenants/{tenant_id}/employees", response_model=EmployeeListResponse)
+async def admin_list_tenant_employees(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Superadmin lista todos los empleados de un tenant específico.
+    """
+    # Verificar que el tenant existe
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Obtener todos los usuarios del tenant
+    result = await db.execute(
+        select(User).where(User.tenant_id == tenant_id).order_by(User.created_at.desc())
+    )
+    users = result.scalars().all()
+
+    # Contar por rol
+    role_counts = {
+        "owner": 0,
+        "admin": 0,
+        "collaborator": 0,
+        "viewer": 0,
+    }
+
+    for user in users:
+        if user.tenant_role:
+            role_counts[user.tenant_role.value] += 1
+
+    members = [
+        TeamMemberResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            tenant_role=user.tenant_role.value if user.tenant_role else "collaborator",
+            is_active=user.is_active,
+            created_at=user.created_at,
+        )
+        for user in users
+    ]
+
+    return EmployeeListResponse(
+        members=members,
+        total_count=len(users),
+        role_counts=role_counts,
+    )
+
+
+@router.patch("/tenants/{tenant_id}/employees/{user_id}", response_model=UserResponse)
+async def admin_change_employee_role(
+    tenant_id: UUID,
+    user_id: UUID,
+    update: ChangeRoleRequest,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Superadmin cambia rol de un empleado en cualquier tenant.
+    """
+    # Verificar que el tenant existe
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Obtener usuario del tenant
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado en este tenant")
+
+    # No permitir cambiar rol del owner
+    if user.tenant_role == TenantRole.owner:
+        raise HTTPException(
+            status_code=403,
+            detail="No se puede cambiar el rol del owner"
+        )
+
+    # Actualizar rol
+    old_role = user.tenant_role.value if user.tenant_role else None
+    user.tenant_role = update.tenant_role
+
+    await db.commit()
+    await db.refresh(user)
+
+    log.info(f"Admin changed role of {user.email}: {old_role} → {update.tenant_role.value}")
+
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+        tenant_role=user.tenant_role.value if user.tenant_role else None,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
+
+
+@router.delete("/tenants/{tenant_id}/employees/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_remove_employee(
+    tenant_id: UUID,
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Superadmin remueve un empleado de cualquier tenant (soft delete).
+    """
+    # Verificar que el tenant existe
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Obtener usuario del tenant
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado en este tenant")
+
+    # No permitir remover al owner
+    if user.tenant_role == TenantRole.owner:
+        raise HTTPException(
+            status_code=403,
+            detail="No se puede remover al owner del tenant"
+        )
+
+    # Desactivar usuario
+    user.is_active = False
+    await db.commit()
+
+    log.info(f"Admin removed employee {user.email} from tenant {tenant.name}")
+
+    return None
+
+
+# ============================================================================
+# GESTIÓN DE SUSCRIPCIONES GRATUITAS POR SUPERADMIN
+# ============================================================================
+
+@router.get("/tenants/{tenant_id}/subscription", response_model=SubscriptionInfo)
+async def get_tenant_subscription_info(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Superadmin obtiene información de suscripción de un tenant.
+    """
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Verificar si la suscripción gratuita ya expiró
+    is_free_active = False
+    if tenant.free_subscription_until:
+        is_free_active = datetime.utcnow() < tenant.free_subscription_until
+
+    return SubscriptionInfo(
+        plan_tier=tenant.plan_tier.value,
+        subscription_status=tenant.subscription_status.value,
+        free_subscription_until=tenant.free_subscription_until,
+        free_subscription_plan=tenant.free_subscription_plan,
+        free_subscription_reason=tenant.free_subscription_reason,
+        is_free_subscription_active=is_free_active,
+    )
+
+
+@router.post("/tenants/{tenant_id}/subscription/grant")
+async def grant_free_subscription(
+    tenant_id: UUID,
+    request: GrantFreeSubscriptionRequest,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Superadmin otorga una suscripción gratuita a un tenant.
+    """
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Validar plan
+    valid_plans = ["pro", "basic"]
+    if request.plan not in valid_plans:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Plan inválido. Válidos: {', '.join(valid_plans)}",
+        )
+
+    # Calcular fecha de expiración
+    free_until = datetime.utcnow() + timedelta(days=request.days)
+
+    # Actualizar tenant
+    tenant.plan_tier = PlanTier.pro if request.plan == "pro" else PlanTier.basic
+    tenant.free_subscription_until = free_until
+    tenant.free_subscription_plan = request.plan
+    tenant.free_subscription_reason = request.reason
+
+    db.add(tenant)
+    await db.commit()
+    await db.refresh(tenant)
+
+    log.info(
+        f"Admin granted free {request.plan} subscription to tenant {tenant.name} for {request.days} days"
+    )
+
+    return {
+        "status": "success",
+        "message": f"Suscripción {request.plan.upper()} gratuita otorgada por {request.days} días",
+        "tenant_name": tenant.name,
+        "plan": request.plan,
+        "expires_at": free_until,
+        "reason": request.reason,
+    }
+
+
+@router.post("/tenants/{tenant_id}/subscription/revoke")
+async def revoke_free_subscription(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Superadmin revoca una suscripción gratuita de un tenant.
+    """
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    if not tenant.free_subscription_until:
+        raise HTTPException(
+            status_code=400,
+            detail="Este tenant no tiene suscripción gratuita",
+        )
+
+    # Revertir a plan free
+    tenant.plan_tier = PlanTier.free
+    tenant.free_subscription_until = None
+    tenant.free_subscription_plan = None
+    tenant.free_subscription_reason = None
+
+    db.add(tenant)
+    await db.commit()
+    await db.refresh(tenant)
+
+    log.info(f"Admin revoked free subscription from tenant {tenant.name}")
+
+    return {
+        "status": "success",
+        "message": "Suscripción gratuita revocada. Tenant revertido a plan FREE",
+        "tenant_name": tenant.name,
+    }

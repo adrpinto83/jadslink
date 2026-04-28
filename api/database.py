@@ -4,20 +4,19 @@ from config import get_settings
 
 settings = get_settings()
 
-# Use NullPool for testing/development with SQLite compatibility
-# In production, use AsyncQueuePool or external pooling (PgBouncer)
-# For now, we use NullPool which is compatible with both sync and async
+# Use QueuePool for MySQL (default behavior)
+# aiomysql with connection pooling for better performance
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     future=True,
-    poolclass=NullPool,
+    pool_size=20,
+    max_overflow=0,
+    pool_pre_ping=True,  # Verify connection before using
+    pool_recycle=3600,   # Recycle connections after 1 hour
     connect_args={
-        "timeout": 30,           # Connection timeout
-        "server_settings": {
-            "application_name": "jadslink_api",
-            "jit": "off",
-        }
+        "charset": "utf8mb4",
+        "autocommit": True,
     }
 )
 

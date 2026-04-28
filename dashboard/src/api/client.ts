@@ -37,7 +37,12 @@ apiClient.interceptors.request.use(
     // Add authorization token (Bearer token from auth store)
     const accessToken = useAuthStore.getState().accessToken;
     if (accessToken) {
+      // Standard Authorization header
       config.headers.Authorization = `Bearer ${accessToken}`;
+
+      // Also add as X-Authorization header for proxy compatibility
+      // Some shared hosting providers filter the Authorization header
+      config.headers['X-Authorization'] = `Bearer ${accessToken}`;
     }
 
     // Add CSRF token to headers for state-changing requests

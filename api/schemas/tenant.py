@@ -27,3 +27,21 @@ class TenantResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class GrantFreeSubscriptionRequest(BaseModel):
+    plan: str  # 'pro', 'basic', etc
+    days: int  # Cuántos días de acceso gratuito
+    reason: str | None = None  # Razón (ej: "prueba", "promoción")
+
+
+class SubscriptionInfo(BaseModel):
+    plan_tier: str
+    subscription_status: str
+    free_subscription_until: datetime | None = None
+    free_subscription_plan: str | None = None
+    free_subscription_reason: str | None = None
+    is_free_subscription_active: bool
+
+    class Config:
+        from_attributes = True

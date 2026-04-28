@@ -5,6 +5,7 @@ from .base import BaseModel
 from datetime import datetime
 import enum
 import uuid
+from typing import Optional
 
 
 class NodeStatus(str, enum.Enum):
@@ -30,10 +31,10 @@ class Node(BaseModel):
     status: Mapped[NodeStatus] = mapped_column(
         SQLEnum(NodeStatus), default=NodeStatus.offline, nullable=False
     )
-    last_seen_at: Mapped[datetime | None] = mapped_column(
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    wan_ip: Mapped[str | None] = mapped_column(
+    wan_ip: Mapped[Optional[str]] = mapped_column(
         String(45), nullable=True
     )
     config: Mapped[dict] = mapped_column(

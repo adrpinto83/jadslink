@@ -76,12 +76,14 @@ async def register(
     db.add(new_tenant)
     await db.flush()  # Flush to get the new_tenant.id
 
-    # Create new user (operator)
+    # Create new user (operator) as owner of the tenant
     hashed_password = hash_password(request.password)
     new_user = User(
         email=request.email,
+        full_name=request.email.split("@")[0],  # Use email prefix as default name
         password_hash=hashed_password,
         role="operator",
+        tenant_role="owner",  # First user of a tenant is the owner
         tenant_id=new_tenant.id,
         is_active=True,
     )

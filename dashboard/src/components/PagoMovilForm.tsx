@@ -71,9 +71,11 @@ export const PagoMovilForm: React.FC<PagoMovilFormProps> = ({
       }
     }
 
-    // Validate comprobante
-    if (!comprobante || !comprobante.startsWith('http')) {
-      newErrors.comprobante = 'Comprobante es requerido (URL válida)';
+    // Validate comprobante - must be a valid URL (absolute or relative) or non-empty string
+    if (!comprobante) {
+      newErrors.comprobante = 'Comprobante es requerido';
+    } else if (!comprobante.startsWith('http') && !comprobante.startsWith('/')) {
+      newErrors.comprobante = 'Comprobante debe tener una URL válida';
     }
 
     if (Object.keys(newErrors).length > 0) {

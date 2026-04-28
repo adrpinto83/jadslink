@@ -30,6 +30,10 @@ interface Node {
     channel: number;
     max_clients: number;
     bandwidth_default: number;
+    api_endpoint?: string;
+    heartbeat_interval?: number;
+    metrics_interval?: number;
+    enable_metrics?: boolean;
   } | null;
 }
 
@@ -40,6 +44,10 @@ const formSchema = z.object({
   channel: z.coerce.number().int().min(1).max(13).optional(),
   max_clients: z.coerce.number().int().min(1).optional(),
   bandwidth_default: z.coerce.number().int().min(0).optional(),
+  api_endpoint: z.string().url().optional(),
+  heartbeat_interval: z.coerce.number().int().min(10).max(300).optional(),
+  metrics_interval: z.coerce.number().int().min(30).max(600).optional(),
+  enable_metrics: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -69,6 +77,10 @@ const NodeDetail: React.FC = () => {
             channel: updatedNode.channel,
             max_clients: updatedNode.max_clients,
             bandwidth_default: updatedNode.bandwidth_default,
+            api_endpoint: updatedNode.api_endpoint || 'https://api.jadslink.io',
+            heartbeat_interval: updatedNode.heartbeat_interval || 30,
+            metrics_interval: updatedNode.metrics_interval || 60,
+            enable_metrics: updatedNode.enable_metrics !== false,
           }
         }
         return apiClient.patch(`/nodes/${nodeId}`, payload);
@@ -91,6 +103,10 @@ const NodeDetail: React.FC = () => {
         channel: 1,
         max_clients: 10,
         bandwidth_default: 0,
+        api_endpoint: 'https://api.jadslink.io',
+        heartbeat_interval: 30,
+        metrics_interval: 60,
+        enable_metrics: true,
     }
   });
 
@@ -102,6 +118,10 @@ const NodeDetail: React.FC = () => {
         channel: node.config?.channel ?? 1,
         max_clients: node.config?.max_clients ?? 10,
         bandwidth_default: node.config?.bandwidth_default ?? 0,
+        api_endpoint: node.config?.api_endpoint ?? 'https://api.jadslink.io',
+        heartbeat_interval: node.config?.heartbeat_interval ?? 30,
+        metrics_interval: node.config?.metrics_interval ?? 60,
+        enable_metrics: node.config?.enable_metrics ?? true,
       });
     }
   }, [node, form]);
@@ -210,7 +230,79 @@ const NodeDetail: React.FC = () => {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" disabled={mutation.isPending}>
+
+                  {/* Router Communication Section */}
+                  <div className="border-t pt-6">
+                    <h3 className="font-semibold text-base mb-4">Comunicación del Router</h3>
+
+                    <FormField
+                      control={form.control}
+                      name="api_endpoint"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>API Endpoint</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="https://api.jadslink.io" />
+                          </FormControl>
+                          <FormDescription>URL del servidor backend para sincronización</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <FormField
+                        control={form.control}
+                        name="heartbeat_interval"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Intervalo Heartbeat (seg)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} min="10" max="300" />
+                            </FormControl>
+                            <FormDescription>Frecuencia de latidos (10-300)</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="metrics_interval"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Intervalo Métricas (seg)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} min="30" max="600" />
+                            </FormControl>
+                            <FormDescription>Frecuencia de reportes (30-600)</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="enable_metrics"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-3 mt-4 p-3 bg-muted rounded">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={field.onChange}
+                              className="rounded"
+                            />
+                          </FormControl>
+                          <FormLabel className="mb-0 cursor-pointer flex-1">Reportar métricas al servidor</FormLabel>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={mutation.isPending} className="mt-6">
                     {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
                   </Button>
                 </form>

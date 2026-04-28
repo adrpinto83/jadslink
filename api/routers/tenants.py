@@ -17,8 +17,16 @@ from models.node import Node
 from models.ticket import Ticket
 from models.session import Session as SessionModel
 from models.plan import Plan
+from models.user import User, UserRole, TenantRole
 from schemas.tenant import TenantResponse, TenantUpdate
-from deps import get_current_tenant, NODE_LIMITS, TICKET_LIMITS
+from schemas.user import (
+    UserCreateRequest, UserUpdate, UserResponse, TeamMemberResponse,
+    EmployeeListResponse, InviteUserRequest, ChangeRoleRequest, RemoveUserRequest
+)
+from deps import get_current_tenant, get_current_user, NODE_LIMITS, TICKET_LIMITS
+import logging
+
+log = logging.getLogger("jadslink.tenants")
 
 router = APIRouter()
 settings = get_settings()
@@ -303,3 +311,230 @@ async def get_tenant_logo_public(
         "slug": tenant.slug,
         "logo_url": tenant.settings.get("logo_url") if tenant.settings else None,
     }
+
+
+# ============================================================================
+# GESTIÓN DE EMPLEADOS/COLABORADORES
+# ============================================================================
+
+@router.get("/me/employees", response_model=EmployeeListResponse)
+async def list_tenant_employees(
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Listar todos los empleados/colaboradores del tenant actual.
+    """
+    if not current_tenant:
+        raise HTTPException(status_code=403, detail="No tenant found")
+
+    # Obtener todos los usuarios del tenant
+    result = await db.execute(
+        select(User).where(User.tenant_id == current_tenant.id).order_by(User.created_at.desc())
+    )
+    users = result.scalars().all()
+
+    # Contar por rol
+    role_counts = {
+        "owner": 0,
+        "admin": 0,
+        "collaborator": 0,
+        "viewer": 0,
+    }
+
+    for user in users:
+        if user.tenant_role:
+            role_counts[user.tenant_role.value] += 1
+
+    members = [
+        TeamMemberResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            tenant_role=user.tenant_role.value if user.tenant_role else "collaborator",
+            is_active=user.is_active,
+            created_at=user.created_at,
+        )
+        for user in users
+    ]
+
+    return EmployeeListResponse(
+        members=members,
+        total_count=len(users),
+        role_counts=role_counts,
+    )
+
+
+@router.post("/me/employees", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def invite_employee(
+    invite: InviteUserRequest,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Invitar a un nuevo empleado/colaborador al tenant.
+    Solo owner/admin pueden invitar.
+    """
+    if not current_tenant:
+        raise HTTPException(status_code=403, detail="No tenant found")
+
+    # Validar permisos: solo owner y admin pueden invitar
+    if current_user.tenant_role not in [TenantRole.owner, TenantRole.admin]:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo owner y admin pueden invitar empleados"
+        )
+
+    # Verificar si el usuario ya existe
+    result = await db.execute(select(User).where(User.email == invite.email))
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        if existing_user.tenant_id == current_tenant.id:
+            raise HTTPException(
+                status_code=409,
+                detail="Este usuario ya es miembro del tenant"
+            )
+        else:
+            raise HTTPException(
+                status_code=409,
+                detail="Este email ya está registrado en otra cuenta"
+            )
+
+    # Crear nuevo usuario
+    new_user = User(
+        email=invite.email,
+        full_name=invite.full_name or invite.email.split("@")[0],
+        password_hash="",  # Sin contraseña inicial (invitación pendiente)
+        role=UserRole.operator,
+        tenant_role=invite.tenant_role,
+        tenant_id=current_tenant.id,
+        is_active=False,  # Desactivado hasta que acepte la invitación
+    )
+
+    db.add(new_user)
+    await db.flush()
+    await db.commit()
+    await db.refresh(new_user)
+
+    log.info(f"Employee invited: {new_user.email} to tenant {current_tenant.id}")
+
+    # TODO: Enviar email de invitación con link de activación
+    # await EmailService.send_employee_invitation(invite.email, current_tenant.name, ...)
+
+    return UserResponse(
+        id=new_user.id,
+        email=new_user.email,
+        full_name=new_user.full_name,
+        role=new_user.role.value,
+        tenant_role=new_user.tenant_role.value if new_user.tenant_role else None,
+        is_active=new_user.is_active,
+        created_at=new_user.created_at,
+        updated_at=new_user.updated_at,
+    )
+
+
+@router.patch("/me/employees/{user_id}", response_model=UserResponse)
+async def update_employee(
+    user_id: UUID,
+    update: ChangeRoleRequest,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Cambiar rol de un empleado.
+    Solo owner/admin pueden cambiar roles.
+    """
+    if not current_tenant:
+        raise HTTPException(status_code=403, detail="No tenant found")
+
+    # Validar permisos
+    if current_user.tenant_role not in [TenantRole.owner, TenantRole.admin]:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo owner y admin pueden cambiar roles"
+        )
+
+    # Obtener usuario
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.tenant_id == current_tenant.id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # No permitir cambiar rol del owner (a menos que sea el owner mismo)
+    if user.tenant_role == TenantRole.owner and current_user.id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="No se puede cambiar el rol del owner"
+        )
+
+    # Actualizar rol
+    old_role = user.tenant_role.value if user.tenant_role else None
+    user.tenant_role = update.tenant_role
+
+    await db.commit()
+    await db.refresh(user)
+
+    log.info(f"Employee {user.email} role changed from {old_role} to {update.tenant_role.value}")
+
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+        tenant_role=user.tenant_role.value if user.tenant_role else None,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
+
+
+@router.delete("/me/employees/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_employee(
+    user_id: UUID,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Remover un empleado del tenant (soft delete / desactivar).
+    Solo owner/admin pueden remover.
+    """
+    if not current_tenant:
+        raise HTTPException(status_code=403, detail="No tenant found")
+
+    # Validar permisos
+    if current_user.tenant_role not in [TenantRole.owner, TenantRole.admin]:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo owner y admin pueden remover empleados"
+        )
+
+    # Obtener usuario
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.tenant_id == current_tenant.id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Validar que no se intente remover al owner
+    if user.tenant_role == TenantRole.owner:
+        raise HTTPException(
+            status_code=403,
+            detail="No se puede remover al owner del tenant"
+        )
+
+    # Desactivar usuario (soft delete)
+    user.is_active = False
+    await db.commit()
+
+    log.info(f"Employee removed: {user.email} from tenant {current_tenant.id}")
+
+    return None
