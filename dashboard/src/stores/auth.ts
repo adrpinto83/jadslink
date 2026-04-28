@@ -19,10 +19,11 @@ interface AuthState {
   logout: () => void;
   fetchUser: () => Promise<void>;
   setAccessToken: (token: string | null) => void;
+  initializeFromStorage: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  accessToken: null,  // Only in memory (lost on page reload)
+  accessToken: null,
   isAuthenticated: false,
   user: null,
   loading: true,
@@ -39,12 +40,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  initializeFromStorage: async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        console.log('[Auth] Token found in localStorage, restoring...');
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        set({ accessToken: token, isAuthenticated: true });
+
+        // Verify token is still valid
+        try {
+          const response = await apiClient.get('/auth/me');
+          set({ user: response.data, loading: false });
+        } catch (err) {
+          console.error('[Auth] Token validation failed, clearing storage');
+          get().logout();
+        }
+      } else {
+        set({ loading: false });
+      }
+    } catch (error) {
+      console.error('[Auth] Failed to initialize from storage:', error);
+      set({ loading: false });
+    }
+  },
+
   login: async (email, password) => {
     try {
       const response = await apiClient.post('/auth/login', { email, password });
       const { access_token } = response.data;
 
-      // Store access token in memory only (not localStorage)
+      // Store access token in localStorage AND memory
+      localStorage.setItem('accessToken', access_token);
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
       set({ accessToken: access_token, isAuthenticated: true });
@@ -57,20 +84,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    localStorage.removeItem('accessToken');
     delete apiClient.defaults.headers.common['Authorization'];
     set({ accessToken: null, isAuthenticated: false, user: null });
   },
 
   setAccessToken: (token: string | null) => {
     if (token) {
+      localStorage.setItem('accessToken', token);
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
+      localStorage.removeItem('accessToken');
       delete apiClient.defaults.headers.common['Authorization'];
     }
     set({ accessToken: token, isAuthenticated: !!token });
   },
 }));
 
-// Try to fetch user on initial load if there's an access token in memory
-// Note: Access token is lost on page reload, user will need to login again
-// This is intended behavior for security (prevent token theft via XSS)
+// Initialize from localStorage on app startup
+useAuthStore.getState().initializeFromStorage();
