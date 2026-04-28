@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/api/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { SimpleDataDisplay } from '@/components/SimpleDataDisplay';
 import {
   Activity,
   Users,
@@ -289,6 +290,9 @@ const Dashboard: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Debug Section - Direct API Test */}
+      <SimpleDataDisplay />
     </div>
   );
 };
