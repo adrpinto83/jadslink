@@ -1,12 +1,14 @@
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/auth";
 import { useNavigate, Link } from "react-router-dom";
-import { Wifi, Zap, Crown, CheckCircle2 } from "lucide-react";
+import { Wifi, Zap, Crown, CheckCircle2, Loader } from "lucide-react";
 import AppLogo from "@/components/AppLogo";
+import apiClient from "@/api/client";
 
 // Simple default plans for login page
 const DEFAULT_PLANS = [
@@ -65,6 +67,38 @@ const Login: React.FC = () => {
 
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
+
+  // Fetch planes reales de la API
+  const { data: plansData = DEFAULT_PLANS, isLoading: isLoadingPlans } = useQuery({
+    queryKey: ["subscription-plans-login"],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get("/subscriptions/plans");
+        const plans = response.data;
+
+        // Transformar planes de Stripe al formato esperado
+        return plans.map((plan: any, index: number) => ({
+          name: plan.product?.name || "Plan",
+          description: plan.product?.description || "",
+          price: plan.unit_amount ? `$${(plan.unit_amount / 100).toFixed(2)}` : "Contactar",
+          period: `/${plan.recurring?.interval || "mes"}`,
+          features: [
+            { text: plan.product?.description?.substring(0, 30) || "Características", included: true },
+            { text: "Soporte incluido", included: true },
+            { text: "Acceso a dashboard", included: true },
+            { text: "Monitoreo en tiempo real", included: index !== 2 },
+            { text: "API pública", included: index === 2 },
+          ],
+          icon: index === 0 ? Wifi : index === 1 ? Zap : Crown,
+          highlight: index === 1,
+        }));
+      } catch (error) {
+        console.warn("Error fetching plans, using defaults:", error);
+        return DEFAULT_PLANS;
+      }
+    },
+    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,7 +228,12 @@ const Login: React.FC = () => {
 
             {/* Plans Grid */}
             <div className="grid grid-cols-3 gap-4 mb-8">
-              {DEFAULT_PLANS.map((plan: any, index: number) => {
+              {isLoadingPlans && (
+                <div className="col-span-3 flex justify-center py-12">
+                  <Loader className="w-8 h-8 text-blue-300 animate-spin" />
+                </div>
+              )}
+              {!isLoadingPlans && plansData.map((plan: any, index: number) => {
                 const IconComponent = plan.icon;
                 const isHighlight = plan.highlight === true || index === 1;
                 return (
@@ -264,7 +303,7 @@ const Login: React.FC = () => {
 
             {/* Features Section */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              {DEFAULT_PLANS.slice(0, 2).map((plan: any, index: number) => {
+              {plansData.slice(0, 2).map((plan: any, index: number) => {
                 const icon = index === 0 ? "✨" : "🚀";
                 const planName = plan.name;
                 const features = plan.features || [];
