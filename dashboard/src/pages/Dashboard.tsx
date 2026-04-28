@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/api/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SimpleDataDisplay } from '@/components/SimpleDataDisplay';
+import { ReactQueryTest } from '@/components/ReactQueryTest';
 import {
   Activity,
   Users,
@@ -293,6 +294,9 @@ const Dashboard: React.FC = () => {
 
       {/* Debug Section - Direct API Test */}
       <SimpleDataDisplay />
+
+      {/* Debug Section - React Query Test */}
+      <ReactQueryTest />
     </div>
   );
 };
