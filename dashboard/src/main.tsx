@@ -127,7 +127,9 @@ const router = createBrowserRouter([
     path: "*",
     element: <Navigate to="/" replace />
   } // Fallback route
-]);
+], {
+  basename: window.location.pathname.startsWith('/dashboard') ? '/dashboard' : '/'
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
