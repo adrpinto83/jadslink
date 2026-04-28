@@ -134,13 +134,17 @@ async def get_my_upgrade_requests(
     if not current_tenant:
         raise HTTPException(status_code=403, detail="No tenant found")
 
-    result = await db.execute(
-        select(UpgradeRequest)
-        .where(UpgradeRequest.tenant_id == current_tenant.id)
-        .order_by(UpgradeRequest.created_at.desc())
-    )
-
-    return result.scalars().all()
+    try:
+        result = await db.execute(
+            select(UpgradeRequest)
+            .where(UpgradeRequest.tenant_id == current_tenant.id)
+            .order_by(UpgradeRequest.created_at.desc())
+        )
+        return result.scalars().all()
+    except Exception as e:
+        # Si la tabla no existe o hay error de BD, retornar lista vacía
+        log.warning(f"Error fetching upgrade requests: {str(e)}")
+        return []
 
 
 # ============================================================================

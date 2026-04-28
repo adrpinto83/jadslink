@@ -73,43 +73,53 @@ async def get_tenant_usage(
 ):
     """Get current resource usage (nodes and tickets) for the tenant."""
 
-    # Count active (non-deleted) nodes
-    node_result = await db.execute(
-        select(func.count(Node.id)).where(
-            Node.tenant_id == current_tenant.id,
-            Node.deleted_at == None
+    try:
+        # Count active (non-deleted) nodes
+        node_result = await db.execute(
+            select(func.count(Node.id)).where(
+                Node.tenant_id == current_tenant.id,
+                Node.deleted_at == None
+            )
         )
-    )
-    nodes_used = node_result.scalar_one()
+        nodes_used = node_result.scalar_one()
 
-    # Count tickets from last 30 days
-    since = datetime.now(timezone.utc) - timedelta(days=30)
-    ticket_result = await db.execute(
-        select(func.count(Ticket.id)).where(
-            Ticket.tenant_id == current_tenant.id,
-            Ticket.created_at >= since
+        # Count tickets from last 30 days
+        since = datetime.now(timezone.utc) - timedelta(days=30)
+        ticket_result = await db.execute(
+            select(func.count(Ticket.id)).where(
+                Ticket.tenant_id == current_tenant.id,
+                Ticket.created_at >= since
+            )
         )
-    )
-    tickets_used = ticket_result.scalar_one()
+        tickets_used = ticket_result.scalar_one()
 
-    # Get plan limits
-    nodes_limit = NODE_LIMITS.get(current_tenant.plan_tier, 0)
-    tickets_limit = TICKET_LIMITS.get(current_tenant.plan_tier, 0)
+        # Get plan limits
+        nodes_limit = NODE_LIMITS.get(current_tenant.plan_tier, 0)
+        tickets_limit = TICKET_LIMITS.get(current_tenant.plan_tier, 0)
 
-    return {
-        "plan_tier": current_tenant.plan_tier,
-        "subscription_status": current_tenant.subscription_status,
-        "nodes": {
-            "used": nodes_used,
-            "limit": nodes_limit if nodes_limit != -1 else 999999,
-            "unlimited": nodes_limit == -1,
-        },
-        "tickets": {
-            "used": tickets_used,
-            "limit": tickets_limit if tickets_limit != -1 else 999999,
-            "unlimited": tickets_limit == -1,
-        },
-    }
+        return {
+            "plan_tier": current_tenant.plan_tier,
+            "subscription_status": current_tenant.subscription_status,
+            "nodes": {
+                "used": nodes_used,
+                "limit": nodes_limit if nodes_limit != -1 else 999999,
+                "unlimited": nodes_limit == -1,
+            },
+            "tickets": {
+                "used": tickets_used,
+                "limit": tickets_limit if tickets_limit != -1 else 999999,
+                "unlimited": tickets_limit == -1,
+            },
+        }
+    except Exception as e:
+        # Si hay error de BD, retornar valores por defecto
+        log.warning(f"Error fetching tenant usage: {str(e)}")
+        return {
+            "plan_tier": current_tenant.plan_tier or "free",
+            "subscription_status": current_tenant.subscription_status or "active",
+            "nodes": {"used": 0, "limit": 1, "unlimited": False},
+            "tickets": {"used": 0, "limit": 50, "unlimited": False},
+        }
 
 
 @router.get("/me/analytics")
