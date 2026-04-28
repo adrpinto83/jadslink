@@ -20,6 +20,41 @@ from models.ticket import Ticket
 settings = get_settings()
 security = HTTPBearer(auto_error=False)  # Don't auto-error, we'll handle missing credentials manually
 
+
+async def get_token_from_request(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> str:
+    """Extract token from multiple sources"""
+    token = None
+
+    # Try standard Authorization header first (with HTTPBearer)
+    if credentials:
+        token = credentials.credentials
+
+    # If no token from HTTPBearer, try alternative sources
+    if not token:
+        # Try X-Authorization header (for proxy compatibility)
+        auth_header = request.headers.get("x-authorization") or request.headers.get("X-Authorization")
+        if auth_header:
+            token = auth_header.replace("Bearer ", "").strip()
+
+        # Try Authorization query parameter
+        if not token:
+            token = request.query_params.get("access_token", "").strip()
+
+        # Try cookie
+        if not token:
+            token = request.cookies.get("access_token", "").strip()
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No token provided",
+        )
+
+    return token
+
 # Plan definitions with new pricing model
 """
 PLAN TIERS:
@@ -61,43 +96,10 @@ TICKET_LIMITS = {
 PLAN_LIMITS = NODE_LIMITS
 
 async def get_current_user(
-    request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    token: str = Depends(get_token_from_request),
     db: AsyncSession = Depends(get_db),
 ) -> "User":
-    """Extract and verify JWT token, return current user
-
-    Supports multiple token sources (in order of priority):
-    1. Authorization: Bearer <token> header (standard)
-    2. X-Authorization header (for proxy compatibility)
-    3. Authorization query parameter (for debugging)
-    4. Access token cookie (for SPA compatibility)
-    """
-    token = None
-
-    # Try standard Authorization header first (with HTTPBearer)
-    if credentials:
-        token = credentials.credentials
-
-    # If no token from HTTPBearer, try alternative sources
-    if not token and request:
-        # Try X-Authorization header (for proxy compatibility)
-        token = request.headers.get("X-Authorization", "").replace("Bearer ", "")
-
-        # Try Authorization query parameter
-        if not token:
-            token = request.query_params.get("access_token", "")
-
-        # Try cookie
-        if not token:
-            token = request.cookies.get("access_token", "")
-
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No token provided",
-        )
-
+    """Extract and verify JWT token, return current user"""
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
