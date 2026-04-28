@@ -1,12 +1,66 @@
 """Routes for file uploads (payment receipts, comprobantes)."""
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi.responses import FileResponse
 from services.storage_service import StorageService
+from pathlib import Path
 import logging
 
 log = logging.getLogger("jadslink.uploads")
 
 router = APIRouter()
+
+
+@router.get("/app/{filename}")
+async def get_app_file(filename: str):
+    """
+    Get application file (logo, etc).
+    Serves files from uploads/app/ directory.
+    """
+    # Validate filename to prevent directory traversal
+    if ".." in filename or filename.startswith("/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename",
+        )
+
+    file_path = Path("uploads/app") / filename
+
+    # Check if file exists
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+
+    # Serve the file
+    return FileResponse(file_path)
+
+
+@router.get("/comprobantes/{filename}")
+async def get_comprobante_file(filename: str):
+    """
+    Get payment receipt file.
+    Serves files from uploads/comprobantes/ directory.
+    """
+    # Validate filename to prevent directory traversal
+    if ".." in filename or filename.startswith("/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename",
+        )
+
+    file_path = Path("uploads/comprobantes") / filename
+
+    # Check if file exists
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+
+    # Serve the file
+    return FileResponse(file_path)
 
 
 @router.post("/comprobante")
