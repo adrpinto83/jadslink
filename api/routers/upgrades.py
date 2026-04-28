@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timezone
 from uuid import UUID
+from typing import Optional
 
 from database import get_db
 from deps import get_current_user, get_current_tenant
@@ -268,7 +269,7 @@ async def confirm_payment(
 async def get_payment_history(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    status_filter: str | None = None,
+    status_filter: Optional[str] = None,
     limit: int = 100,
 ):
     """
