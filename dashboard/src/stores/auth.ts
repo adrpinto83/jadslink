@@ -41,22 +41,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   initializeFromStorage: async () => {
+    set({ loading: true }); // Asegurar que loading está true durante la inicialización
     try {
       const token = localStorage.getItem('accessToken');
       if (token) {
         console.log('[Auth] Token found in localStorage, restoring...');
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        set({ accessToken: token, isAuthenticated: true });
+        set({ accessToken: token, isAuthenticated: true, loading: true }); // Mantener loading true
 
         // Verify token is still valid
         try {
           const response = await apiClient.get('/auth/me');
-          set({ user: response.data, loading: false });
+          set({ user: response.data, loading: false, isAuthenticated: true });
+          console.log('[Auth] Token validation succeeded');
         } catch (err) {
-          console.error('[Auth] Token validation failed, clearing storage');
+          console.error('[Auth] Token validation failed, clearing storage', err);
           get().logout();
+          set({ loading: false });
         }
       } else {
+        console.log('[Auth] No token found in localStorage');
         set({ loading: false });
       }
     } catch (error) {
