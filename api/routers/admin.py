@@ -98,7 +98,7 @@ async def upload_app_logo(
     async with aiofiles.open(file_path, "wb") as f:
         await f.write(content)
 
-    logo_url = f"{settings.API_BASE_URL}/uploads/app/{filename}"
+    logo_url = f"{settings.API_PREFIX}/uploads/app/{filename}"
 
     return {
         "status": "success",
@@ -112,15 +112,17 @@ async def get_app_logo_public():
     """
     Get JADSlink application logo (public endpoint, no authentication required).
     Used for displaying logo in login/register and throughout the app.
+    Returns relative URL so it works in both dev and production.
     """
     # Check if logo exists
     uploads_dir = Path("uploads/app")
     logo_files = list(uploads_dir.glob("jadslink.*"))
 
     if logo_files:
-        # Logo exists, return its URL
+        # Logo exists, return its relative URL
         logo_filename = logo_files[0].name
-        logo_url = f"{settings.API_BASE_URL}/uploads/app/{logo_filename}"
+        # Return relative URL that will be resolved relative to the current API
+        logo_url = f"{settings.API_PREFIX}/uploads/app/{logo_filename}"
         return {
             "logo_url": logo_url,
             "has_custom_logo": True
