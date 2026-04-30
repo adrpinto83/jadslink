@@ -312,7 +312,8 @@ const AdminSubscriptions: React.FC = () => {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="pro">PRO - Ilimitado</SelectItem>
-                              <SelectItem value="basic">BASIC - Limitado</SelectItem>
+                              <SelectItem value="standard">ESTÁNDAR - 1,000 tickets/mes, 3 nodos</SelectItem>
+                              <SelectItem value="basic">BÁSICO - 200 tickets/mes, 1 nodo</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

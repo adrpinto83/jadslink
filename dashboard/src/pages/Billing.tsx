@@ -11,6 +11,7 @@ import { UpgradeOptions } from '@/components/UpgradeOptions';
 import { PaymentMethodSelector } from '@/components/PaymentMethodSelector';
 import { PagoMovilForm } from '@/components/PagoMovilForm';
 import { UpgradeRequestsHistory } from '@/components/UpgradeRequestsHistory';
+import { useSaaSPlans } from '@/hooks/useSaaSPlans';
 
 interface Tenant {
   id: string;
@@ -170,15 +171,8 @@ const Billing: React.FC = () => {
     },
   });
 
-  const { data: plans } = useQuery<SubscriptionPlan[]>({
-    queryKey: ['subscription', 'plans'],
-    queryFn: async () => {
-      const response = await apiClient.get('/subscriptions/plans');
-      return response.data;
-    },
-    staleTime: 60 * 60 * 1000, // 1 hour cache
-    refetchInterval: false, // Don't auto-refetch
-  });
+  // Obtener planes SaaS mejorados
+  const { data: saasPlans = [] } = useSaaSPlans();
 
   const { data: upgradeRequests = [], refetch: refetchRequests, isLoading: isLoadingRequests } = useQuery<UpgradeRequest[]>({
     queryKey: ['subscriptions', 'my-requests'],
@@ -514,125 +508,70 @@ const Billing: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Planes SaaS Stripe - Mejorado */}
-      {plans && plans.length > 0 && (
+      {/* Planes SaaS - Mejorados */}
+      {saasPlans && saasPlans.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold">Planes SaaS (Facturación Mensual)</h2>
+              <h2 className="text-2xl font-semibold">Planes SaaS Disponibles</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Tasas actualizadas: 1 USD = Bs. {exchangeRate.toFixed(2)}
+                Elige el plan que mejor se ajuste a tus necesidades
               </p>
             </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {plans.map((plan) => {
-              const planNameLower = plan.product.name.toLowerCase();
-              const isCurrentPlan = tenant?.plan_tier === planNameLower;
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {saasPlans.map((plan) => {
+              const isCurrentPlan = tenant?.plan_tier === plan.tier;
 
               return (
-                <Card key={plan.id} className={`p-6 relative transition-all ${
+                <Card key={plan.tier} className={`p-6 relative transition-all flex flex-col ${
                   isCurrentPlan ? 'ring-2 ring-blue-500' : ''
-                }`}>
+                } ${plan.is_recommended ? 'border-purple-500 border-2' : ''}`}>
                   {isCurrentPlan && (
                     <Badge className="absolute top-4 right-4 bg-blue-500">
                       ✓ Plan Actual
                     </Badge>
                   )}
 
-                  <div className="mb-6">
-                    <h3 className="text-xl font-bold mb-2 capitalize">{plan.product.name}</h3>
-                    {plan.product.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {plan.product.description}
-                      </p>
-                    )}
-                  </div>
+                  {plan.badge && (
+                    <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600">
+                      {plan.badge}
+                    </Badge>
+                  )}
 
-                  {/* Pricing en USD y VEF */}
-                  <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-                    {renderPlanPrice(plan)}
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                      Renovación automática cada {plan.recurring.interval}
+                  <div className="mb-4 flex-grow">
+                    <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      {plan.description}
                     </p>
-                  </div>
 
-                  {/* Features */}
-                  <ul className="space-y-2 mb-6 text-sm">
-                    {planNameLower === 'free' && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>Siempre gratis</span>
+                    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-3xl font-bold">${plan.monthly_price.toFixed(0)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">/mes</p>
+                    </div>
+
+                    {/* Features */}
+                    <ul className="space-y-2 text-sm">
+                      {plan.features.slice(0, 4).map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <CheckCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                            feature.included ? 'text-green-600' : 'text-gray-400'
+                          }`} />
+                          <span className={feature.included ? '' : 'text-gray-400'}>
+                            {feature.text}
+                          </span>
                         </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>1 nodo incluido</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>50 tickets/mes</span>
-                        </li>
-                      </>
-                    )}
-                    {planNameLower === 'starter' && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>3 nodos máximo</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>1,000 tickets/mes</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>14 días prueba gratis</span>
-                        </li>
-                      </>
-                    )}
-                    {planNameLower === 'pro' && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>10 nodos máximo</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>5,000 tickets/mes</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>Reportes avanzados</span>
-                        </li>
-                      </>
-                    )}
-                    {planNameLower === 'enterprise' && (
-                      <>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>Nodos ilimitados</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>Tickets ilimitados</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>Soporte prioritario 24/7</span>
-                        </li>
-                      </>
-                    )}
-                  </ul>
+                      ))}
+                    </ul>
+                  </div>
 
                   <Button
-                    className="w-full"
+                    className="w-full mt-4"
                     variant={isCurrentPlan ? 'outline' : 'default'}
-                    disabled={isCurrentPlan || checkoutMutation.isPending}
-                    onClick={() => checkoutMutation.mutate(plan.id)}
+                    disabled={isCurrentPlan}
                   >
-                    {isCurrentPlan ? 'Plan Activo' : 'Suscribirse Ahora'}
+                    {isCurrentPlan ? 'Plan Activo' : 'Seleccionar'}
                   </Button>
                 </Card>
               );

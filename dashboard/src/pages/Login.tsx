@@ -1,63 +1,13 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/auth";
 import { useNavigate, Link } from "react-router-dom";
-import { Wifi, Zap, Crown, CheckCircle2, Loader } from "lucide-react";
+import { Wifi, Zap, TrendingUp, Crown, CheckCircle2, Loader } from "lucide-react";
 import AppLogo from "@/components/AppLogo";
-import apiClient from "@/api/client";
-
-// Simple default plans for login page
-const DEFAULT_PLANS = [
-  {
-    name: "Gratuito",
-    description: "Perfecto para probar",
-    price: "$0",
-    period: "Siempre gratis",
-    features: [
-      { text: "1 Nodo incluido", included: true },
-      { text: "Demo con 50 tickets gratis", included: true },
-      { text: "Soporte por email", included: true },
-      { text: "Más nodos", included: false },
-      { text: "Tickets ilimitados", included: false },
-    ],
-    icon: Wifi,
-    highlight: false,
-  },
-  {
-    name: "Básico",
-    description: "Pay-as-you-go",
-    price: "$0.50",
-    period: "por cada 50 tickets",
-    features: [
-      { text: "1 Nodo máximo", included: true },
-      { text: "Tickets pagos después de demo", included: true },
-      { text: "$0.50 c/50 tickets generados", included: true },
-      { text: "Soporte prioritario", included: true },
-      { text: "Más nodos", included: false },
-    ],
-    icon: Zap,
-    highlight: false,
-  },
-  {
-    name: "Pro",
-    description: "Para empresas",
-    price: "Contactar",
-    period: "Planes personalizados",
-    features: [
-      { text: "Nodos ilimitados", included: true },
-      { text: "Tickets ilimitados", included: true },
-      { text: "API publica", included: true },
-      { text: "Soporte 24/7", included: true },
-      { text: "Consultoría técnica", included: true },
-    ],
-    icon: Crown,
-    highlight: true,
-  },
-];
+import { useSaaSPlans } from "@/hooks/useSaaSPlans";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -68,38 +18,8 @@ const Login: React.FC = () => {
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
-  // Fetch planes reales de la API
-  const { data: plansData = DEFAULT_PLANS, isLoading: isLoadingPlans } = useQuery({
-    queryKey: ["subscription-plans-login"],
-    queryFn: async () => {
-      try {
-        const response = await apiClient.get("/subscriptions/plans");
-        const plans = response.data;
-
-        // Transformar planes de Stripe al formato esperado
-        return plans.map((plan: any, index: number) => ({
-          name: plan.product?.name || "Plan",
-          description: plan.product?.description || "",
-          price: plan.unit_amount ? `$${(plan.unit_amount / 100).toFixed(2)}` : "Contactar",
-          period: `/${plan.recurring?.interval || "mes"}`,
-          features: [
-            { text: plan.product?.description?.substring(0, 30) || "Características", included: true },
-            { text: "Soporte incluido", included: true },
-            { text: "Acceso a dashboard", included: true },
-            { text: "Monitoreo en tiempo real", included: index !== 2 },
-            { text: "API pública", included: index === 2 },
-          ],
-          icon: index === 0 ? Wifi : index === 1 ? Zap : Crown,
-          highlight: index === 1,
-        }));
-      } catch (error) {
-        console.warn("Error fetching plans, using defaults:", error);
-        return DEFAULT_PLANS;
-      }
-    },
-    staleTime: 0, // No cachear - siempre obtener datos frescos
-    refetchInterval: 60000, // Refrescar cada minuto automáticamente
-  });
+  // Fetch planes SaaS reales
+  const { data: saasPlans = [], isLoading: isLoadingPlans } = useSaaSPlans();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,18 +148,26 @@ const Login: React.FC = () => {
             </div>
 
             {/* Plans Grid */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-4 gap-4 mb-8">
               {isLoadingPlans && (
-                <div className="col-span-3 flex justify-center py-12">
+                <div className="col-span-4 flex justify-center py-12">
                   <Loader className="w-8 h-8 text-blue-300 animate-spin" />
                 </div>
               )}
-              {!isLoadingPlans && plansData.map((plan: any, index: number) => {
-                const IconComponent = plan.icon;
-                const isHighlight = plan.highlight === true || index === 1;
+              {!isLoadingPlans && saasPlans.map((plan) => {
+                // Mapear el ícono por nombre
+                const iconMap: Record<string, React.ComponentType<any>> = {
+                  wifi: Wifi,
+                  zap: Zap,
+                  "trending-up": TrendingUp,
+                  crown: Crown,
+                };
+                const IconComponent = iconMap[plan.icon] || Wifi;
+                const isHighlight = plan.is_recommended;
+
                 return (
                   <div
-                    key={index}
+                    key={plan.tier}
                     className={`rounded-xl p-6 backdrop-blur-sm border transition-all h-full flex flex-col ${
                       isHighlight
                         ? "bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-yellow-400/50 ring-2 ring-yellow-400/50 scale-105"
@@ -249,38 +177,36 @@ const Login: React.FC = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <div
                         className={`p-2 rounded-lg flex-shrink-0 ${
-                          isHighlight
-                            ? "bg-yellow-500/30"
-                            : "bg-blue-500/30"
+                          isHighlight ? "bg-yellow-500/30" : "bg-blue-500/30"
                         }`}
                       >
-                        <IconComponent className={`w-5 h-5 ${
-                          isHighlight
-                            ? "text-yellow-300"
-                            : "text-blue-300"
-                        }`} />
+                        <IconComponent
+                          className={`w-5 h-5 ${
+                            isHighlight ? "text-yellow-300" : "text-blue-300"
+                          }`}
+                        />
                       </div>
                       <div className="flex-1">
                         <h3 className="text-base font-bold text-white">{plan.name}</h3>
-                        <p className="text-xs text-blue-200">{plan.description || ""}</p>
+                        <p className="text-xs text-blue-200">{plan.description}</p>
                       </div>
                     </div>
 
-                    {isHighlight && (
+                    {plan.badge && (
                       <div className="mb-2 flex justify-center">
                         <span className="px-2 py-0.5 bg-yellow-500/30 text-yellow-300 text-xs font-semibold rounded-full">
-                          ⭐ RECOMENDADO
+                          ⭐ {plan.badge}
                         </span>
                       </div>
                     )}
 
                     <div className="mb-4">
-                      <p className="text-2xl font-bold text-white">{plan.price}</p>
-                      <p className="text-xs text-blue-200 mt-0.5">{plan.period}</p>
+                      <p className="text-2xl font-bold text-white">{plan.monthly_price_display.split("/")[0]}</p>
+                      <p className="text-xs text-blue-200 mt-0.5">/mes</p>
                     </div>
 
                     <ul className="space-y-1.5 flex-1">
-                      {plan.features.map((feature: any, fIndex: number) => (
+                      {plan.features.map((feature, fIndex) => (
                         <li key={fIndex} className="flex items-start gap-2">
                           <CheckCircle2
                             className={`w-3 h-3 flex-shrink-0 mt-0.5 ${
@@ -304,18 +230,18 @@ const Login: React.FC = () => {
 
             {/* Features Section */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              {plansData.slice(0, 2).map((plan: any, index: number) => {
-                const icon = index === 0 ? "✨" : "🚀";
-                const planName = plan.name;
-                const features = plan.features || [];
+              {saasPlans.slice(0, 2).map((plan) => {
+                const icon = plan.tier === "free" ? "✨" : "🚀";
                 return (
-                  <div key={index} className="p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                  <div key={plan.tier} className="p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
                     <h4 className="text-white font-semibold mb-2 text-sm flex items-center gap-2">
-                      {icon} {planName}
+                      {icon} {plan.name}
                     </h4>
                     <ul className="text-blue-100 text-xs space-y-1">
-                      {features.slice(0, 4).map((feature: any, fIndex: number) => (
-                        <li key={fIndex}>✓ {feature.text}</li>
+                      {plan.features.slice(0, 4).map((feature, fIndex) => (
+                        <li key={fIndex}>
+                          {feature.included ? "✓" : "✗"} {feature.text}
+                        </li>
                       ))}
                     </ul>
                   </div>

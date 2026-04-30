@@ -8,8 +8,9 @@ from typing import Optional
 
 class PlanTier(str, enum.Enum):
     free = "free"        # Gratuito: 1 nodo, 50 tickets/mes
-    basic = "basic"      # Pago por uso: 1 nodo, $0.50 c/50 tickets
-    pro = "pro"          # Empresarial: nodos y tickets ilimitados
+    basic = "basic"      # Básico: $29/mes, 200 tickets, 1 nodo
+    standard = "standard"  # Estándar: $79/mes, 1,000 tickets, 3 nodos
+    pro = "pro"          # Pro: $199/mes, ilimitado
 
 
 class SubscriptionStatus(str, enum.Enum):
@@ -88,6 +89,8 @@ class Tenant(BaseModel):
         """Retorna el máximo número de nodos según el plan"""
         if self.plan_tier == PlanTier.free or self.plan_tier == PlanTier.basic:
             return 1
+        elif self.plan_tier == PlanTier.standard:
+            return 3
         return 999999  # Pro tiene ilimitados
 
     def get_available_tickets(self) -> int:
