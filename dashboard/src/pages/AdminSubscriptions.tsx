@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Gift, AlertCircle, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSaaSPlans } from '@/hooks/useSaaSPlans';
 
 interface Tenant {
   id: string;
@@ -49,6 +50,9 @@ const AdminSubscriptions: React.FC = () => {
     reason: '',
   });
   const queryClient = useQueryClient();
+
+  // Obtener planes SaaS dinámicamente
+  const { data: saasPlans = [] } = useSaaSPlans();
 
   // Obtener lista de tenants
   const { data: tenants, isLoading: tenantsLoading } = useQuery<Tenant[]>({
@@ -311,9 +315,11 @@ const AdminSubscriptions: React.FC = () => {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pro">PRO - Ilimitado</SelectItem>
-                              <SelectItem value="standard">ESTÁNDAR - 1,000 tickets/mes, 3 nodos</SelectItem>
-                              <SelectItem value="basic">BÁSICO - 200 tickets/mes, 1 nodo</SelectItem>
+                              {saasPlans.map((plan) => (
+                                <SelectItem key={plan.tier} value={plan.tier}>
+                                  {plan.name} - {plan.description}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -390,30 +396,33 @@ const AdminSubscriptions: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <AlertCircle className="w-5 h-5" />
-            Información sobre Planes
+            Planes Disponibles para Otorgar
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="font-semibold">PRO (Ilimitado)</p>
+            {saasPlans.length > 0 ? (
+              saasPlans.map((plan) => (
+                <div key={plan.tier} className="space-y-2">
+                  <p className="font-semibold">
+                    {plan.name} {plan.is_recommended && '⭐'}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {plan.description}
+                  </p>
+                  <div className="text-xs text-gray-500 dark:text-gray-500 space-y-1 ml-2">
+                    <p>• ${plan.monthly_price}/mes</p>
+                    <p>• Tickets: {plan.is_tickets_unlimited ? 'Ilimitados' : `${plan.included_tickets}/mes`}</p>
+                    <p>• Nodos: {plan.is_nodes_unlimited ? 'Ilimitados' : `${plan.included_nodes} incluidos`}</p>
+                    <p>• Soporte: {plan.support_level}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Acceso ilimitado a nodos, tickets y todas las características premium. Ideal para
-                pruebas y partnerships.
+                Cargando planes disponibles...
               </p>
-            </div>
-            <div className="space-y-2">
-              <p className="font-semibold">BASIC (Limitado)</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Acceso limitado: 1 nodo máximo y tickets limitados. Opción intermedia.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <p className="font-semibold">FREE (Predeterminado)</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Plan gratuito con limitaciones severas. Se asigna al revocar suscripción.
-              </p>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
