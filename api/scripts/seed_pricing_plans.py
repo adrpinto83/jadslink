@@ -2,19 +2,34 @@
 
 import asyncio
 import sys
+import os
 from decimal import Decimal
+from pathlib import Path
+
+# Agregar el directorio api al path
+api_dir = Path(__file__).parent.parent
+if str(api_dir) not in sys.path:
+    sys.path.insert(0, str(api_dir))
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv(api_dir / '.env')
+
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-
-# Agregar el directorio parent al path
-sys.path.insert(0, "..")
-
 from models.pricing_plan import PricingPlan
-from config import DATABASE_URL
+
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 
 async def seed_pricing_plans():
     """Crear los 4 planes SaaS en la base de datos"""
+
+    # Validar que tenemos DATABASE_URL
+    if not DATABASE_URL:
+        print("❌ Error: DATABASE_URL no está configurado")
+        print(f"   Buscamos .env en: {api_dir / '.env'}")
+        sys.exit(1)
 
     # Crear engine y session
     engine = create_async_engine(DATABASE_URL, echo=False)

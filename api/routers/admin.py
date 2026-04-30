@@ -339,9 +339,13 @@ async def get_tenant_subscription_info(
     if tenant.free_subscription_until:
         is_free_active = datetime.utcnow() < tenant.free_subscription_until
 
+    # Handle both Enum and string values (for compatibility with different DB migrations)
+    plan_tier_value = tenant.plan_tier.value if hasattr(tenant.plan_tier, 'value') else str(tenant.plan_tier)
+    subscription_status_value = tenant.subscription_status.value if hasattr(tenant.subscription_status, 'value') else str(tenant.subscription_status)
+
     return SubscriptionInfo(
-        plan_tier=tenant.plan_tier.value,
-        subscription_status=tenant.subscription_status.value,
+        plan_tier=plan_tier_value,
+        subscription_status=subscription_status_value,
         free_subscription_until=tenant.free_subscription_until,
         free_subscription_plan=tenant.free_subscription_plan,
         free_subscription_reason=tenant.free_subscription_reason,

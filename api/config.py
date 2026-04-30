@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     API_TITLE: str = "JADSlink API"
     API_VERSION: str = "1.0"
     API_BASE_URL: str = "http://localhost:8000"  # Base URL for serving static files and redirects
+    FRONTEND_URL: str = "http://localhost:3000"  # Frontend URL for CORS and redirects
 
     class Config:
         env_file = ".env"
