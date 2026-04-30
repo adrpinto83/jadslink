@@ -1,5 +1,6 @@
 """Schemas for pricing configuration."""
 
+from typing import Optional, List
 from pydantic import BaseModel, Field
 from decimal import Decimal
 from uuid import UUID
@@ -8,14 +9,14 @@ from datetime import datetime
 
 class PricingConfigUpdate(BaseModel):
     """Schema for updating pricing configuration"""
-    ticket_pack_size: int | None = Field(None, ge=1)
-    ticket_pack_price_usd: Decimal | None = Field(None, ge=Decimal("0.01"))
-    additional_node_price_usd: Decimal | None = Field(None, ge=Decimal("0.01"))
-    free_plan_max_nodes: int | None = Field(None, ge=1)
-    free_plan_max_tickets: int | None = Field(None, ge=1)
-    basic_plan_max_nodes: int | None = Field(None, ge=1)
-    basic_plan_max_free_tickets: int | None = Field(None, ge=1)
-    description: str | None = Field(None, max_length=500)
+    ticket_pack_size: Optional[int] = Field(None, ge=1)
+    ticket_pack_price_usd: Optional[Decimal] = Field(None, ge=Decimal("0.01"))
+    additional_node_price_usd: Optional[Decimal] = Field(None, ge=Decimal("0.01"))
+    free_plan_max_nodes: Optional[int] = Field(None, ge=1)
+    free_plan_max_tickets: Optional[int] = Field(None, ge=1)
+    basic_plan_max_nodes: Optional[int] = Field(None, ge=1)
+    basic_plan_max_free_tickets: Optional[int] = Field(None, ge=1)
+    description: Optional[str] = Field(None, max_length=500)
 
 
 class PricingConfigResponse(BaseModel):
@@ -62,7 +63,7 @@ class SaaSPlanInfo(BaseModel):
     included_tickets: int = Field(
         ..., description="Tickets incluidos por mes sin costo"
     )
-    additional_tickets_price: Decimal | None = Field(
+    additional_tickets_price: Optional[Decimal] = Field(
         None, description="Precio por pack adicional"
     )
     additional_tickets_display: str = Field(
@@ -72,7 +73,7 @@ class SaaSPlanInfo(BaseModel):
 
     # Nodos
     included_nodes: int = Field(..., description="Nodos incluidos en el plan")
-    additional_node_price: Decimal | None = Field(
+    additional_node_price: Optional[Decimal] = Field(
         None, description="Precio por nodo adicional"
     )
     additional_node_display: str = Field(
@@ -81,7 +82,7 @@ class SaaSPlanInfo(BaseModel):
     is_nodes_unlimited: bool = Field(..., description="¿Nodos ilimitados?")
 
     # Features dinámicas
-    features: list[PlanFeature] = Field(..., description="Lista de features del plan")
+    features: List[PlanFeature] = Field(..., description="Lista de features del plan")
 
     # Características principales
     support_level: str = Field(..., description="Nivel de soporte formateado")
@@ -95,7 +96,7 @@ class SaaSPlanInfo(BaseModel):
     icon: str = Field(..., description="Nombre del ícono principal del plan")
     color: str = Field(..., description="Color hex o nombre de color Tailwind")
     is_recommended: bool = Field(False, description="¿Mostrar como recomendado?")
-    badge: str | None = Field(None, description="Texto del badge: Más Popular, Mejor Valor")
+    badge: Optional[str] = Field(None, description="Texto del badge: Más Popular, Mejor Valor")
 
     class Config:
         json_schema_extra = {

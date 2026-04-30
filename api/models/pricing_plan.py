@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy import String, Numeric, Integer, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import BaseModel
@@ -25,14 +26,14 @@ class PricingPlan(BaseModel):
     additional_ticket_pack_size: Mapped[int] = mapped_column(
         Integer, default=100, nullable=False
     )
-    additional_ticket_pack_price: Mapped[float | None] = mapped_column(
+    additional_ticket_pack_price: Mapped[Optional[float]] = mapped_column(
         Numeric(10, 2), nullable=True
     )  # NULL si no hay opción de comprar adicionales
     is_tickets_unlimited: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Nodos incluidos
     included_nodes: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    additional_node_price: Mapped[float | None] = mapped_column(
+    additional_node_price: Mapped[Optional[float]] = mapped_column(
         Numeric(10, 2), nullable=True
     )  # NULL si no hay opción de agregar nodos
     is_nodes_unlimited: Mapped[bool] = mapped_column(Boolean, default=False)
