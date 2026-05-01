@@ -4,8 +4,19 @@ from config import get_settings
 
 settings = get_settings()
 
-# Use QueuePool for MySQL (default behavior)
-# aiomysql with connection pooling for better performance
+# Configurar connect_args según el tipo de base de datos
+connect_args = {}
+if "postgresql" in settings.DATABASE_URL or "postgres" in settings.DATABASE_URL:
+    # PostgreSQL con asyncpg no necesita charset
+    connect_args = {}
+else:
+    # MySQL con aiomysql
+    connect_args = {
+        "charset": "utf8mb4",
+        "autocommit": True,
+    }
+
+# Use QueuePool for connection pooling
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
@@ -14,10 +25,7 @@ engine = create_async_engine(
     max_overflow=0,
     pool_pre_ping=True,  # Verify connection before using
     pool_recycle=3600,   # Recycle connections after 1 hour
-    connect_args={
-        "charset": "utf8mb4",
-        "autocommit": True,
-    }
+    connect_args=connect_args
 )
 
 async_session_maker = async_sessionmaker(

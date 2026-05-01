@@ -211,7 +211,8 @@ const Tickets: React.FC = () => {
       toast.success(`${newTickets.length} ticket(s) generado(s) exitosamente`);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Error al generar tickets');
+      const errorMsg = getErrorMessage(error);
+      toast.error(errorMsg);
     }
   });
 
@@ -226,9 +227,25 @@ const Tickets: React.FC = () => {
       toast.success('Tickets seleccionados revocados exitosamente');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Error al revocar tickets en lote');
+      const errorMsg = getErrorMessage(error);
+      toast.error(errorMsg);
     }
   });
+
+  // Helper to safely extract error message
+  const getErrorMessage = (error: any): string => {
+    try {
+      if (typeof error === 'string') return error;
+      if (error?.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        return typeof detail === 'string' ? detail : 'Error en la operación';
+      }
+      if (error?.message) return error.message;
+      return 'Error en la operación';
+    } catch {
+      return 'Error en la operación';
+    }
+  };
 
   const deleteSingleTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
@@ -239,13 +256,15 @@ const Tickets: React.FC = () => {
       toast.success('Ticket eliminado permanentemente');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Error al eliminar ticket');
+      const errorMsg = getErrorMessage(error);
+      toast.error(errorMsg);
     }
   });
 
   const deleteMultipleTicketsMutation = useMutation({
     mutationFn: async (ticketIds: string[]) => {
-      await apiClient.delete('/tickets/delete-multiple', { data: { ticket_ids: ticketIds } });
+      // Use POST instead of DELETE for body payload - more reliable with Axios
+      await apiClient.post('/tickets/delete-multiple', { ticket_ids: ticketIds });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-tickets'] });
@@ -254,7 +273,8 @@ const Tickets: React.FC = () => {
       toast.success('Tickets eliminados permanentemente');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Error al eliminar tickets');
+      const errorMsg = getErrorMessage(error);
+      toast.error(errorMsg);
     }
   });
 
@@ -331,14 +351,18 @@ const Tickets: React.FC = () => {
     toast.success('Código copiado al portapapeles');
   };
   
-  const shareWhatsApp = (ticket: TicketData) => {
-    const ssid = tenant?.settings?.ssid || ticket.node?.config?.ssid || 'JADSlink WiFi';
+  const shareWhatsApp = (ticket: TicketData | GeneratedTicket) => {
+    const isTicketData = 'plan' in ticket && ticket.plan;
+    const ssid = tenant?.settings?.ssid || (isTicketData && 'node' in ticket ? (ticket as TicketData).node?.config?.ssid : null) || 'JADSlink WiFi';
+    const planName = isTicketData && 'plan' in ticket ? (ticket as TicketData).plan?.name : ('plan_name' in ticket ? ticket.plan_name : 'N/A');
+    const duration = isTicketData && 'plan' in ticket ? (ticket as TicketData).plan?.duration_minutes || 0 : 0;
+
     const message = `Tu ticket de acceso WiFi:
 
 Código: ${ticket.code}
 Red: ${ssid}
-Plan: ${ticket.plan?.name || 'N/A'}
-Duración: ${ticket.plan?.duration_minutes || 0} min
+Plan: ${planName}
+${duration ? `Duración: ${duration} min` : ''}
 
 Conéctate y disfruta!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
@@ -720,7 +744,9 @@ Conéctate y disfruta!`;
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => triggerPrint(ticket)}><Printer className="mr-2 h-4 w-4" /> Imprimir</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => copyToClipboard(ticket.code)}><Copy className="mr-2 h-4 w-4" /> Copiar</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => shareWhatsApp(ticket as TicketData)}><Share2 className="mr-2 h-4 w-4" /> Compartir</DropdownMenuItem>
+                                {'plan' in ticket && ticket.plan && (
+                                  <DropdownMenuItem onClick={() => shareWhatsApp(ticket)}><Share2 className="mr-2 h-4 w-4" /> Compartir</DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => {
                                     if (confirm('¿Estás seguro que deseas eliminar este ticket permanentemente?')) {
@@ -746,14 +772,16 @@ Conéctate y disfruta!`;
       </Tabs>
 
       {/* Hidden Printable Component - Single (positioned off-screen) */}
-      <div style={{ position: "fixed", left: "-10000px", top: "-10000px", width: "210mm", height: "297mm" }}>
-        <PrintableTicket
-          ref={ticketToPrintRef}
-          ticket={selectedTicketForPrint || { id: '', code: '', qr_data: '', status: 'pending', created_at: '', plan_name: '', tenant_logo_url: null, tenant_ssid: null } as any}
-          tenant={tenant}
-          showQr={showQrInPrint}
-        />
-      </div>
+      {selectedTicketForPrint && (
+        <div style={{ position: "fixed", left: "-10000px", top: "-10000px", width: "210mm", height: "297mm" }}>
+          <PrintableTicket
+            ref={ticketToPrintRef}
+            ticket={selectedTicketForPrint}
+            tenant={tenant}
+            showQr={showQrInPrint}
+          />
+        </div>
+      )}
 
       {/* Hidden Printable Component - Batch (positioned off-screen) */}
       <div style={{ position: "fixed", left: "-10000px", top: "-10000px", width: "210mm", minHeight: "297mm" }}>

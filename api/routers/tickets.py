@@ -226,7 +226,7 @@ async def revoke_multiple_tickets(
     return {"message": f"{revoked_count} tickets revocados exitosamente"}
 
 
-@router.delete("/delete-multiple", status_code=status.HTTP_200_OK)
+@router.post("/delete-multiple", status_code=status.HTTP_200_OK)
 async def delete_multiple_tickets(
     req: BatchRevokeRequest,
     current_user: User = Depends(get_current_user),
