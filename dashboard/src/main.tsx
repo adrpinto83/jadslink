@@ -24,6 +24,7 @@ import AdminPricing from './pages/AdminPricing.tsx';
 import AdminPayments from './pages/AdminPayments.tsx';
 import AdminUsers from './pages/AdminUsers.tsx';
 import AdminSubscriptions from './pages/AdminSubscriptions.tsx';
+import AdminTenants from './pages/AdminTenants.tsx';
 import TeamMembers from './pages/TeamMembers.tsx';
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "sonner";
@@ -114,6 +115,10 @@ const router = createBrowserRouter([
           {
             path: "admin/subscriptions",
             element: <AdminSubscriptions />,
+          },
+          {
+            path: "admin/tenants",
+            element: <AdminTenants />,
           },
           {
             path: "team",

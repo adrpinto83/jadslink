@@ -1,21 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func, and_
 from uuid import UUID
 from pathlib import Path
 import aiofiles
 import imghdr
 import logging
 from datetime import datetime, timedelta
+import math
 
 from database import get_db
 from config import get_settings
 from models.tenant import Tenant, PlanTier
 from models.user import User, UserRole, TenantRole
+from models.node import Node, NodeStatus
+from models.ticket import Ticket, TicketStatus
+from models.session import Session
+from models.plan import Plan
 from schemas.tenant import TenantResponse, GrantFreeSubscriptionRequest, SubscriptionInfo
 from schemas.user import (
     UserResponse, TeamMemberResponse, EmployeeListResponse,
     ChangeRoleRequest, RemoveUserRequest
+)
+from schemas.admin import (
+    GlobalStatsResponse, TenantStatsResponse, TenantDetailResponse,
+    NodeAdminResponse, TicketAdminResponse, SessionAdminResponse,
+    TicketsListResponse, PlanCount, NodeStatus as NodeStatusSchema
 )
 from deps import get_superadmin
 from services.subscription_service import create_stripe_customer
@@ -442,3 +453,525 @@ async def revoke_free_subscription(
         "message": "Suscripción gratuita revocada. Tenant revertido a plan FREE",
         "tenant_name": tenant.name,
     }
+
+
+# ============================================================================
+# PANEL DE GESTIÓN DE TENANTS - ESTADÍSTICAS Y RECURSOS
+# ============================================================================
+
+@router.get("/overview", response_model=GlobalStatsResponse)
+async def admin_global_overview(
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Obtiene estadísticas globales de toda la plataforma para superadmin.
+    Incluye conteos de tenants, nodos, tickets y sesiones.
+    """
+    # Total de tenants
+    tenants_result = await db.execute(select(func.count()).select_from(Tenant))
+    total_tenants = tenants_result.scalar() or 0
+
+    active_tenants_result = await db.execute(
+        select(func.count()).select_from(Tenant).where(Tenant.is_active == True)
+    )
+    active_tenants = active_tenants_result.scalar() or 0
+    inactive_tenants = total_tenants - active_tenants
+
+    # Total de nodos por estado
+    nodes_result = await db.execute(select(func.count()).select_from(Node))
+    total_nodes = nodes_result.scalar() or 0
+
+    online_nodes_result = await db.execute(
+        select(func.count()).select_from(Node).where(Node.status == NodeStatus.online)
+    )
+    online_nodes = online_nodes_result.scalar() or 0
+
+    offline_nodes_result = await db.execute(
+        select(func.count()).select_from(Node).where(Node.status == NodeStatus.offline)
+    )
+    offline_nodes = offline_nodes_result.scalar() or 0
+
+    degraded_nodes_result = await db.execute(
+        select(func.count()).select_from(Node).where(Node.status == NodeStatus.degraded)
+    )
+    degraded_nodes = degraded_nodes_result.scalar() or 0
+
+    # Total de tickets por estado
+    tickets_result = await db.execute(select(func.count()).select_from(Ticket))
+    total_tickets = tickets_result.scalar() or 0
+
+    pending_tickets_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(Ticket.status == TicketStatus.pending)
+    )
+    pending_tickets = pending_tickets_result.scalar() or 0
+
+    active_tickets_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(Ticket.status == TicketStatus.active)
+    )
+    active_tickets = active_tickets_result.scalar() or 0
+
+    expired_tickets_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(Ticket.status == TicketStatus.expired)
+    )
+    expired_tickets = expired_tickets_result.scalar() or 0
+
+    revoked_tickets_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(Ticket.status == TicketStatus.revoked)
+    )
+    revoked_tickets = revoked_tickets_result.scalar() or 0
+
+    # Sesiones activas
+    active_sessions_result = await db.execute(
+        select(func.count()).select_from(Session).where(Session.is_active == True)
+    )
+    active_sessions = active_sessions_result.scalar() or 0
+
+    # Tenants por plan
+    tenants_by_plan_result = await db.execute(
+        select(Tenant.plan_tier, func.count()).select_from(Tenant).group_by(Tenant.plan_tier)
+    )
+    tenants_by_plan = [
+        PlanCount(plan=plan.value, count=count)
+        for plan, count in tenants_by_plan_result
+    ]
+
+    # Nodos por estado
+    nodes_by_status_result = await db.execute(
+        select(Node.status, func.count()).select_from(Node).group_by(Node.status)
+    )
+    nodes_by_status = [
+        NodeStatusSchema(status=status.value, count=count)
+        for status, count in nodes_by_status_result
+    ]
+
+    # Estimar ingresos (tickets activos * precio promedio)
+    # Suponemos un precio promedio de $2.50 por ticket
+    avg_ticket_price = 2.50
+    total_revenue_estimate = active_tickets * avg_ticket_price
+
+    return GlobalStatsResponse(
+        total_tenants=total_tenants,
+        active_tenants=active_tenants,
+        inactive_tenants=inactive_tenants,
+        total_nodes=total_nodes,
+        online_nodes=online_nodes,
+        offline_nodes=offline_nodes,
+        degraded_nodes=degraded_nodes,
+        total_tickets=total_tickets,
+        pending_tickets=pending_tickets,
+        active_tickets=active_tickets,
+        expired_tickets=expired_tickets,
+        revoked_tickets=revoked_tickets,
+        active_sessions=active_sessions,
+        total_revenue_estimate=total_revenue_estimate,
+        tenants_by_plan=tenants_by_plan,
+        nodes_by_status=nodes_by_status,
+    )
+
+
+@router.get("/tenants/{tenant_id}/stats", response_model=TenantStatsResponse)
+async def admin_tenant_stats(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Obtiene estadísticas completas de un tenant específico.
+    """
+    # Obtener tenant
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Nodos
+    nodes_total_result = await db.execute(
+        select(func.count()).select_from(Node).where(Node.tenant_id == tenant_id)
+    )
+    nodes_total = nodes_total_result.scalar() or 0
+
+    nodes_online_result = await db.execute(
+        select(func.count()).select_from(Node).where(
+            and_(Node.tenant_id == tenant_id, Node.status == NodeStatus.online)
+        )
+    )
+    nodes_online = nodes_online_result.scalar() or 0
+
+    nodes_offline_result = await db.execute(
+        select(func.count()).select_from(Node).where(
+            and_(Node.tenant_id == tenant_id, Node.status == NodeStatus.offline)
+        )
+    )
+    nodes_offline = nodes_offline_result.scalar() or 0
+
+    nodes_degraded_result = await db.execute(
+        select(func.count()).select_from(Node).where(
+            and_(Node.tenant_id == tenant_id, Node.status == NodeStatus.degraded)
+        )
+    )
+    nodes_degraded = nodes_degraded_result.scalar() or 0
+
+    # Tickets
+    tickets_total_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(Ticket.tenant_id == tenant_id)
+    )
+    tickets_total = tickets_total_result.scalar() or 0
+
+    tickets_pending_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(
+            and_(Ticket.tenant_id == tenant_id, Ticket.status == TicketStatus.pending)
+        )
+    )
+    tickets_pending = tickets_pending_result.scalar() or 0
+
+    tickets_active_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(
+            and_(Ticket.tenant_id == tenant_id, Ticket.status == TicketStatus.active)
+        )
+    )
+    tickets_active = tickets_active_result.scalar() or 0
+
+    tickets_expired_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(
+            and_(Ticket.tenant_id == tenant_id, Ticket.status == TicketStatus.expired)
+        )
+    )
+    tickets_expired = tickets_expired_result.scalar() or 0
+
+    tickets_revoked_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(
+            and_(Ticket.tenant_id == tenant_id, Ticket.status == TicketStatus.revoked)
+        )
+    )
+    tickets_revoked = tickets_revoked_result.scalar() or 0
+
+    # Sesiones activas
+    sessions_active_result = await db.execute(
+        select(func.count()).select_from(Session).where(
+            and_(
+                Session.is_active == True,
+                Session.node_id.in_(
+                    select(Node.id).where(Node.tenant_id == tenant_id)
+                )
+            )
+        )
+    )
+    sessions_active = sessions_active_result.scalar() or 0
+
+    # Ingresos estimados
+    avg_ticket_price = 2.50
+    revenue_estimate = tickets_active * avg_ticket_price
+
+    # Manejo de enums
+    plan_tier_value = tenant.plan_tier.value if hasattr(tenant.plan_tier, 'value') else str(tenant.plan_tier)
+    subscription_status_value = tenant.subscription_status.value if hasattr(tenant.subscription_status, 'value') else str(tenant.subscription_status)
+
+    return TenantStatsResponse(
+        tenant_id=tenant.id,
+        tenant_name=tenant.name,
+        tenant_slug=tenant.slug,
+        plan_tier=plan_tier_value,
+        is_active=tenant.is_active,
+        subscription_status=subscription_status_value,
+        nodes_total=nodes_total,
+        nodes_online=nodes_online,
+        nodes_offline=nodes_offline,
+        nodes_degraded=nodes_degraded,
+        tickets_total=tickets_total,
+        tickets_pending=tickets_pending,
+        tickets_active=tickets_active,
+        tickets_expired=tickets_expired,
+        tickets_revoked=tickets_revoked,
+        sessions_active=sessions_active,
+        revenue_estimate=revenue_estimate,
+    )
+
+
+@router.get("/tenants/{tenant_id}/nodes", response_model=list[NodeAdminResponse])
+async def admin_tenant_nodes(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Obtiene lista de todos los nodos de un tenant específico.
+    """
+    # Verificar que el tenant existe
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Obtener nodos
+    result = await db.execute(
+        select(Node).where(Node.tenant_id == tenant_id).order_by(Node.created_at.desc())
+    )
+    nodes = result.scalars().all()
+
+    return [
+        NodeAdminResponse(
+            id=node.id,
+            name=node.name,
+            serial=node.serial,
+            status=node.status.value,
+            last_seen_at=node.last_seen_at,
+            location=node.location,
+            wan_ip=node.wan_ip,
+        )
+        for node in nodes
+    ]
+
+
+@router.get("/tenants/{tenant_id}/tickets", response_model=TicketsListResponse)
+async def admin_tenant_tickets(
+    tenant_id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Obtiene lista paginada de tickets de un tenant específico.
+    """
+    # Verificar que el tenant existe
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Contar total de tickets
+    count_result = await db.execute(
+        select(func.count()).select_from(Ticket).where(Ticket.tenant_id == tenant_id)
+    )
+    total = count_result.scalar() or 0
+
+    # Obtener tickets paginados
+    result = await db.execute(
+        select(Ticket)
+        .where(Ticket.tenant_id == tenant_id)
+        .order_by(Ticket.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    tickets = result.scalars().all()
+
+    # Obtener información de planes y nodos para cada ticket
+    tickets_data = []
+    for ticket in tickets:
+        # Obtener plan
+        plan = await db.get(Plan, ticket.plan_id)
+        plan_name = plan.name if plan else None
+
+        # Obtener nodo
+        node = await db.get(Node, ticket.node_id)
+        node_name = node.name if node else None
+
+        status_value = ticket.status.value if hasattr(ticket.status, 'value') else str(ticket.status)
+
+        tickets_data.append(
+            TicketAdminResponse(
+                id=ticket.id,
+                code=ticket.code,
+                status=status_value,
+                created_at=ticket.created_at,
+                activated_at=ticket.activated_at,
+                expires_at=ticket.expires_at,
+                plan_name=plan_name,
+                node_name=node_name,
+                device_mac=ticket.device_mac,
+            )
+        )
+
+    pages = math.ceil(total / limit) if limit > 0 else 1
+    page = (skip // limit) + 1 if limit > 0 else 1
+
+    return TicketsListResponse(
+        tickets=tickets_data,
+        total=total,
+        page=page,
+        pages=pages,
+    )
+
+
+@router.get("/tenants/{tenant_id}/sessions", response_model=list[SessionAdminResponse])
+async def admin_tenant_sessions(
+    tenant_id: UUID,
+    active_only: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Obtiene lista de sesiones de un tenant específico.
+    Opcionalmente filtra solo sesiones activas.
+    """
+    # Verificar que el tenant existe
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    # Construir query
+    query = select(Session).where(
+        Session.node_id.in_(
+            select(Node.id).where(Node.tenant_id == tenant_id)
+        )
+    )
+
+    if active_only:
+        query = query.where(Session.is_active == True)
+
+    query = query.order_by(Session.started_at.desc())
+
+    result = await db.execute(query)
+    sessions = result.scalars().all()
+
+    # Obtener información de nodos para cada sesión
+    sessions_data = []
+    for session in sessions:
+        node = await db.get(Node, session.node_id)
+        node_name = node.name if node else None
+
+        sessions_data.append(
+            SessionAdminResponse(
+                id=session.id,
+                ticket_id=session.ticket_id,
+                device_mac=session.device_mac,
+                ip_address=session.ip_address,
+                started_at=session.started_at,
+                expires_at=session.expires_at,
+                is_active=session.is_active,
+                bytes_down=session.bytes_down,
+                bytes_up=session.bytes_up,
+                node_name=node_name,
+            )
+        )
+
+    return sessions_data
+
+
+@router.patch("/tenants/{tenant_id}/suspend", response_model=TenantResponse)
+async def admin_suspend_tenant(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Suspende un tenant (is_active = False).
+    El tenant ya no puede acceder a la plataforma.
+    """
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    if not tenant.is_active:
+        raise HTTPException(status_code=400, detail="Tenant ya está suspendido")
+
+    tenant.is_active = False
+    db.add(tenant)
+    await db.commit()
+    await db.refresh(tenant)
+
+    log.info(f"Admin suspended tenant {tenant.name}")
+
+    return tenant
+
+
+@router.patch("/tenants/{tenant_id}/activate", response_model=TenantResponse)
+async def admin_activate_tenant(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Reactiva un tenant suspendido (is_active = True).
+    """
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    if tenant.is_active:
+        raise HTTPException(status_code=400, detail="Tenant ya está activo")
+
+    tenant.is_active = True
+    db.add(tenant)
+    await db.commit()
+    await db.refresh(tenant)
+
+    log.info(f"Admin activated tenant {tenant.name}")
+
+    return tenant
+
+
+@router.get("/tenants", response_model=list[TenantDetailResponse])
+async def admin_list_tenants_detailed(
+    db: AsyncSession = Depends(get_db),
+    superadmin: User = Depends(get_superadmin),
+):
+    """
+    Superadmin lista todos los tenants/operadores con información detallada.
+    Incluye conteo de nodos, tickets, sesiones y usuarios.
+    """
+    result = await db.execute(select(Tenant).order_by(Tenant.created_at.desc()))
+    tenants = result.scalars().all()
+
+    tenants_data = []
+    for tenant in tenants:
+        # Contar nodos
+        nodes_result = await db.execute(
+            select(func.count()).select_from(Node).where(Node.tenant_id == tenant.id)
+        )
+        nodes_count = nodes_result.scalar() or 0
+
+        # Contar tickets
+        tickets_result = await db.execute(
+            select(func.count()).select_from(Ticket).where(Ticket.tenant_id == tenant.id)
+        )
+        tickets_count = tickets_result.scalar() or 0
+
+        # Contar sesiones
+        sessions_result = await db.execute(
+            select(func.count()).select_from(Session).where(
+                Session.node_id.in_(
+                    select(Node.id).where(Node.tenant_id == tenant.id)
+                )
+            )
+        )
+        sessions_count = sessions_result.scalar() or 0
+
+        # Contar usuarios
+        users_result = await db.execute(
+            select(func.count()).select_from(User).where(User.tenant_id == tenant.id)
+        )
+        users_count = users_result.scalar() or 0
+
+        # Manejo de enums
+        plan_tier_value = tenant.plan_tier.value if hasattr(tenant.plan_tier, 'value') else str(tenant.plan_tier)
+        subscription_status_value = tenant.subscription_status.value if hasattr(tenant.subscription_status, 'value') else str(tenant.subscription_status)
+
+        tenants_data.append(
+            TenantDetailResponse(
+                id=tenant.id,
+                name=tenant.name,
+                slug=tenant.slug,
+                plan_tier=plan_tier_value,
+                subscription_status=subscription_status_value,
+                is_active=tenant.is_active,
+                created_at=tenant.created_at,
+                updated_at=tenant.updated_at,
+                nodes_count=nodes_count,
+                tickets_count=tickets_count,
+                sessions_count=sessions_count,
+                users_count=users_count,
+            )
+        )
+
+    return tenants_data

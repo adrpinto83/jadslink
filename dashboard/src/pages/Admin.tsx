@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, BarChart3, Settings, CreditCard, Users, Gift } from 'lucide-react';
+import { DollarSign, BarChart3, Settings, CreditCard, Users, Gift, Building2 } from 'lucide-react';
 
 const Admin: React.FC = () => {
   const adminSections = [
@@ -30,11 +30,10 @@ const Admin: React.FC = () => {
     },
     {
       title: 'Gestión de Tenants',
-      description: 'Aprobar nuevos operadores, suspender cuentas',
-      icon: Settings,
-      href: '#',
+      description: 'Ver nodos, tickets y sesiones de cada operador',
+      icon: Building2,
+      href: 'tenants',
       color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-      disabled: true,
     },
     {
       title: 'Gestión de Empleados',
