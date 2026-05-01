@@ -547,7 +547,7 @@ const Billing: React.FC = () => {
                     </p>
 
                     <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-                      <p className="text-3xl font-bold">${plan.monthly_price.toFixed(0)}</p>
+                      <p className="text-3xl font-bold">${Number(plan.monthly_price).toFixed(0)}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">/mes</p>
                     </div>
 
