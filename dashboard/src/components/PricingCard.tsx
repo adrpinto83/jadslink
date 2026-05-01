@@ -35,7 +35,7 @@ export const PricingCard: React.FC<PricingCardProps> = ({ plan, onSelect, curren
 
       <div className="text-center mb-8">
         <div className="flex items-baseline justify-center gap-1">
-          <span className="text-5xl font-bold">${plan.monthly_price.toFixed(0)}</span>
+          <span className="text-5xl font-bold">${Number(plan.monthly_price).toFixed(0)}</span>
           <span className="text-gray-600">/mes</span>
         </div>
       </div>
