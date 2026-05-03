@@ -232,10 +232,10 @@ async def upload_tenant_logo(
     Upload company logo. Only available for tenants with paid plans (Basic or Pro).
     """
     # Check if tenant has paid plan
-    if current_tenant.plan_tier == PlanTier.free:
+    if current_tenant.plan_tier == PlanTier.starter:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Logo upload solo disponible en planes pagados (Basic o Pro)"
+            detail="Logo upload solo disponible en planes pagados (Pro o Enterprise)"
         )
 
     # Validate file type

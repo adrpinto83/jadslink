@@ -7,10 +7,9 @@ from typing import Optional
 
 
 class PlanTier(str, enum.Enum):
-    free = "free"        # Gratuito: 1 nodo, 50 tickets/mes
-    basic = "basic"      # Básico: $29/mes, 200 tickets, 1 nodo
-    standard = "standard"  # Estándar: $79/mes, 1,000 tickets, 3 nodos
-    pro = "pro"          # Pro: $199/mes, ilimitado
+    starter = "starter"      # Iniciador: 1 nodo, 100 tickets/mes
+    pro = "pro"              # Pro: $199/mes, 5 nodos, ilimitado
+    enterprise = "enterprise"  # Empresarial: Custom
 
 
 class SubscriptionStatus(str, enum.Enum):
@@ -30,7 +29,7 @@ class Tenant(BaseModel):
 
     # Subscription details
     plan_tier: Mapped[PlanTier] = mapped_column(
-        SQLEnum(PlanTier, name="plantier"), default=PlanTier.free, nullable=False
+        SQLEnum(PlanTier, name="plantier"), default=PlanTier.starter, nullable=False
     )
     subscription_status: Mapped[SubscriptionStatus] = mapped_column(
         SQLEnum(SubscriptionStatus, name="subscriptionstatus"),

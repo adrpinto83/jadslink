@@ -21,7 +21,7 @@ async def test_tenant_with_user(db: AsyncSession):
         name="Test Operator",
         slug="test-operator",
         is_active=True,
-        plan_tier=PlanTier.free,
+        plan_tier=PlanTier.starter,
         subscription_status=SubscriptionStatus.trialing,
     )
     db.add(tenant)
@@ -191,7 +191,7 @@ async def test_stripe_webhook_subscription_created(db: AsyncSession):
         name="Test Operator",
         slug="test-operator",
         is_active=True,
-        plan_tier=PlanTier.free,
+        plan_tier=PlanTier.starter,
         stripe_customer_id="cus_test_123",
     )
     db.add(tenant)
@@ -248,7 +248,7 @@ async def test_stripe_webhook_checkout_completed(db: AsyncSession):
         name="Test Operator",
         slug="test-operator",
         is_active=True,
-        plan_tier=PlanTier.free,
+        plan_tier=PlanTier.starter,
         stripe_customer_id=None,
     )
     db.add(tenant)

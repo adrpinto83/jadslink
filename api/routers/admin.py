@@ -392,7 +392,7 @@ async def grant_free_subscription(
     free_until = datetime.utcnow() + timedelta(days=request.days)
 
     # Actualizar tenant
-    tenant.plan_tier = PlanTier.pro if request.plan == "pro" else PlanTier.basic
+    tenant.plan_tier = PlanTier.pro if request.plan == "pro" else PlanTier.starter
     tenant.free_subscription_until = free_until
     tenant.free_subscription_plan = request.plan
     tenant.free_subscription_reason = request.reason
@@ -436,8 +436,8 @@ async def revoke_free_subscription(
             detail="Este tenant no tiene suscripción gratuita",
         )
 
-    # Revertir a plan free
-    tenant.plan_tier = PlanTier.free
+    # Revertir a plan starter
+    tenant.plan_tier = PlanTier.starter
     tenant.free_subscription_until = None
     tenant.free_subscription_plan = None
     tenant.free_subscription_reason = None

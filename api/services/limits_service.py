@@ -53,18 +53,18 @@ class LimitsService:
         active_nodes = result.scalar() or 0
 
         # Determine max nodes based on plan and pricing config
-        if tenant.plan_tier == PlanTier.free:
+        if tenant.plan_tier == PlanTier.starter:
             max_nodes = pricing.free_plan_max_nodes
-        elif tenant.plan_tier == PlanTier.basic:
+        elif tenant.plan_tier == PlanTier.pro:
             max_nodes = pricing.basic_plan_max_nodes
-        else:  # pro
+        else:  # enterprise
             max_nodes = 999999
 
         if active_nodes >= max_nodes:
-            if tenant.plan_tier == PlanTier.free:
-                return False, f"Plan Free permite máximo {max_nodes} nodo. Upgrade a Pro para nodos ilimitados."
-            elif tenant.plan_tier == PlanTier.basic:
-                return False, f"Plan Básico permite máximo {max_nodes} nodo. Upgrade a Pro para nodos ilimitados."
+            if tenant.plan_tier == PlanTier.starter:
+                return False, f"Plan Starter permite máximo {max_nodes} nodo. Upgrade a Pro para más nodos."
+            elif tenant.plan_tier == PlanTier.pro:
+                return False, f"Plan Pro permite máximo {max_nodes} nodos. Contacta soporte para Enterprise."
             else:
                 return False, "No puedes crear más nodos."
 
@@ -104,7 +104,7 @@ class LimitsService:
             return True, f"Usarás {remaining_free} gratis + {needed_paid} pagos ($${float(cost_usd):.2f})"
 
         # No tiene suficientes
-        if tenant.plan_tier == PlanTier.free:
+        if tenant.plan_tier == PlanTier.starter:
             total_available = tenant.free_tickets_limit + (tenant.extra_tickets_count * pricing.ticket_pack_size)
             return False, (
                 f"No tienes suficientes tickets. "
