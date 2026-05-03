@@ -1,0 +1,46 @@
+#!/bin/sh /etc/rc.common
+#
+# JADSlink Session Cleanup Service
+# OpenWrt init script para ejecutar limpieza de sesiones periódicamente
+#
+# START=91 significa que inicia después de servicios básicos
+#
+
+START=91
+STOP=10
+
+USE_PROCD=1
+CLEANUP_SCRIPT="/usr/local/bin/session-cleanup.sh"
+CLEANUP_INTERVAL=60  # Ejecutar cada 60 segundos
+
+start_service() {
+    procd_open_instance "jadslink-session-cleanup"
+
+    # Usar "watch" para ejecutar el script periódicamente
+    # O usar un loop simple con sleep
+
+    procd_set_param command /bin/sh -c "
+    while true; do
+        $CLEANUP_SCRIPT 2>> /var/log/jadslink/cleanup.log
+        sleep $CLEANUP_INTERVAL
+    done
+    "
+
+    procd_set_param respawn 3600 5 0  # Reintentar 3 veces en 1 hora
+    procd_close_instance
+}
+
+stop_service() {
+    # OpenWrt automáticamente detiene el proceso
+    return 0
+}
+
+reload_service() {
+    stop_service
+    start_service
+}
+
+status_service() {
+    procd_set_param command "$CLEANUP_SCRIPT"
+    procd_status_and_consume_watchdog
+}
