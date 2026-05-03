@@ -281,7 +281,7 @@ app.include_router(portal.router, prefix=f"{settings.API_PREFIX}/portal", tags=[
 app.include_router(agent.router, prefix=f"{settings.API_PREFIX}/agent", tags=["Agent"])
 app.include_router(uploads.router, prefix=f"{settings.API_PREFIX}/uploads", tags=["Uploads"])
 app.include_router(utils.router, prefix=f"{settings.API_PREFIX}/utils", tags=["Utilities"])
-app.include_router(health.router, tags=["Health & Monitoring"])
+app.include_router(health.router, prefix=f"{settings.API_PREFIX}", tags=["Health & Monitoring"])
 
 # Serve static files (logos, etc.)
 uploads_dir = Path("uploads")
