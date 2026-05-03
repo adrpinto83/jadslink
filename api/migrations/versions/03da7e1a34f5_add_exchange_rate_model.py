@@ -37,10 +37,10 @@ def upgrade() -> None:
     # Create index for active rates lookup
     op.create_index('idx_exchange_rates_active', 'exchange_rates', ['is_active', 'created_at'])
 
-    # Insert initial rate (MySQL uses UUID() instead of gen_random_uuid())
+    # Insert initial rate
     op.execute(
         "INSERT INTO exchange_rates (id, rate, source, is_active, notes, created_at, updated_at) "
-        "VALUES (UUID(), 36.50, 'manual', true, 'Initial system rate', now(), now())"
+        "VALUES (gen_random_uuid(), 36.50, 'manual', true, 'Initial system rate', now(), now())"
     )
 
 

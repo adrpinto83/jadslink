@@ -216,6 +216,8 @@ if settings.ENVIRONMENT == "development":
         "http://localhost:8000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8000",
+        "http://192.168.0.201:3000",
+        "http://192.168.0.201:8000",
     ]
 else:
     # Allow specific production domains
