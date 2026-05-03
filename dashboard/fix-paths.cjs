@@ -13,7 +13,8 @@ try {
   let html = fs.readFileSync(indexPath, 'utf-8');
 
   // Mantener favicon como ruta absoluta (importante para que funcione en subrutas como /admin/)
-  html = html.replace(/href="\/favicon\.svg"/g, 'href="/favicon.svg"');
+  html = html.replace(/href="\/favicon\.png"/g, 'href="/favicon.png"');
+  html = html.replace(/href="\/favicon\.svg"/g, 'href="/favicon.png"'); // Convertir .svg a .png
   // Assets como relativas
   html = html.replace(/src="\/assets\//g, 'src="./assets/');
   html = html.replace(/href="\/assets\//g, 'href="./assets/');
