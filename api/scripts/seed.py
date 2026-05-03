@@ -29,7 +29,8 @@ async def seed():
                     name="JADS Studio",
                     slug="jads-studio",
                     is_active=True,
-                    plan_tier="pro", # The main company has the highest tier
+                    plan_tier="enterprise", # The main company has the highest tier
+                    subscription_status="active",
                 )
                 session.add(jads_tenant)
                 print(f"✓ Tenant creado: {jads_tenant.name}")
@@ -66,8 +67,8 @@ async def seed():
                     name="Test Operator",
                     slug="test-operator",
                     is_active=True,
-                    plan_tier="free",
-                    subscription_status="trialing",
+                    plan_tier="starter",
+                    subscription_status="active",
                     free_tickets_limit=50,
                     free_tickets_used=0,
                 )
@@ -142,8 +143,10 @@ async def seed():
                         name=plan_def["name"],
                         duration_minutes=plan_def["duration_minutes"],
                         price_usd=plan_def["price_usd"],
-                        bandwidth_down_kbps=0,
-                        bandwidth_up_kbps=0,
+                        bandwidth_down_kbps=10000,
+                        bandwidth_up_kbps=5000,
+                        max_devices=5,
+                        is_active=True,
                     )
                     session.add(plan)
                     print(f"✓ Plan creado: {plan.name}")

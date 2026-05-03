@@ -12,8 +12,9 @@ const timestamp = Math.floor(Date.now() / 1000);
 try {
   let html = fs.readFileSync(indexPath, 'utf-8');
 
-  // Reemplazar rutas absolutas con relativas
-  html = html.replace(/href="\/favicon\.svg"/g, 'href="./favicon.svg"');
+  // Mantener favicon como ruta absoluta (importante para que funcione en subrutas como /admin/)
+  html = html.replace(/href="\/favicon\.svg"/g, 'href="/favicon.svg"');
+  // Assets como relativas
   html = html.replace(/src="\/assets\//g, 'src="./assets/');
   html = html.replace(/href="\/assets\//g, 'href="./assets/');
 
