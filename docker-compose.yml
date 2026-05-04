@@ -4,12 +4,15 @@ services:
     image: nginx:alpine
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "0.0.0.0:80:80"
     volumes:
       - ./dashboard/dist:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - api
+    networks:
+      jadslink_network:
+        ipv4_address: 172.30.0.10
 
   api:
     build:
@@ -17,7 +20,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "0.0.0.0:8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://jads:jadspass@db:5432/jadslink
       REDIS_URL: redis://redis:6379/0
@@ -33,6 +36,9 @@ services:
       redis:
         condition: service_started
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      jadslink_network:
+        ipv4_address: 172.30.0.20
 
   db:
     image: postgres:15-alpine
@@ -49,7 +55,10 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - "5433:5432"
+      - "0.0.0.0:5433:5432"
+    networks:
+      jadslink_network:
+        ipv4_address: 172.30.0.30
 
   redis:
     image: redis:7-alpine
@@ -58,8 +67,19 @@ services:
     volumes:
       - redisdata:/data
     ports:
-      - "6379:6379"
+      - "0.0.0.0:6379:6379"
+    networks:
+      jadslink_network:
+        ipv4_address: 172.30.0.40
 
 volumes:
   pgdata:
   redisdata:
+
+networks:
+  jadslink_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1

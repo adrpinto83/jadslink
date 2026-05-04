@@ -137,6 +137,14 @@ async def list_tickets(
     response_tickets = []
     for ticket in tickets:
         qr_base64 = generate_qr_base64(ticket.qr_data)
+
+        # Safely get tenant settings
+        tenant_logo_url = None
+        tenant_ssid = None
+        if ticket.tenant and ticket.tenant.settings:
+            tenant_logo_url = ticket.tenant.settings.get("logo_url")
+            tenant_ssid = ticket.tenant.settings.get("ssid")
+
         response_tickets.append(
             TicketResponse(
                 id=ticket.id,
@@ -145,9 +153,9 @@ async def list_tickets(
                 qr_base64_png=qr_base64,
                 status=ticket.status.value,
                 created_at=ticket.created_at,
-                plan_name=ticket.plan.name,
-                tenant_logo_url=ticket.tenant.settings.get("logo_url"),
-                tenant_ssid=ticket.tenant.settings.get("ssid"),
+                plan_name=ticket.plan.name if ticket.plan else "N/A",
+                tenant_logo_url=tenant_logo_url,
+                tenant_ssid=tenant_ssid,
             )
         )
 

@@ -123,17 +123,17 @@ async def get_app_logo_public():
     """
     Get JADSlink application logo (public endpoint, no authentication required).
     Used for displaying logo in login/register and throughout the app.
-    Returns relative URL so it works in both dev and production.
+    Returns URL path that works from the browser (served by Nginx, not API).
     """
     # Check if logo exists
     uploads_dir = Path("uploads/app")
     logo_files = list(uploads_dir.glob("jadslink.*"))
 
     if logo_files:
-        # Logo exists, return its relative URL
+        # Logo exists, return its public URL (served by Nginx, not API)
         logo_filename = logo_files[0].name
-        # Return relative URL that will be resolved relative to the current API
-        logo_url = f"{settings.API_PREFIX}/uploads/app/{logo_filename}"
+        # Return URL relative to the dashboard root (Nginx serves /uploads/)
+        logo_url = f"/uploads/app/{logo_filename}"
         return {
             "logo_url": logo_url,
             "has_custom_logo": True

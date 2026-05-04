@@ -86,24 +86,24 @@ class Tenant(BaseModel):
 
     def get_max_nodes(self) -> int:
         """Retorna el máximo número de nodos según el plan"""
-        if self.plan_tier == PlanTier.free or self.plan_tier == PlanTier.basic:
+        if self.plan_tier == PlanTier.starter:
             return 1
-        elif self.plan_tier == PlanTier.standard:
-            return 3
-        return 999999  # Pro tiene ilimitados
+        elif self.plan_tier == PlanTier.pro:
+            return 5
+        return 999999  # Enterprise tiene ilimitados
 
     def get_available_tickets(self) -> int:
         """Retorna cuántos tickets puede generar sin costo adicional"""
-        if self.plan_tier == PlanTier.free:
+        if self.plan_tier == PlanTier.starter:
             return max(0, self.free_tickets_limit - self.free_tickets_used)
-        elif self.plan_tier == PlanTier.basic:
-            return max(0, self.free_tickets_limit - self.free_tickets_used)
-        return 999999  # Pro es ilimitado
+        elif self.plan_tier == PlanTier.pro:
+            return 999999  # Pro tiene ilimitados
+        return 999999  # Enterprise es ilimitado
 
     def get_total_available_tickets(self) -> int:
         """Retorna tickets gratuitos + pagos disponibles"""
         free_available = self.get_available_tickets()
-        if self.plan_tier in [PlanTier.free, PlanTier.basic]:
+        if self.plan_tier == PlanTier.starter:
             paid_available = self.extra_tickets_count * 50
             return free_available + paid_available
         return 999999
