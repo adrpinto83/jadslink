@@ -1,0 +1,354 @@
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, HTTPException, Header
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
+import uuid, secrets
+
+from ..database import get_db
+from ..models import Device, Report, Command, Client, Code
+
+router = APIRouter(prefix="/api/devices", tags=["devices"])
+
+
+# ── Schemas ────────────────────────────────────────────────────────────────────
+
+class DeviceRegister(BaseModel):
+    name: str
+    location: str = ""
+    model: str = "OpenWrt"
+
+class HeartbeatPayload(BaseModel):
+    firmware: str = ""
+    wan_ip: str = ""
+    clients_count: int = 0
+    bytes_in: int = 0
+    bytes_out: int = 0
+    cpu_load: float = 0.0
+    mem_free_mb: float = 0.0
+    uptime_sec: int = 0
+    clients: list[dict] = []
+
+class ConfigUpdate(BaseModel):
+    config: dict
+
+class CommandResult(BaseModel):
+    command_id: int
+    status: str       # done | error
+    result: str = ""
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def get_device_by_key(api_key: str, db: Session) -> Device:
+    device = db.query(Device).filter(Device.api_key == api_key).first()
+    if not device:
+        raise HTTPException(status_code=401, detail="API key inválida")
+    return device
+
+def require_api_key(x_api_key: str = Header(...), db: Session = Depends(get_db)):
+    return get_device_by_key(x_api_key, db)
+
+
+# ── Registro ──────────────────────────────────────────────────────────────────
+
+@router.post("/register")
+def register_device(payload: DeviceRegister, db: Session = Depends(get_db)):
+    device = Device(
+        id=str(uuid.uuid4()),
+        name=payload.name,
+        location=payload.location,
+        model=payload.model,
+        api_key=secrets.token_urlsafe(32),
+        config={},
+    )
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+    return {"device_id": device.id, "api_key": device.api_key}
+
+
+# ── Heartbeat (dispositivo → nube) ────────────────────────────────────────────
+
+@router.post("/{device_id}/heartbeat")
+def heartbeat(
+    device_id: str,
+    payload: HeartbeatPayload,
+    device: Device = Depends(require_api_key),
+    db: Session = Depends(get_db),
+):
+    if device.id != device_id:
+        raise HTTPException(status_code=403)
+
+    device.last_seen = datetime.utcnow()
+    device.online = True
+    device.firmware = payload.firmware or device.firmware
+    device.wan_ip = payload.wan_ip  # type: ignore[attr-defined]
+
+    # Guardar snapshot de métricas
+    report = Report(
+        device_id=device.id,
+        clients_count=payload.clients_count,
+        bytes_in=payload.bytes_in,
+        bytes_out=payload.bytes_out,
+        cpu_load=payload.cpu_load,
+        mem_free_mb=payload.mem_free_mb,
+        uptime_sec=payload.uptime_sec,
+        wan_ip=payload.wan_ip,
+    )
+    db.add(report)
+
+    # Sincronizar clientes activos
+    if payload.clients:
+        db.query(Client).filter(
+            Client.device_id == device.id,
+            Client.active == True
+        ).update({"active": False, "disconnected_at": datetime.utcnow()})
+
+        for c in payload.clients:
+            existing = db.query(Client).filter(
+                Client.device_id == device.id,
+                Client.mac == c.get("mac"),
+                Client.active == False,
+                Client.disconnected_at >= datetime.utcnow() - timedelta(minutes=5)
+            ).first()
+            if existing:
+                existing.active = True
+                existing.disconnected_at = None
+                existing.bytes_in = c.get("bytes_in", 0)
+                existing.bytes_out = c.get("bytes_out", 0)
+            else:
+                db.add(Client(
+                    device_id=device.id,
+                    mac=c.get("mac", ""),
+                    ip=c.get("ip", ""),
+                    hostname=c.get("hostname", ""),
+                    bytes_in=c.get("bytes_in", 0),
+                    bytes_out=c.get("bytes_out", 0),
+                    code_used=c.get("code_used", ""),
+                ))
+
+    db.commit()
+
+    # Devolver comandos pendientes
+    pending = db.query(Command).filter(
+        Command.device_id == device.id,
+        Command.status == "pending"
+    ).all()
+
+    cmds = [{"id": c.id, "action": c.action, "payload": c.payload} for c in pending]
+    for c in pending:
+        c.status = "delivered"
+        c.delivered_at = datetime.utcnow()
+    db.commit()
+
+    return {"commands": cmds}
+
+
+# ── Resultado de comando ──────────────────────────────────────────────────────
+
+@router.post("/{device_id}/command-result")
+def command_result(
+    device_id: str,
+    payload: CommandResult,
+    device: Device = Depends(require_api_key),
+    db: Session = Depends(get_db),
+):
+    cmd = db.query(Command).filter(
+        Command.id == payload.command_id,
+        Command.device_id == device.id,
+    ).first()
+    if not cmd:
+        raise HTTPException(status_code=404)
+    cmd.status = payload.status
+    cmd.result = payload.result
+    cmd.done_at = datetime.utcnow()
+    db.commit()
+    return {"ok": True}
+
+
+# ── Admin: resumen global ─────────────────────────────────────────────────────
+
+@router.get("/overview")
+def overview(db: Session = Depends(get_db)):
+    now = datetime.utcnow()
+    all_devices = db.query(Device).all()
+    for d in all_devices:
+        if d.last_seen and (now - d.last_seen).total_seconds() > 120:
+            d.online = False
+    db.commit()
+    online = sum(1 for d in all_devices if d.online)
+    active_clients = db.query(Client).filter(Client.active == True).count()
+    active_codes = db.query(Code).filter(Code.active == True).count()
+    recent = (db.query(Client, Device.name)
+              .join(Device, Client.device_id == Device.id)
+              .order_by(Client.connected_at.desc()).limit(20).all())
+    return {
+        "devices_total": len(all_devices),
+        "devices_online": online,
+        "active_clients": active_clients,
+        "active_codes": active_codes,
+        "recent_connections": [{
+            "device_name": name,
+            "mac": c.mac, "ip": c.ip, "code_used": c.code_used,
+            "connected_at": c.connected_at.isoformat(),
+            "active": c.active,
+        } for c, name in recent],
+    }
+
+
+# ── Admin: listar dispositivos ────────────────────────────────────────────────
+
+@router.get("")
+def list_devices(db: Session = Depends(get_db)):
+    devices = db.query(Device).all()
+    now = datetime.utcnow()
+    result = []
+    for d in devices:
+        if d.last_seen and (now - d.last_seen).total_seconds() > 120:
+            d.online = False
+        active_clients = db.query(Client).filter(
+            Client.device_id == d.id, Client.active == True
+        ).count()
+        result.append({
+            "id": d.id,
+            "name": d.name,
+            "location": d.location,
+            "model": d.model,
+            "online": d.online,
+            "last_seen": d.last_seen.isoformat() if d.last_seen else None,
+            "firmware": d.firmware,
+            "config": d.config,
+            "api_key": d.api_key,
+            "active_clients": active_clients,
+        })
+    db.commit()
+    return result
+
+
+@router.get("/{device_id}")
+def get_device(device_id: str, db: Session = Depends(get_db)):
+    d = db.query(Device).filter(Device.id == device_id).first()
+    if not d:
+        raise HTTPException(status_code=404)
+    return {
+        "id": d.id, "name": d.name, "location": d.location,
+        "model": d.model, "online": d.online, "firmware": d.firmware,
+        "last_seen": d.last_seen.isoformat() if d.last_seen else None,
+        "config": d.config, "api_key": d.api_key,
+    }
+
+
+@router.put("/{device_id}/config")
+def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(get_db)):
+    d = db.query(Device).filter(Device.id == device_id).first()
+    if not d:
+        raise HTTPException(status_code=404)
+    d.config = {**(d.config or {}), **payload.config}
+    # Encolar comando para que el dispositivo aplique la config
+    db.add(Command(device_id=d.id, action="update_config", payload=payload.config))
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/{device_id}/reboot")
+def reboot_device(device_id: str, db: Session = Depends(get_db)):
+    d = db.query(Device).filter(Device.id == device_id).first()
+    if not d:
+        raise HTTPException(status_code=404)
+    db.add(Command(device_id=d.id, action="reboot", payload={}))
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/{device_id}/clients")
+def get_clients(device_id: str, active_only: bool = True, db: Session = Depends(get_db)):
+    q = db.query(Client).filter(Client.device_id == device_id)
+    if active_only:
+        q = q.filter(Client.active == True)
+    clients = q.order_by(Client.connected_at.desc()).limit(500).all()
+    return [{
+        "id": c.id, "mac": c.mac, "ip": c.ip, "hostname": c.hostname,
+        "bytes_in": c.bytes_in, "bytes_out": c.bytes_out,
+        "connected_at": c.connected_at.isoformat(),
+        "active": c.active, "code_used": c.code_used,
+    } for c in clients]
+
+
+@router.post("/{device_id}/kick/{mac}")
+def kick_client(device_id: str, mac: str, db: Session = Depends(get_db)):
+    d = db.query(Device).filter(Device.id == device_id).first()
+    if not d:
+        raise HTTPException(status_code=404)
+    db.add(Command(device_id=d.id, action="kick_client", payload={"mac": mac}))
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/{device_id}/logs")
+def get_logs(device_id: str, limit: int = 200, days: int = 28, db: Session = Depends(get_db)):
+    since = datetime.utcnow() - timedelta(days=days)
+    clients = (db.query(Client)
+               .filter(Client.device_id == device_id, Client.connected_at >= since)
+               .order_by(Client.connected_at.desc()).limit(limit).all())
+    return [{
+        "id": c.id, "mac": c.mac, "ip": c.ip, "hostname": c.hostname,
+        "bytes_in": c.bytes_in, "bytes_out": c.bytes_out,
+        "connected_at": c.connected_at.isoformat(),
+        "disconnected_at": c.disconnected_at.isoformat() if c.disconnected_at else None,
+        "active": c.active, "code_used": c.code_used,
+    } for c in clients]
+
+
+@router.delete("/{device_id}")
+def delete_device(device_id: str, db: Session = Depends(get_db)):
+    d = db.query(Device).filter(Device.id == device_id).first()
+    if not d:
+        raise HTTPException(status_code=404)
+    db.delete(d)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/{device_id}/reports")
+def get_reports(device_id: str, limit: int = 100, db: Session = Depends(get_db)):
+    reports = db.query(Report).filter(Report.device_id == device_id)\
+                .order_by(Report.timestamp.desc()).limit(limit).all()
+    return [{
+        "timestamp": r.timestamp.isoformat(),
+        "clients_count": r.clients_count,
+        "bytes_in": r.bytes_in, "bytes_out": r.bytes_out,
+        "cpu_load": r.cpu_load, "mem_free_mb": r.mem_free_mb,
+        "uptime_sec": r.uptime_sec, "wan_ip": r.wan_ip,
+    } for r in reports]
+
+
+# ── Seed: dispositivos conocidos (agentes en campo) ───────────────────────────
+# Reinsertados en cada arranque para sobrevivir recreaciones de la BD SQLite.
+# Sin esto, un redeploy borra la fila del agente del router y su device_id/api_key
+# quedan huérfanos -> heartbeat 401 -> dispositivo offline.
+SEED_DEVICES = [
+    {
+        "id": "e4916825-74af-42ac-b3dc-ba26e4647e19",
+        "name": "Router Hotspot Principal",
+        "api_key": "Pysp-zQZE3h230DhEALCAkOTpqZ3d3tjOGkpyl_axoI",
+        "location": "Lobby",
+        "model": "OpenWrt 23.05.3",
+        "firmware": "OpenWrt 23.05.3",
+    },
+]
+
+
+def seed_devices(db: Session):
+    """Garantiza que los agentes conocidos existan con su api_key correcta."""
+    for spec in SEED_DEVICES:
+        d = db.query(Device).filter(Device.id == spec["id"]).first()
+        if d is None:
+            db.add(Device(
+                id=spec["id"], name=spec["name"], api_key=spec["api_key"],
+                location=spec.get("location", ""), model=spec.get("model", "OpenWrt"),
+                firmware=spec.get("firmware", ""), config={},
+            ))
+        elif d.api_key != spec["api_key"]:
+            d.api_key = spec["api_key"]
+    db.commit()

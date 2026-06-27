@@ -4,8 +4,7 @@ from config import get_settings
 
 settings = get_settings()
 
-# Use QueuePool for MySQL (default behavior)
-# aiomysql with connection pooling for better performance
+# PostgreSQL async engine with connection pooling
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
@@ -15,8 +14,7 @@ engine = create_async_engine(
     pool_pre_ping=True,  # Verify connection before using
     pool_recycle=3600,   # Recycle connections after 1 hour
     connect_args={
-        "charset": "utf8mb4",
-        "autocommit": True,
+        "timeout": 10,
     }
 )
 
