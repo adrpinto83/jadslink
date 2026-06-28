@@ -10,6 +10,7 @@ from ..models import AdminUser
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 SECRET = os.getenv("JWT_SECRET", "change-me-in-production")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 TOKENS: dict[str, str] = {}   # token → username (en producción usar Redis/JWT)
 
 
@@ -70,7 +71,16 @@ def get_admin(token: str = "") -> str:
     return TOKENS[token]
 
 
+def require_admin(authorization: str = Header(default="")) -> str:
+    raw = authorization.replace("Bearer ", "").strip()
+    return get_admin(raw)
+
+
 def seed_admin(db: Session):
-    if not db.query(AdminUser).first():
-        db.add(AdminUser(username="admin", password_hash=hash_pw("admin123")))
+    admin = db.query(AdminUser).filter(AdminUser.username == "admin").first()
+    if admin is None:
+        db.add(AdminUser(username="admin", password_hash=hash_pw(ADMIN_PASSWORD)))
+        db.commit()
+    elif ADMIN_PASSWORD != "admin123" and admin.password_hash == hash_pw("admin123"):
+        admin.password_hash = hash_pw(ADMIN_PASSWORD)
         db.commit()

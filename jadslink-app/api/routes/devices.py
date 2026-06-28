@@ -7,6 +7,7 @@ import uuid, secrets
 
 from ..database import get_db
 from ..models import Device, Report, Command, Client, Code
+from .auth import require_admin
 
 router = APIRouter(prefix="/api/devices", tags=["devices"])
 
@@ -53,7 +54,7 @@ def require_api_key(x_api_key: str = Header(...), db: Session = Depends(get_db))
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 @router.post("/register")
-def register_device(payload: DeviceRegister, db: Session = Depends(get_db)):
+def register_device(payload: DeviceRegister, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     device = Device(
         id=str(uuid.uuid4()),
         name=payload.name,
@@ -98,35 +99,38 @@ def heartbeat(
     )
     db.add(report)
 
-    # Sincronizar clientes activos
-    if payload.clients:
-        db.query(Client).filter(
-            Client.device_id == device.id,
-            Client.active == True
-        ).update({"active": False, "disconnected_at": datetime.utcnow()})
+    # Sincronizar clientes activos: primero marcar todos como desconectados,
+    # luego reactivar los que siguen en la lista. Así si llega lista vacía
+    # los clientes se marcan offline correctamente.
+    db.query(Client).filter(
+        Client.device_id == device.id,
+        Client.active == True,
+    ).update({"active": False, "disconnected_at": datetime.utcnow()})
 
-        for c in payload.clients:
-            existing = db.query(Client).filter(
-                Client.device_id == device.id,
-                Client.mac == c.get("mac"),
-                Client.active == False,
-                Client.disconnected_at >= datetime.utcnow() - timedelta(minutes=5)
-            ).first()
-            if existing:
-                existing.active = True
-                existing.disconnected_at = None
-                existing.bytes_in = c.get("bytes_in", 0)
-                existing.bytes_out = c.get("bytes_out", 0)
-            else:
-                db.add(Client(
-                    device_id=device.id,
-                    mac=c.get("mac", ""),
-                    ip=c.get("ip", ""),
-                    hostname=c.get("hostname", ""),
-                    bytes_in=c.get("bytes_in", 0),
-                    bytes_out=c.get("bytes_out", 0),
-                    code_used=c.get("code_used", ""),
-                ))
+    for c in payload.clients:
+        existing = db.query(Client).filter(
+            Client.device_id == device.id,
+            Client.mac == c.get("mac"),
+            Client.active == False,
+            Client.disconnected_at >= datetime.utcnow() - timedelta(minutes=5)
+        ).first()
+        if existing:
+            existing.active = True
+            existing.disconnected_at = None
+            existing.bytes_in = c.get("bytes_in", 0)
+            existing.bytes_out = c.get("bytes_out", 0)
+            if c.get("code_used"):
+                existing.code_used = c["code_used"]
+        else:
+            db.add(Client(
+                device_id=device.id,
+                mac=c.get("mac", ""),
+                ip=c.get("ip", ""),
+                hostname=c.get("hostname", ""),
+                bytes_in=c.get("bytes_in", 0),
+                bytes_out=c.get("bytes_out", 0),
+                code_used=c.get("code_used", ""),
+            ))
 
     db.commit()
 
@@ -170,7 +174,7 @@ def command_result(
 # ── Admin: resumen global ─────────────────────────────────────────────────────
 
 @router.get("/overview")
-def overview(db: Session = Depends(get_db)):
+def overview(db: Session = Depends(get_db), _: str = Depends(require_admin)):
     now = datetime.utcnow()
     all_devices = db.query(Device).all()
     for d in all_devices:
@@ -200,7 +204,7 @@ def overview(db: Session = Depends(get_db)):
 # ── Admin: listar dispositivos ────────────────────────────────────────────────
 
 @router.get("")
-def list_devices(db: Session = Depends(get_db)):
+def list_devices(db: Session = Depends(get_db), _: str = Depends(require_admin)):
     devices = db.query(Device).all()
     now = datetime.utcnow()
     result = []
@@ -227,7 +231,7 @@ def list_devices(db: Session = Depends(get_db)):
 
 
 @router.get("/{device_id}")
-def get_device(device_id: str, db: Session = Depends(get_db)):
+def get_device(device_id: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     d = db.query(Device).filter(Device.id == device_id).first()
     if not d:
         raise HTTPException(status_code=404)
@@ -240,7 +244,7 @@ def get_device(device_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{device_id}/config")
-def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(get_db)):
+def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     d = db.query(Device).filter(Device.id == device_id).first()
     if not d:
         raise HTTPException(status_code=404)
@@ -252,7 +256,7 @@ def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(g
 
 
 @router.post("/{device_id}/reboot")
-def reboot_device(device_id: str, db: Session = Depends(get_db)):
+def reboot_device(device_id: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     d = db.query(Device).filter(Device.id == device_id).first()
     if not d:
         raise HTTPException(status_code=404)
@@ -262,7 +266,7 @@ def reboot_device(device_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{device_id}/clients")
-def get_clients(device_id: str, active_only: bool = True, db: Session = Depends(get_db)):
+def get_clients(device_id: str, active_only: bool = True, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     q = db.query(Client).filter(Client.device_id == device_id)
     if active_only:
         q = q.filter(Client.active == True)
@@ -276,7 +280,7 @@ def get_clients(device_id: str, active_only: bool = True, db: Session = Depends(
 
 
 @router.post("/{device_id}/kick/{mac}")
-def kick_client(device_id: str, mac: str, db: Session = Depends(get_db)):
+def kick_client(device_id: str, mac: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     d = db.query(Device).filter(Device.id == device_id).first()
     if not d:
         raise HTTPException(status_code=404)
@@ -286,7 +290,7 @@ def kick_client(device_id: str, mac: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{device_id}/logs")
-def get_logs(device_id: str, limit: int = 200, days: int = 28, db: Session = Depends(get_db)):
+def get_logs(device_id: str, limit: int = 200, days: int = 28, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     since = datetime.utcnow() - timedelta(days=days)
     clients = (db.query(Client)
                .filter(Client.device_id == device_id, Client.connected_at >= since)
@@ -301,7 +305,7 @@ def get_logs(device_id: str, limit: int = 200, days: int = 28, db: Session = Dep
 
 
 @router.delete("/{device_id}")
-def delete_device(device_id: str, db: Session = Depends(get_db)):
+def delete_device(device_id: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     d = db.query(Device).filter(Device.id == device_id).first()
     if not d:
         raise HTTPException(status_code=404)
@@ -311,7 +315,7 @@ def delete_device(device_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{device_id}/reports")
-def get_reports(device_id: str, limit: int = 100, db: Session = Depends(get_db)):
+def get_reports(device_id: str, limit: int = 100, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     reports = db.query(Report).filter(Report.device_id == device_id)\
                 .order_by(Report.timestamp.desc()).limit(limit).all()
     return [{

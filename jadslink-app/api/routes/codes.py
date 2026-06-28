@@ -7,6 +7,7 @@ import random, string
 
 from ..database import get_db
 from ..models import Code, Device, Command
+from .auth import require_admin
 
 router = APIRouter(prefix="/api/devices/{device_id}/codes", tags=["codes"])
 
@@ -37,7 +38,7 @@ def gen_code(length=8, prefix="") -> str:
 
 
 @router.post("")
-def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_db)):
+def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     d = db.query(Device).filter(Device.id == device_id).first()
     if not d:
         raise HTTPException(status_code=404)
@@ -79,7 +80,7 @@ def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_
 
 
 @router.get("")
-def list_codes(device_id: str, active_only: bool = True, db: Session = Depends(get_db)):
+def list_codes(device_id: str, active_only: bool = True, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     q = db.query(Code).filter(Code.device_id == device_id)
     if active_only:
         q = q.filter(Code.active == True)
@@ -140,7 +141,7 @@ def validate_code(
 
 
 @router.delete("/{code_id}")
-def revoke_code(device_id: str, code_id: int, db: Session = Depends(get_db)):
+def revoke_code(device_id: str, code_id: int, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     code = db.query(Code).filter(Code.id == code_id, Code.device_id == device_id).first()
     if not code:
         raise HTTPException(status_code=404)
