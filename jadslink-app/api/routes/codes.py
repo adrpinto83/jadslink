@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, field_validator
 from typing import Optional
@@ -153,3 +154,83 @@ def revoke_code(device_id: str, code_id: int, db: Session = Depends(get_db), _: 
     ))
     db.commit()
     return {"ok": True}
+
+
+@router.get("/vouchers", response_class=HTMLResponse)
+def print_vouchers(
+    device_id: str,
+    active_only: bool = True,
+    db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
+):
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404)
+
+    q = db.query(Code).filter(Code.device_id == device_id)
+    if active_only:
+        q = q.filter(Code.active == True)
+    codes = q.order_by(Code.created_at.asc()).all()
+
+    def dur_str(minutes: int) -> str:
+        h, m = divmod(minutes, 60)
+        if h and m:  return f"{h}h {m}min"
+        if h:        return f"{h} hora{'s' if h > 1 else ''}"
+        return f"{m} min"
+
+    vouchers_html = ""
+    for c in codes:
+        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=110x110&data={c.code}&bgcolor=0d1b3e&color=4f8ef7&margin=4"
+        vouchers_html += f"""
+<div class="voucher">
+  <div class="v-brand">JADSLink</div>
+  <div class="v-net">{device.name}</div>
+  <img class="v-qr" src="{qr_url}" alt="{c.code}">
+  <div class="v-code">{c.code}</div>
+  <div class="v-dur">{dur_str(c.duration_min)} de acceso WiFi</div>
+  <div class="v-foot">jadsstudio.com</div>
+</div>"""
+
+    if not vouchers_html:
+        vouchers_html = '<p class="empty">No hay códigos activos</p>'
+
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Vouchers — {device.name}</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:#e8eaf0;font-family:Arial,sans-serif;padding:20px}}
+.top{{text-align:center;margin-bottom:18px}}
+.top h1{{font-size:17px;color:#333;margin-bottom:10px}}
+.print-btn{{padding:9px 28px;background:linear-gradient(90deg,#4f8ef7,#a259f7);color:#fff;
+  border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}}
+.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:800px;margin:0 auto}}
+.voucher{{background:#0d1b3e;border-radius:10px;padding:12px 10px;text-align:center;
+  color:#fff;page-break-inside:avoid;break-inside:avoid}}
+.v-brand{{font-size:13px;font-weight:800;letter-spacing:2px;
+  background:linear-gradient(90deg,#4f8ef7,#a259f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:2px}}
+.v-net{{font-size:8px;color:#7a8aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}}
+.v-qr{{width:80px;height:80px;border-radius:6px;margin-bottom:6px}}
+.v-code{{font-size:17px;font-weight:800;letter-spacing:4px;color:#fff;margin-bottom:3px}}
+.v-dur{{font-size:8px;color:#9aa5c0;margin-bottom:8px}}
+.v-foot{{font-size:7px;color:#374151;border-top:1px solid #1e3a5f;padding-top:5px}}
+.empty{{grid-column:1/-1;text-align:center;color:#888;padding:40px;font-size:14px}}
+@media print{{
+  body{{background:#fff;padding:0}}
+  .top{{margin-bottom:10px}}
+  .print-btn{{display:none}}
+  .grid{{max-width:100%}}
+}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Vouchers — {device.name} &nbsp;·&nbsp; {len(codes)} código{"s" if len(codes) != 1 else ""}</h1>
+  <button class="print-btn" onclick="window.print()">🖨️&nbsp; Imprimir / Guardar PDF</button>
+</div>
+<div class="grid">{vouchers_html}</div>
+</body>
+</html>"""

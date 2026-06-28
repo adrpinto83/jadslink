@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import hashlib, secrets, os
@@ -71,8 +71,11 @@ def get_admin(token: str = "") -> str:
     return TOKENS[token]
 
 
-def require_admin(authorization: str = Header(default="")) -> str:
-    raw = authorization.replace("Bearer ", "").strip()
+def require_admin(
+    authorization: str = Header(default=""),
+    token: str = Query(default=""),
+) -> str:
+    raw = authorization.replace("Bearer ", "").strip() or token.strip()
     return get_admin(raw)
 
 

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
 import uuid, secrets
@@ -312,6 +313,35 @@ def delete_device(device_id: str, db: Session = Depends(get_db), _: str = Depend
     db.delete(d)
     db.commit()
     return {"ok": True}
+
+
+@router.get("/{device_id}/usage-summary")
+def usage_summary(device_id: str, days: int = 30, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    total_codes  = db.query(Code).filter(Code.device_id == device_id).count()
+    active_codes = db.query(Code).filter(Code.device_id == device_id, Code.active == True).count()
+    used_codes   = db.query(Code).filter(Code.device_id == device_id, Code.uses > 0).count()
+
+    total_clients = db.query(Client).filter(Client.device_id == device_id).count()
+    bytes_in  = db.query(func.sum(Client.bytes_in)).filter(Client.device_id == device_id).scalar() or 0
+    bytes_out = db.query(func.sum(Client.bytes_out)).filter(Client.device_id == device_id).scalar() or 0
+
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    daily = []
+    for i in range(days - 1, -1, -1):
+        d_start = today - timedelta(days=i)
+        d_end   = d_start + timedelta(days=1)
+        count = db.query(Client).filter(
+            Client.device_id == device_id,
+            Client.connected_at >= d_start,
+            Client.connected_at <  d_end,
+        ).count()
+        daily.append({"date": d_start.strftime("%-d/%m"), "connections": count})
+
+    return {
+        "codes":   {"total": total_codes, "active": active_codes, "used": used_codes},
+        "clients": {"total": total_clients, "bytes_in": bytes_in, "bytes_out": bytes_out},
+        "daily":   daily,
+    }
 
 
 @router.get("/{device_id}/reports")

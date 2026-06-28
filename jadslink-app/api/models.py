@@ -103,3 +103,10 @@ class AdminUser(Base):
     username      = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     created_at    = Column(DateTime, default=datetime.utcnow)
+
+
+class Settings(Base):
+    __tablename__ = "settings"
+
+    key   = Column(String, primary_key=True)
+    value = Column(String, default="")

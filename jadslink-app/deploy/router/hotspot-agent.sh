@@ -19,6 +19,22 @@ http_post() {
     "$1" 2>/dev/null
 }
 
+SPLASH_PATH="${SPLASH_PATH:-/etc/nodogsplash/htdocs/splash.html}"
+
+update_portal() {
+  # Descarga el splash.html ya renderizado (con el branding del operador)
+  # desde la nube y lo escribe en NoDogSplash. La nube es la fuente de verdad.
+  uclient-fetch -q -T 15 -O /tmp/splash.new \
+    "${CLOUD_URL}/api/devices/${DEVICE_ID}/portal/splash" 2>/dev/null
+  if [ -s /tmp/splash.new ] && grep -q '\$authaction' /tmp/splash.new; then
+    mv /tmp/splash.new "$SPLASH_PATH"
+    log "Portal actualizado desde la nube"
+  else
+    rm -f /tmp/splash.new
+    log "update_portal: descarga vacia o invalida, sin cambios"
+  fi
+}
+
 get_uptime() { awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0; }
 
 get_cpu() {
@@ -119,6 +135,11 @@ process_commands() {
         CODE=$(echo "$RESP" | grep -o '"code":"[^"]*"' | head -1 | cut -d'"' -f4)
         [ -n "$CODE" ] && sed -i "/^${CODE}|/d" "$NDS_CODES" && log "Codigo $CODE revocado"
         ;;
+      update_config)
+        # El branding del portal vive en la config; basta con re-descargar el
+        # splash renderizado desde la nube.
+        update_portal
+        ;;
       *) log "Comando no implementado: $ACTION" ;;
     esac
   done
@@ -151,8 +172,10 @@ fi
 case "$1" in
   validate) validate_code "$2" "$3" "$4" ;;
   once)     send_heartbeat ;;
+  portal)   update_portal ;;
   *)
     log "Agente iniciado. Intervalo: ${INTERVAL}s"
+    update_portal   # aplica branding actual al arrancar
     while true; do
       send_heartbeat
       sleep "$INTERVAL"

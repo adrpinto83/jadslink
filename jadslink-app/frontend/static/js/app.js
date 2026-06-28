@@ -115,6 +115,7 @@ document.querySelectorAll(".nav-item").forEach(el => {
     if (el.dataset.tab === "codes")    loadCodes();
     if (el.dataset.tab === "reports")  loadReports();
     if (el.dataset.tab === "config")   loadConfig();
+    if (el.dataset.tab === "portal")   loadPortal();
     if (el.dataset.tab === "settings") loadSettings();
   });
 });
@@ -197,7 +198,7 @@ function selectDevice(id) {
 
 function populateDeviceSelects() {
   const opts = devices.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
-  ["clients","logs","codes","reports","config"].forEach(tab => {
+  ["clients","logs","codes","reports","config","portal"].forEach(tab => {
     const sel = document.getElementById(`${tab}-device-select`);
     if (!sel) return;
     const cur = sel.value;
@@ -377,13 +378,22 @@ function exportCodes() {
   });
 }
 
-// ── Monitor / Reportes ────────────────────────────────────────────────────────
+function printVouchers() {
+  const devId = document.getElementById("codes-device-select").value;
+  if (!devId) return alert("Selecciona un gateway primero");
+  window.open(`/api/devices/${devId}/codes/vouchers?token=${encodeURIComponent(token)}`, "_blank");
+}
+
+// ── Reportes / Monitor ────────────────────────────────────────────────────────
 
 document.getElementById("reports-device-select").addEventListener("change", loadReports);
+document.getElementById("reports-days").addEventListener("change", loadReports);
 
 async function loadReports() {
   const devId = document.getElementById("reports-device-select").value;
   if (!devId) return;
+  loadUsageSummary(devId);
+
   const data = await api("GET", `/api/devices/${devId}/reports?limit=48`) || [];
   if (!data.length) return;
 
@@ -402,6 +412,33 @@ async function loadReports() {
     rev.map(r => r.timestamp.slice(11,16)), "Tráfico ↓ (KB)", "#4f8ef7");
   drawLineChart("clients-chart", rev.map(r => r.clients_count),
     rev.map(r => r.timestamp.slice(11,16)), "Clientes", "#3ecf8e");
+}
+
+async function loadUsageSummary(devId) {
+  const days = document.getElementById("reports-days").value || 30;
+  const d = await api("GET", `/api/devices/${devId}/usage-summary?days=${days}`);
+  if (!d) return;
+
+  document.getElementById("us-used").textContent    = d.codes.used;
+  document.getElementById("us-active").textContent  = d.codes.active;
+  document.getElementById("us-clients").textContent = d.clients.total;
+  const totalBytes = (d.clients.bytes_in || 0) + (d.clients.bytes_out || 0);
+  document.getElementById("us-data").textContent    = fmt_bytes(totalBytes);
+
+  renderBarChart("daily-chart", d.daily);
+}
+
+function renderBarChart(containerId, daily) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap || !daily?.length) return;
+  const max = Math.max(...daily.map(d => d.connections), 1);
+  wrap.innerHTML = daily.map(d => `
+    <div class="bar-col">
+      <div class="bar-fill" style="height:${Math.round(d.connections / max * 100)}%"></div>
+      <div class="bar-val">${d.connections || ""}</div>
+      <div class="bar-lbl">${d.date}</div>
+    </div>
+  `).join("");
 }
 
 function drawLineChart(canvasId, values, labels, label, color) {
@@ -463,12 +500,92 @@ async function rebootDevice() {
   alert("Comando de reinicio enviado");
 }
 
+// ── Portal cautivo (branding) ─────────────────────────────────────────────────
+
+const PORTAL_FIELDS = ["portal_logo_url","portal_title","portal_tagline","portal_prompt",
+                       "portal_button","portal_color1","portal_color2","portal_footer"];
+const PORTAL_DEFAULTS = {
+  portal_title: "JADSLink", portal_tagline: "Internet • Acceso WiFi",
+  portal_prompt: "Ingresa tu código de acceso", portal_button: "CONECTAR",
+  portal_color1: "#4f8ef7", portal_color2: "#a259f7",
+  portal_footer: "Desarrollado por JADS Software", portal_logo_url: "",
+};
+
+document.getElementById("portal-device-select").addEventListener("change", loadPortal);
+
+function loadPortal() {
+  const devId = document.getElementById("portal-device-select").value;
+  document.getElementById("portal-msg").classList.add("hidden");
+  if (!devId) return;
+  const d = devices.find(x => x.id === devId);
+  const cfg = d?.config || {};
+  const form = document.getElementById("portal-form");
+  PORTAL_FIELDS.forEach(k => {
+    const el = form.querySelector(`[name="${k}"]`);
+    if (!el) return;
+    el.value = (cfg[k] !== undefined && cfg[k] !== "") ? cfg[k] : (PORTAL_DEFAULTS[k] || "");
+  });
+  refreshPortalPreview();
+}
+
+function refreshPortalPreview() {
+  const devId = document.getElementById("portal-device-select").value;
+  if (!devId) return;
+  const form = document.getElementById("portal-form");
+  const params = new URLSearchParams();
+  PORTAL_FIELDS.forEach(k => {
+    const v = form.querySelector(`[name="${k}"]`)?.value || "";
+    if (v) params.set(k, v);
+  });
+  params.set("_t", Date.now());  // cache-bust
+  document.getElementById("portal-iframe").src =
+    `/api/devices/${devId}/portal/splash?${params.toString()}`;
+}
+
+// Preview en vivo mientras se edita
+document.getElementById("portal-form").addEventListener("input", () => {
+  clearTimeout(window._portalDebounce);
+  window._portalDebounce = setTimeout(refreshPortalPreview, 350);
+});
+
+document.getElementById("portal-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const devId = document.getElementById("portal-device-select").value;
+  if (!devId) return alert("Selecciona un gateway");
+  const form = e.target;
+  const config = {};
+  PORTAL_FIELDS.forEach(k => { config[k] = form.querySelector(`[name="${k}"]`)?.value || ""; });
+  const r = await api("PUT", `/api/devices/${devId}/config`, { config });
+  const msg = document.getElementById("portal-msg");
+  if (r) {
+    msg.textContent = "✓ Guardado. El router aplicará el nuevo portal en el próximo heartbeat (~30s).";
+    msg.className = "success";
+    // refrescar config local
+    const d = devices.find(x => x.id === devId);
+    if (d) d.config = { ...(d.config||{}), ...config };
+  } else {
+    msg.textContent = "✗ Error al guardar";
+    msg.className = "error";
+  }
+  msg.classList.remove("hidden");
+  refreshPortalPreview();
+  setTimeout(() => msg.classList.add("hidden"), 5000);
+});
+
 // ── Ajustes de cuenta ─────────────────────────────────────────────────────────
 
-function loadSettings() {
+async function loadSettings() {
   // Formulario cambio de contraseña
   document.getElementById("pwd-form").reset();
   document.getElementById("pwd-msg").classList.add("hidden");
+
+  // Cargar ajustes de alertas
+  const s = await api("GET", "/api/settings");
+  if (s) {
+    document.getElementById("alert-enabled").checked = s.alert_enabled === "true";
+    document.getElementById("alert-email").value     = s.alert_email || "";
+    document.getElementById("alert-threshold").value = s.alert_threshold_min || "5";
+  }
 
   // Mostrar credenciales de cada gateway
   const list = document.getElementById("api-keys-list");
@@ -535,6 +652,20 @@ document.getElementById("pwd-form").addEventListener("submit", async e => {
     msg.textContent = "✗ Contraseña actual incorrecta";
     msg.className = "error"; msg.classList.remove("hidden");
   }
+});
+
+document.getElementById("alert-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = document.getElementById("alert-msg");
+  const r = await api("POST", "/api/settings", {
+    alert_enabled:       document.getElementById("alert-enabled").checked ? "true" : "false",
+    alert_email:         document.getElementById("alert-email").value.trim(),
+    alert_threshold_min: document.getElementById("alert-threshold").value,
+  });
+  msg.textContent = r?.ok ? "✓ Ajustes de alertas guardados" : "✗ Error al guardar";
+  msg.className   = r?.ok ? "success" : "error";
+  msg.classList.remove("hidden");
+  setTimeout(() => msg.classList.add("hidden"), 3000);
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
