@@ -23,13 +23,24 @@
         </svg>
       </div>
       <h1>JADSLink</h1>
-      <p class="subtitle">Panel de administración</p>
+      <p class="subtitle" id="login-subtitle">Panel de administración</p>
       <form id="login-form">
         <input type="text"     id="login-user" placeholder="Usuario" required autocomplete="username">
         <input type="password" id="login-pass" placeholder="Contraseña" required autocomplete="current-password">
         <button type="submit">Iniciar sesión</button>
         <p id="login-error" class="error hidden"></p>
       </form>
+      <form id="signup-form" class="hidden">
+        <input type="text"     id="su-company" placeholder="Nombre de tu empresa" required>
+        <input type="text"     id="su-user"    placeholder="Usuario (para iniciar sesión)" required autocomplete="username">
+        <input type="password" id="su-pass"    placeholder="Contraseña (mín. 6)" required minlength="6" autocomplete="new-password">
+        <input type="email"    id="su-email"   placeholder="Email (opcional)">
+        <input type="text"     id="su-phone"   placeholder="Teléfono / WhatsApp (opcional)">
+        <button type="submit">Crear cuenta gratis · 14 días</button>
+        <p id="signup-error" class="error hidden"></p>
+      </form>
+      <p class="login-toggle" id="toggle-signup">¿Nuevo operador? <a onclick="showSignup()">Crea tu cuenta</a></p>
+      <p class="login-toggle hidden" id="toggle-login">¿Ya tienes cuenta? <a onclick="showLogin()">Inicia sesión</a></p>
     </div>
   </div>
 
@@ -447,9 +458,15 @@
         </div>
       </form>
       <div id="register-result" class="hidden">
-        <p>Gateway registrado. Guarda estas credenciales:</p>
+        <p style="color:var(--accent2);font-weight:600;margin-bottom:8px"><i class="fa-solid fa-circle-check"></i> ¡Gateway registrado!</p>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Sigue estos pasos para conectar tu router:</p>
+        <ol id="onboarding-steps" style="font-size:13px;line-height:1.5;padding-left:18px;margin-bottom:12px"></ol>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Contenido de <code>/etc/hotspot/agent.conf</code>:</p>
         <pre id="register-creds"></pre>
-        <button class="btn-secondary" onclick="closeModal('modal-register')">Cerrar</button>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="copyText(document.getElementById('register-creds').textContent, this)"><i class="fa-solid fa-copy"></i> Copiar agent.conf</button>
+          <button class="btn-primary" onclick="closeModal('modal-register')">Listo</button>
+        </div>
       </div>
     </div>
   </div>
@@ -521,6 +538,6 @@
 
 </div>
 
-<script src="/static/js/app.js?v=12"></script>
+<script src="/static/js/app.js?v=13"></script>
 </body>
 </html>

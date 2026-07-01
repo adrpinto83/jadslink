@@ -84,6 +84,50 @@ document.getElementById("login-form").addEventListener("submit", async e => {
   }
 });
 
+function showSignup() {
+  document.getElementById("login-form").classList.add("hidden");
+  document.getElementById("toggle-signup").classList.add("hidden");
+  document.getElementById("signup-form").classList.remove("hidden");
+  document.getElementById("toggle-login").classList.remove("hidden");
+  document.getElementById("login-subtitle").textContent = "Crea tu cuenta de operador";
+}
+function showLogin() {
+  document.getElementById("signup-form").classList.add("hidden");
+  document.getElementById("toggle-login").classList.add("hidden");
+  document.getElementById("login-form").classList.remove("hidden");
+  document.getElementById("toggle-signup").classList.remove("hidden");
+  document.getElementById("login-subtitle").textContent = "Panel de administración";
+}
+
+document.getElementById("signup-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = document.getElementById("signup-error");
+  err.classList.add("hidden");
+  const resp = await fetch("/api/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      company_name: document.getElementById("su-company").value,
+      username: document.getElementById("su-user").value,
+      password: document.getElementById("su-pass").value,
+      email: document.getElementById("su-email").value,
+      contact_phone: document.getElementById("su-phone").value,
+    }),
+  });
+  if (resp.ok) {
+    const d = await resp.json();
+    token = d.token; username = d.username; userRole = d.role || "";
+    localStorage.setItem("hcm_token", token);
+    localStorage.setItem("hcm_user", username);
+    localStorage.setItem("hcm_role", userRole);
+    showDashboard();
+  } else {
+    const e2 = await resp.json().catch(() => ({}));
+    err.textContent = e2.detail || "No se pudo crear la cuenta";
+    err.classList.remove("hidden");
+  }
+});
+
 function logout() {
   token = ""; username = ""; userRole = "";
   localStorage.removeItem("hcm_token");
@@ -207,6 +251,7 @@ async function rejectPayment(id) {
 }
 
 async function loadMyPayments() {
+  if (!PLANS.length) PLANS = await api("GET", "/api/plans") || [];
   renderBillingSummary();
   if (!myAccount) return;
   const rows = await api("GET", `/api/accounts/${myAccount.id}/payments`) || [];
@@ -231,12 +276,25 @@ function renderBillingSummary() {
     const d = b.days_left;
     venc = d >= 0 ? `vence en ${d} día${d===1?"":"s"}` : `vencido hace ${-d} día${-d===1?"":"s"}`;
   }
+  const planSel = PLANS.length ? `
+    <span class="u-item">Plan:
+      <select onchange="updateMyPlan(this.value)">
+        ${PLANS.map(p => `<option value="${p.key}" ${p.key===u.plan?"selected":""}>${p.name} ($${p.base_price_usd})</option>`).join("")}
+      </select>
+    </span>` : "";
   el.classList.toggle("u-warn", suspended || b.expired);
   el.classList.remove("hidden");
   el.innerHTML = `
     <span class="u-plan"><i class="fa-solid fa-file-invoice-dollar"></i> ${u.plan_name || u.plan || ""} · $${u.total_monthly ?? 0}/mes</span>
+    ${planSel}
     <span class="u-item">Estado: <strong>${myAccount.status}</strong></span>
     <span class="u-item">${venc}</span>`;
+}
+
+async function updateMyPlan(plan) {
+  if (!myAccount) return;
+  const r = await api("PATCH", `/api/accounts/${myAccount.id}`, { plan });
+  if (r) { await loadMe(); loadMyPayments(); }
 }
 
 document.getElementById("payment-form").addEventListener("submit", async e => {
@@ -445,8 +503,15 @@ document.getElementById("register-form").addEventListener("submit", async e => {
   });
   if (resp.ok) {
     const r = await resp.json();
-    document.getElementById("register-creds").textContent =
-      `Device ID : ${r.device_id}\nAPI Key   : ${r.api_key}\n\nAgrega esto en /etc/hotspot/agent.conf del router.`;
+    const ob = await api("GET", `/api/devices/${r.device_id}/onboarding`);
+    if (ob) {
+      document.getElementById("register-creds").textContent = ob.agent_conf;
+      document.getElementById("onboarding-steps").innerHTML =
+        ob.steps.map(s => `<li><strong>${s.title.replace(/^\d+\.\s*/, "")}</strong><br><span style="color:var(--muted)">${s.detail}</span></li>`).join("");
+    } else {
+      document.getElementById("register-creds").textContent =
+        `DEVICE_ID="${r.device_id}"\nAPI_KEY="${r.api_key}"`;
+    }
     document.getElementById("register-form").classList.add("hidden");
     document.getElementById("register-result").classList.remove("hidden");
     loadDevices();

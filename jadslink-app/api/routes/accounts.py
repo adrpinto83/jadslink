@@ -11,7 +11,7 @@ from typing import Optional
 
 from ..database import get_db
 from ..models import Account, User, DeviceGroup, Device, SubscriptionPlan
-from .auth import require_user, require_superadmin, hash_pw
+from .auth import require_user, require_superadmin, hash_pw, _make_token
 from ..scope import is_superadmin
 from .. import billing
 
@@ -34,6 +34,13 @@ class AccountUpdate(BaseModel):
     status: Optional[str] = None
     plan: Optional[str] = None
     contact_phone: Optional[str] = None
+
+class SignupPayload(BaseModel):
+    company_name: str
+    username: str
+    password: str
+    email: str = ""
+    contact_phone: str = ""
 
 class UserCreate(BaseModel):
     username: str
@@ -97,30 +104,65 @@ def list_accounts(db: Session = Depends(get_db), _: User = Depends(require_super
     return [_account_dict(a, db) for a in db.query(Account).order_by(Account.created_at.desc()).all()]
 
 
-@router.post("/accounts")
-def create_account(payload: AccountCreate, db: Session = Depends(get_db), _: User = Depends(require_superadmin)):
-    if db.query(User).filter(User.username == payload.owner_username).first():
+def create_account_with_owner(db: Session, *, name: str, plan: str, username: str,
+                              password: str, email: str = "", contact_phone: str = "") -> Account:
+    """Crea una cuenta + su usuario owner. Lanza HTTP 400 si el usuario ya existe."""
+    if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="El usuario ya existe")
     acc = Account(
         id=str(uuid.uuid4()),
-        name=payload.name,
-        slug=_unique_slug(db, payload.name),
-        status="active",
-        plan=payload.plan,
-        contact_phone=payload.contact_phone,
+        name=name,
+        slug=_unique_slug(db, name),
+        plan=plan,
+        contact_phone=contact_phone,
     )
-    billing.init_billing_for_new_account(acc, payload.plan)  # fija vencimiento/trial
+    billing.init_billing_for_new_account(acc, plan)  # fija vencimiento/trial y status
     db.add(acc)
     db.flush()  # obtener acc.id sin cerrar la transacción
     db.add(User(
         account_id=acc.id,
-        username=payload.owner_username,
-        password_hash=hash_pw(payload.owner_password),
-        email=payload.owner_email,
+        username=username,
+        password_hash=hash_pw(password),
+        email=email,
         role="owner",
-        full_name=payload.name,
+        full_name=name,
     ))
     db.commit()
+    return acc
+
+
+@router.post("/signup")
+def signup(payload: SignupPayload, db: Session = Depends(get_db)):
+    """Registro público self-service → crea una cuenta trial y devuelve token (auto-login)."""
+    name = payload.company_name.strip()
+    username = payload.username.strip()
+    if len(name) < 2:
+        raise HTTPException(status_code=400, detail="Nombre de empresa inválido")
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="El usuario debe tener al menos 3 caracteres")
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres")
+
+    # El registro público siempre arranca en trial; luego el owner puede elegir plan y pagar.
+    acc = create_account_with_owner(
+        db, name=name, plan="trial", username=username,
+        password=payload.password, email=payload.email, contact_phone=payload.contact_phone,
+    )
+    user = db.query(User).filter(User.username == username).first()
+    return {
+        "token": _make_token(user),
+        "username": user.username,
+        "role": user.role,
+        "account_id": user.account_id or "",
+    }
+
+
+@router.post("/accounts")
+def create_account(payload: AccountCreate, db: Session = Depends(get_db), _: User = Depends(require_superadmin)):
+    acc = create_account_with_owner(
+        db, name=payload.name, plan=payload.plan, username=payload.owner_username,
+        password=payload.owner_password, email=payload.owner_email, contact_phone=payload.contact_phone,
+    )
     return _account_dict(acc, db)
 
 
@@ -146,12 +188,17 @@ def update_account(account_id: str, payload: AccountUpdate, db: Session = Depend
         acc.name = payload.name
     if payload.contact_phone is not None:
         acc.contact_phone = payload.contact_phone
-    # status y plan solo los cambia el superadmin
-    if is_superadmin(user):
-        if payload.status is not None:
-            acc.status = payload.status
-        if payload.plan is not None:
-            acc.plan = payload.plan
+    # El owner puede elegir su propio plan (self-service); el pago se aprueba aparte.
+    if payload.plan is not None:
+        plan = db.query(SubscriptionPlan).filter(
+            SubscriptionPlan.key == payload.plan, SubscriptionPlan.is_active == True
+        ).first()
+        if not plan:
+            raise HTTPException(status_code=400, detail="Plan inválido")
+        acc.plan = payload.plan
+    # El estado (activa/suspendida) solo lo cambia el superadmin.
+    if is_superadmin(user) and payload.status is not None:
+        acc.status = payload.status
     db.commit()
     return _account_dict(acc, db)
 

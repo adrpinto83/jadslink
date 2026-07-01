@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
-import uuid, secrets
+import uuid, secrets, os
 
 from ..database import get_db
 from ..models import Device, Report, Command, Client, Code, Account, User
@@ -287,6 +287,33 @@ def get_device(device_id: str, db: Session = Depends(get_db), user: User = Depen
         "last_seen": d.last_seen.isoformat() if d.last_seen else None,
         "config": d.config, "api_key": d.api_key,
         "account_id": d.account_id, "group_id": d.group_id,
+    }
+
+
+@router.get("/{device_id}/onboarding")
+def onboarding(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    """Datos para dar de alta el router: agent.conf listo + pasos de instalación."""
+    d = owned_device(device_id, user, db)
+    cloud_url = os.getenv("PUBLIC_URL", "https://link.jadsstudio.com")
+    agent_conf = (
+        f'DEVICE_ID="{d.id}"\n'
+        f'API_KEY="{d.api_key}"\n'
+        f'CLOUD_URL="{cloud_url}"\n'
+        f'INTERVAL=30\n'
+    )
+    steps = [
+        {"title": "1. Conéctate al router por SSH",
+         "detail": "ssh root@192.168.8.1  (o la IP LAN de tu GL.iNet/OpenWrt)"},
+        {"title": "2. Crea el archivo de configuración del agente",
+         "detail": "Pega el contenido de abajo en /etc/hotspot/agent.conf"},
+        {"title": "3. Instala y arranca el agente",
+         "detail": "sh <(wget -qO- " + cloud_url + "/static/agent/install.sh)"},
+        {"title": "4. Verifica",
+         "detail": "El router aparecerá en línea en el panel en ~30 segundos."},
+    ]
+    return {
+        "device_id": d.id, "api_key": d.api_key, "cloud_url": cloud_url,
+        "agent_conf": agent_conf, "steps": steps,
     }
 
 
