@@ -198,14 +198,18 @@ function selectDevice(id) {
 
 function populateDeviceSelects() {
   const opts = devices.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+  const autoId = devices.length === 1 ? devices[0].id : null;
+  if (autoId && !currentDevice) currentDevice = autoId;
   ["clients","logs","codes","reports","config","portal"].forEach(tab => {
     const sel = document.getElementById(`${tab}-device-select`);
     if (!sel) return;
     const cur = sel.value;
     sel.innerHTML = '<option value="">Selecciona gateway</option>' + opts;
     if (cur) sel.value = cur;
-    if (!cur && currentDevice) sel.value = currentDevice;
+    else if (currentDevice) sel.value = currentDevice;
+    else if (autoId) sel.value = autoId;
   });
+  if (autoId) { loadConfig(); loadPortal(); }
 }
 
 async function rebootDev(id) {

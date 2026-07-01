@@ -204,53 +204,42 @@
           <select id="config-device-select"><option value="">Selecciona gateway</option></select>
         </div>
 
-        <!-- Cambiar SSID rápido -->
+        <!-- SSID -->
         <div class="settings-card" style="margin-bottom:20px">
           <div class="settings-card-head"><i class="fa-solid fa-wifi"></i> Nombre de la red WiFi (SSID)</div>
-          <form id="ssid-form" class="settings-form" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-            <label style="flex:1;min-width:200px">Nuevo SSID
-              <input type="text" id="ssid-input" maxlength="32" placeholder="Mi Red WiFi" autocomplete="off">
+          <form id="ssid-form" class="settings-form">
+            <label>SSID actual
+              <input type="text" id="ssid-input" maxlength="32" placeholder="Hot Spot" autocomplete="off">
             </label>
-            <div class="form-actions" style="margin-top:0">
-              <button type="submit" class="btn-primary"><i class="fa-solid fa-satellite-dish"></i> Aplicar al router</button>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary"><i class="fa-solid fa-satellite-dish"></i> Cambiar SSID</button>
             </div>
-            <p id="ssid-msg" class="hidden" style="width:100%;margin-top:4px"></p>
+            <p id="ssid-msg" class="hidden" style="margin-top:8px"></p>
           </form>
         </div>
 
-        <form id="config-form">
-          <div class="form-grid">
-            <label>SSID (nombre WiFi)
-              <input type="text" name="wlan.essid" placeholder="Hot Spot">
-            </label>
-            <label>Título del portal
-              <input type="text" name="page_title" placeholder="Wi-Fi Internet Hot Spot">
-            </label>
-            <label>Zona horaria
-              <input type="text" name="timezone" placeholder="US/Eastern">
-            </label>
-            <label>Timeout inactividad (seg)
-              <input type="number" name="inactivity.logout.time" placeholder="3600">
-            </label>
-            <label>IP LAN Hotspot
-              <input type="text" name="wlan.address" placeholder="192.168.112.1">
-            </label>
-            <label>Máscara LAN Hotspot
-              <input type="text" name="wlan.netmask" placeholder="255.255.240.0">
-            </label>
-            <label>IPs permitidas (bypass portal)
-              <input type="text" name="allowed.ip" placeholder="1.2.3.4, 5.6.7.8">
-            </label>
-            <label>MACs permitidas (bypass portal)
-              <input type="text" name="allowed.mac" placeholder="AA:BB:CC:DD:EE:FF">
-            </label>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn-primary">Aplicar configuración</button>
-            <button type="button" class="btn-danger" onclick="rebootDevice()">Reiniciar gateway</button>
-          </div>
-          <p id="config-msg" class="hidden"></p>
-        </form>
+        <!-- Opciones avanzadas -->
+        <div class="settings-card">
+          <div class="settings-card-head"><i class="fa-solid fa-sliders"></i> Opciones avanzadas</div>
+          <form id="config-form" class="settings-form">
+            <div class="form-grid">
+              <label>Timeout inactividad (seg)
+                <input type="number" name="inactivity.logout.time" placeholder="3600">
+              </label>
+              <label>IPs permitidas (bypass portal)
+                <input type="text" name="allowed.ip" placeholder="1.2.3.4, 5.6.7.8">
+              </label>
+              <label>MACs permitidas (bypass portal)
+                <input type="text" name="allowed.mac" placeholder="AA:BB:CC:DD:EE:FF">
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Guardar</button>
+              <button type="button" class="btn-danger" onclick="rebootDevice()"><i class="fa-solid fa-power-off"></i> Reiniciar gateway</button>
+            </div>
+            <p id="config-msg" class="hidden"></p>
+          </form>
+        </div>
       </section>
 
       <!-- TAB: PORTAL (branding del portal cautivo) -->
