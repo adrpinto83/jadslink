@@ -34,6 +34,9 @@ class HeartbeatPayload(BaseModel):
 class ConfigUpdate(BaseModel):
     config: dict
 
+class SsidUpdate(BaseModel):
+    ssid: str
+
 class CommandResult(BaseModel):
     command_id: int
     status: str       # done | error
@@ -262,6 +265,20 @@ def reboot_device(device_id: str, db: Session = Depends(get_db), _: str = Depend
     if not d:
         raise HTTPException(status_code=404)
     db.add(Command(device_id=d.id, action="reboot", payload={}))
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/{device_id}/ssid")
+def set_ssid(device_id: str, payload: SsidUpdate, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    d = db.query(Device).filter(Device.id == device_id).first()
+    if not d:
+        raise HTTPException(status_code=404)
+    ssid = payload.ssid.strip()
+    if not ssid or len(ssid) > 32:
+        raise HTTPException(status_code=400, detail="SSID debe tener entre 1 y 32 caracteres")
+    d.config = {**(d.config or {}), "wlan.essid": ssid}
+    db.add(Command(device_id=d.id, action="set_ssid", payload={"ssid": ssid}))
     db.commit()
     return {"ok": True}
 

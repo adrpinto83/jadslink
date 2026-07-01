@@ -140,6 +140,18 @@ process_commands() {
         # splash renderizado desde la nube.
         update_portal
         ;;
+      set_ssid)
+        SSID=$(echo "$RESP" | grep -o '"ssid":"[^"]*"' | head -1 | cut -d'"' -f4)
+        if [ -z "$SSID" ]; then
+          log "set_ssid: SSID vacío, ignorado"
+        else
+          for IFACE in $(uci show wireless | grep '\.ssid=' | cut -d= -f1 | sed 's/\.ssid$//'); do
+            uci set "${IFACE}.ssid=${SSID}"
+          done
+          uci commit wireless && wifi reload
+          log "SSID cambiado a: $SSID"
+        fi
+        ;;
       *) log "Comando no implementado: $ACTION" ;;
     esac
   done

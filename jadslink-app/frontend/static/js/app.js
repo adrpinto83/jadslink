@@ -475,6 +475,8 @@ async function loadConfig() {
     const el = form.querySelector(`[name="${k}"]`);
     if (el) el.value = v;
   });
+  const ssidInput = document.getElementById("ssid-input");
+  if (ssidInput && d.config["wlan.essid"]) ssidInput.value = d.config["wlan.essid"];
 }
 
 document.getElementById("config-form").addEventListener("submit", async e => {
@@ -499,6 +501,24 @@ async function rebootDevice() {
   await api("POST", `/api/devices/${devId}/reboot`);
   alert("Comando de reinicio enviado");
 }
+
+document.getElementById("ssid-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const devId = document.getElementById("config-device-select").value;
+  if (!devId) return alert("Selecciona un gateway");
+  const ssid = document.getElementById("ssid-input").value.trim();
+  if (!ssid) return alert("Ingresa un SSID");
+  const msg = document.getElementById("ssid-msg");
+  const r = await api("POST", `/api/devices/${devId}/ssid`, { ssid });
+  msg.textContent = r ? `✓ SSID enviado al router — se aplicará en ≤30 seg` : "✗ Error al enviar comando";
+  msg.className = r ? "success" : "error";
+  msg.classList.remove("hidden");
+  setTimeout(() => msg.classList.add("hidden"), 4000);
+  if (r) {
+    const d = devices.find(x => x.id === devId);
+    if (d) d.config = { ...(d.config || {}), "wlan.essid": ssid };
+  }
+});
 
 // ── Portal cautivo (branding) ─────────────────────────────────────────────────
 

@@ -22,7 +22,7 @@ DEFAULTS = {
     "portal_button":   "CONECTAR",
     "portal_color1":   "#4f8ef7",
     "portal_color2":   "#a259f7",
-    "portal_footer":   "Desarrollado por JADS Software",
+    "portal_footer":   "",
     "portal_logo_url": "",
 }
 
@@ -50,24 +50,43 @@ TEMPLATE = """<!DOCTYPE html>
 <title>@@TITLE@@ - Acceso WiFi</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#0a0a1a,#0d1b3e,#1a0a2e);min-height:100vh;display:flex;align-items:center;justify-content:center}
-.box{background:rgba(255,255,255,0.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);padding:44px 36px;border-radius:20px;text-align:center;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
-.logo{max-width:160px;max-height:80px;margin:0 auto 16px;display:block}
-h1{font-size:30px;font-weight:800;letter-spacing:2px;margin-bottom:4px;background:linear-gradient(90deg,@@COLOR1@@,@@COLOR2@@);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.tagline{color:#7a8aaa;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:24px}
-.prompt{color:#c0cce8;font-size:14px;margin-bottom:14px;font-weight:500}
-#errmsg{display:none;color:#fc8181;font-size:13px;margin-bottom:14px;background:rgba(252,129,129,0.10);border:1px solid rgba(252,129,129,0.30);padding:10px 14px;border-radius:8px}
-input[name="username"]{width:100%;padding:16px;font-size:24px;letter-spacing:10px;text-align:center;text-transform:uppercase;border:2px solid @@COLOR1@@66;border-radius:12px;background:rgba(0,0,0,0.4);color:#fff;outline:none}
-input[name="username"]:focus{border-color:@@COLOR1@@}
-input[name="username"]::placeholder{letter-spacing:2px;font-size:14px;text-transform:none;color:#4a5568}
-button{width:100%;margin-top:14px;padding:16px;font-size:16px;font-weight:700;letter-spacing:1px;background:linear-gradient(90deg,@@COLOR1@@,@@COLOR2@@);color:#fff;border:none;border-radius:12px;cursor:pointer}
-.footer{margin-top:28px;color:#4a5568;font-size:11px;line-height:1.9}
-.footer a{color:@@COLOR1@@;text-decoration:none}
+body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#060d1f 0%,#0d1b3e 50%,#130a2e 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.box{background:rgba(255,255,255,0.06);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.10);padding:40px 32px 32px;border-radius:24px;text-align:center;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.6)}
+.logo{max-width:150px;max-height:72px;margin:0 auto 18px;display:block;border-radius:8px}
+.wifi-icon{margin:0 auto 18px;display:block;width:54px;height:46px}
+h1{font-size:28px;font-weight:800;letter-spacing:2px;margin-bottom:6px;background:linear-gradient(90deg,@@COLOR1@@,@@COLOR2@@);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tagline{color:#6b7da0;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:28px}
+.prompt{color:#a8b8d8;font-size:14px;margin-bottom:12px;font-weight:500}
+#errmsg{display:none;color:#fc8181;font-size:13px;margin-bottom:14px;background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.25);padding:10px 14px;border-radius:10px}
+input[name="username"]{width:100%;padding:15px 12px;font-size:26px;letter-spacing:10px;text-align:center;text-transform:uppercase;border:2px solid rgba(@@COLOR1_RGB@@,0.35);border-radius:14px;background:rgba(0,0,0,0.35);color:#fff;outline:none;transition:border-color .2s}
+input[name="username"]:focus{border-color:@@COLOR1@@;box-shadow:0 0 0 3px rgba(@@COLOR1_RGB@@,0.15)}
+input[name="username"]::placeholder{letter-spacing:3px;font-size:13px;text-transform:none;color:#3a4a68}
+button{width:100%;margin-top:14px;padding:15px;font-size:15px;font-weight:700;letter-spacing:1.5px;background:linear-gradient(90deg,@@COLOR1@@,@@COLOR2@@);color:#fff;border:none;border-radius:14px;cursor:pointer;transition:opacity .2s,transform .1s}
+button:hover{opacity:.9}
+button:active{transform:scale(.98)}
+.op-footer{margin-top:22px;color:#3d4f6e;font-size:11px;line-height:1.8}
+.op-footer a{color:#5a7aaa;text-decoration:none}
+.divider{width:48px;height:1px;background:rgba(255,255,255,0.08);margin:20px auto 18px}
+.powered{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.powered-label{font-size:10px;color:#3a4a68;letter-spacing:1.5px;text-transform:uppercase}
+.powered-brand{display:flex;align-items:center;gap:5px}
+.jads-logo-mini{width:18px;height:15px;flex-shrink:0}
+.powered-name{font-size:12px;font-weight:700;letter-spacing:.5px;background:linear-gradient(90deg,@@COLOR1@@,@@COLOR2@@);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.powered:hover .powered-name{opacity:.8}
+.ad-chip{display:inline-block;margin-top:10px;padding:5px 12px;border:1px solid rgba(@@COLOR1_RGB@@,0.25);border-radius:20px;font-size:10px;color:#5a7aaa;letter-spacing:.5px;text-decoration:none;transition:border-color .2s,color .2s}
+.ad-chip:hover{border-color:@@COLOR1@@;color:@@COLOR1@@}
+.hidden{display:none}
 </style>
 </head>
 <body>
 <div class="box">
   @@LOGO@@
+  <svg class="wifi-icon @@LOGO_HIDE@@" viewBox="0 0 54 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 10C9.74 3.6 19.44 0 27 0s17.26 3.6 25 10" stroke="@@COLOR1@@" stroke-width="3.5" stroke-linecap="round" opacity=".25"/>
+    <path d="M7 18C13.6 11.6 20.6 9 27 9s13.4 2.6 20 9" stroke="@@COLOR1@@" stroke-width="3.5" stroke-linecap="round" opacity=".5"/>
+    <path d="M13.5 26C18 21.2 22.4 19 27 19s9 2.2 13.5 7" stroke="@@COLOR1@@" stroke-width="3.5" stroke-linecap="round" opacity=".8"/>
+    <circle cx="27" cy="38" r="5" fill="@@COLOR1@@"/>
+  </svg>
   <h1>@@TITLE@@</h1>
   <p class="tagline">@@TAGLINE@@</p>
   <p class="prompt">@@PROMPT@@</p>
@@ -76,7 +95,7 @@ button{width:100%;margin-top:14px;padding:16px;font-size:16px;font-weight:700;le
     <input type="hidden" name="tok" value="$tok">
     <input type="hidden" name="redir" value="$redir">
     <input type="text" name="username"
-           placeholder="@@PROMPT@@"
+           placeholder="XXXXXXXX"
            maxlength="12"
            autocapitalize="characters"
            autocomplete="off"
@@ -85,7 +104,21 @@ button{width:100%;margin-top:14px;padding:16px;font-size:16px;font-weight:700;le
            required>
     <button type="submit">@@BUTTON@@</button>
   </form>
-  <div class="footer">@@FOOTER@@</div>
+  @@OP_FOOTER@@
+  <div class="divider"></div>
+  <a class="powered" href="https://jadsstudio.com" target="_blank" rel="noopener">
+    <span class="powered-label">Desarrollado por</span>
+    <span class="powered-brand">
+      <svg class="jads-logo-mini" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1 5C4.87 1.8 9.72 0 13 0s8.13 1.8 12 5" stroke="@@COLOR1@@" stroke-width="2" stroke-linecap="round" opacity=".4"/>
+        <path d="M3.5 8.5C6.8 5.8 9.8 4.5 13 4.5s6.2 1.3 9.5 4" stroke="@@COLOR1@@" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+        <path d="M6.5 12C8.9 10 10.9 9 13 9s4.1 1 6.5 3" stroke="@@COLOR1@@" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="13" cy="18" r="2.5" fill="@@COLOR1@@"/>
+      </svg>
+      <span class="powered-name">JADS Studio</span>
+    </span>
+  </a>
+  <a class="ad-chip" href="https://jadsstudio.com" target="_blank" rel="noopener">Plataforma WiFi para tu negocio &rarr;</a>
 </div>
 <script>
 try {
@@ -101,6 +134,18 @@ try {
 </body>
 </html>
 """
+
+
+def _hex_to_rgb(hex_color: str) -> str:
+    """Convert #rrggbb to 'r,g,b' for use in rgba()."""
+    h = hex_color.lstrip("#")
+    if len(h) == 3:
+        h = h[0]*2 + h[1]*2 + h[2]*2
+    try:
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return f"{r},{g},{b}"
+    except Exception:
+        return "79,142,247"
 
 
 def render_splash(cfg: dict, overrides: dict | None = None) -> str:
@@ -120,24 +165,32 @@ def render_splash(cfg: dict, overrides: dict | None = None) -> str:
     tagline = _text(pick("portal_tagline"), DEFAULTS["portal_tagline"])
     prompt  = _text(pick("portal_prompt"),  DEFAULTS["portal_prompt"])
     button  = _text(pick("portal_button"),  DEFAULTS["portal_button"])
-    footer  = _text(pick("portal_footer"),  DEFAULTS["portal_footer"])
+    footer  = pick("portal_footer") or ""
     color1  = _color(pick("portal_color1"), DEFAULTS["portal_color1"])
     color2  = _color(pick("portal_color2"), DEFAULTS["portal_color2"])
     logo    = (pick("portal_logo_url") or "").strip()
 
     logo_html = ""
+    logo_hide = ""
     if logo and re.match(r"^https?://", logo):
         logo_html = f'<img class="logo" src="{html.escape(logo, quote=True)}" alt="logo">'
+        logo_hide = "hidden"
+
+    op_footer_html = ""
+    if footer:
+        op_footer_html = f'<div class="op-footer">{html.escape(str(footer))}</div>'
 
     out = TEMPLATE
     out = out.replace("@@TITLE@@", title)
     out = out.replace("@@TAGLINE@@", tagline)
     out = out.replace("@@PROMPT@@", prompt)
     out = out.replace("@@BUTTON@@", button)
-    out = out.replace("@@FOOTER@@", footer)
+    out = out.replace("@@OP_FOOTER@@", op_footer_html)
+    out = out.replace("@@COLOR1_RGB@@", _hex_to_rgb(color1))
     out = out.replace("@@COLOR1@@", color1)
     out = out.replace("@@COLOR2@@", color2)
     out = out.replace("@@LOGO@@", logo_html)
+    out = out.replace("@@LOGO_HIDE@@", logo_hide)
     return out
 
 

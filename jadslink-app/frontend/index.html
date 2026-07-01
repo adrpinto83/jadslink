@@ -203,6 +203,21 @@
           <h2>Configuración del gateway</h2>
           <select id="config-device-select"><option value="">Selecciona gateway</option></select>
         </div>
+
+        <!-- Cambiar SSID rápido -->
+        <div class="settings-card" style="margin-bottom:20px">
+          <div class="settings-card-head"><i class="fa-solid fa-wifi"></i> Nombre de la red WiFi (SSID)</div>
+          <form id="ssid-form" class="settings-form" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <label style="flex:1;min-width:200px">Nuevo SSID
+              <input type="text" id="ssid-input" maxlength="32" placeholder="Mi Red WiFi" autocomplete="off">
+            </label>
+            <div class="form-actions" style="margin-top:0">
+              <button type="submit" class="btn-primary"><i class="fa-solid fa-satellite-dish"></i> Aplicar al router</button>
+            </div>
+            <p id="ssid-msg" class="hidden" style="width:100%;margin-top:4px"></p>
+          </form>
+        </div>
+
         <form id="config-form">
           <div class="form-grid">
             <label>SSID (nombre WiFi)
@@ -269,8 +284,8 @@
                 <input type="color" name="portal_color2" value="#a259f7">
               </label>
             </div>
-            <label>Pie de página
-              <input type="text" name="portal_footer" maxlength="80" placeholder="Desarrollado por JADS Software">
+            <label>Pie de página (opcional)
+              <input type="text" name="portal_footer" maxlength="80" placeholder="Ej: Wi-Fi patrocinado por Empresa XYZ">
             </label>
             <div class="form-actions">
               <button type="submit" class="btn-primary"><i class="fa-solid fa-cloud-arrow-up"></i> Guardar y aplicar al router</button>
