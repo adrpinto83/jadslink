@@ -10,9 +10,10 @@ from pydantic import BaseModel
 from typing import Optional
 
 from ..database import get_db
-from ..models import Account, User, DeviceGroup, Device
+from ..models import Account, User, DeviceGroup, Device, SubscriptionPlan
 from .auth import require_user, require_superadmin, hash_pw
 from ..scope import is_superadmin
+from .. import billing
 
 router = APIRouter(prefix="/api", tags=["accounts"])
 
@@ -62,14 +63,27 @@ def _unique_slug(db: Session, name: str) -> str:
 
 
 def _account_dict(a: Account, db: Session) -> dict:
-    device_count = db.query(Device).filter(Device.account_id == a.id).count()
+    usage = billing.compute_usage(db, a)
     return {
         "id": a.id, "name": a.name, "slug": a.slug,
         "status": a.status, "plan": a.plan,
-        "device_count": device_count,
+        "device_count": usage["device_count"],
+        "usage": usage,
         "billing_cycle_end": a.billing_cycle_end.isoformat() if a.billing_cycle_end else None,
         "created_at": a.created_at.isoformat() if a.created_at else None,
     }
+
+
+@router.get("/plans")
+def list_plans(db: Session = Depends(get_db), _: User = Depends(require_user)):
+    plans = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active == True)\
+              .order_by(SubscriptionPlan.sort_order.asc()).all()
+    return [{
+        "key": p.key, "name": p.name, "base_price_usd": p.base_price_usd,
+        "included_devices": p.included_devices,
+        "price_per_extra_device_usd": p.price_per_extra_device_usd,
+        "max_devices": p.max_devices, "features": p.features,
+    } for p in plans]
 
 
 # ── Cuentas ────────────────────────────────────────────────────────────────────

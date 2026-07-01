@@ -24,6 +24,21 @@ class Account(Base):
     groups        = relationship("DeviceGroup", back_populates="account", cascade="all, delete")
 
 
+class SubscriptionPlan(Base):
+    """Catálogo de planes SaaS (cobro híbrido: base + extra por router)."""
+    __tablename__ = "subscription_plans"
+
+    key           = Column(String, primary_key=True)   # trial|starter|pro|business
+    name          = Column(String, nullable=False)
+    base_price_usd = Column(Float, default=0.0)          # precio base mensual
+    included_devices = Column(Integer, default=1)        # routers incluidos en la base
+    price_per_extra_device_usd = Column(Float, default=0.0)
+    max_devices   = Column(Integer, nullable=True)       # tope duro (NULL = ilimitado)
+    features      = Column(JSON, default=dict)
+    sort_order    = Column(Integer, default=0)
+    is_active     = Column(Boolean, default=True)
+
+
 class DeviceGroup(Base):
     """Agrupa routers de una cuenta (por ruta, flota, zona)."""
     __tablename__ = "device_groups"

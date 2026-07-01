@@ -11,10 +11,40 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from .models import Account, Device, User, AdminUser
+from .models import Account, Device, User, AdminUser, SubscriptionPlan
 
 DEFAULT_ACCOUNT_SLUG = "jads-studio"
 DEFAULT_ACCOUNT_NAME = "JADS Studio"
+
+# Catálogo de planes (cobro híbrido: base + extra por router). Ver SUBSCRIPTION_PLAN.md.
+PLAN_CATALOG = [
+    {"key": "trial",    "name": "Trial",    "base_price_usd": 0.0,  "included_devices": 1,
+     "price_per_extra_device_usd": 0.0, "max_devices": 1,    "sort_order": 0,
+     "features": {"trial_days": 14}},
+    {"key": "starter",  "name": "Starter",  "base_price_usd": 15.0, "included_devices": 2,
+     "price_per_extra_device_usd": 6.0, "max_devices": 5,    "sort_order": 1,
+     "features": {"reports": True, "portal_branding": True}},
+    {"key": "pro",      "name": "Pro",      "base_price_usd": 29.0, "included_devices": 5,
+     "price_per_extra_device_usd": 5.0, "max_devices": 20,   "sort_order": 2,
+     "features": {"reports": True, "portal_branding": True, "groups": True, "multi_user": True}},
+    {"key": "business", "name": "Business", "base_price_usd": 79.0, "included_devices": 15,
+     "price_per_extra_device_usd": 4.0, "max_devices": None, "sort_order": 3,
+     "features": {"reports": True, "portal_branding": True, "groups": True, "multi_user": True,
+                  "whitelabel": True, "api": True}},
+]
+
+
+def seed_plans(db: Session) -> None:
+    """Crea/actualiza el catálogo de planes (idempotente)."""
+    for spec in PLAN_CATALOG:
+        p = db.query(SubscriptionPlan).filter(SubscriptionPlan.key == spec["key"]).first()
+        if p is None:
+            db.add(SubscriptionPlan(**spec))
+        else:
+            # Mantener precios/límites al día con el catálogo del código.
+            for field, val in spec.items():
+                setattr(p, field, val)
+    db.commit()
 
 
 def _existing_columns(engine: Engine, table: str) -> set[str]:
@@ -57,7 +87,8 @@ def _get_or_create_default_account(db: Session) -> Account:
 
 
 def run_data_migrations(db: Session, admin_password: str, hash_pw) -> None:
-    """Siembra cuenta por defecto, superadmin y hace backfill de devices."""
+    """Siembra planes, cuenta por defecto, superadmin y hace backfill de devices."""
+    seed_plans(db)
     default_account = _get_or_create_default_account(db)
 
     # 1. Superadmin: migrar desde AdminUser legacy, o crear admin/ADMIN_PASSWORD.

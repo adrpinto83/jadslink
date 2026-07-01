@@ -118,6 +118,28 @@ async function loadMe() {
     if (me.role === "superadmin") label = `${username} · Superadmin`;
   }
   document.getElementById("nav-user").textContent = label;
+  renderUsageBanner(me);
+}
+
+function renderUsageBanner(me) {
+  const el = document.getElementById("usage-banner");
+  if (!me || !me.account || !me.account.usage) { el.classList.add("hidden"); return; }
+  const u = me.account.usage;
+  const suspended = me.account.status === "suspended" || me.account.status === "canceled";
+  const maxTxt = u.max_devices == null ? "∞" : u.max_devices;
+  const pct = u.max_devices == null ? Math.min(100, (u.device_count / Math.max(u.included_devices,1)) * 100)
+                                    : (u.device_count / u.max_devices) * 100;
+  const extraTxt = u.extra_devices > 0
+    ? `<span class="u-item"><strong>+${u.extra_devices}</strong> extra ($${u.extra_cost}/mes)</span>` : "";
+  el.classList.toggle("u-warn", suspended || u.at_limit);
+  el.classList.remove("hidden");
+  el.innerHTML = `
+    <span class="u-plan"><i class="fa-solid fa-gem"></i> ${u.plan_name || u.plan}${suspended ? " — SUSPENDIDA" : ""}</span>
+    <span class="u-item"><strong>${u.device_count}</strong> / ${maxTxt} routers</span>
+    <div class="u-bar"><span style="width:${Math.min(100,pct)}%"></span></div>
+    <span class="u-item">${u.included_devices} incluidos</span>
+    ${extraTxt}
+    <span class="u-item">Total <strong>$${u.total_monthly}/mes</strong></span>`;
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -141,23 +163,34 @@ document.querySelectorAll(".nav-item").forEach(el => {
 
 // ── Cuentas (superadmin) ────────────────────────────────────────────────────────
 
+let PLANS = [];
+const STATUSES = ["active", "trial", "past_due", "suspended", "canceled"];
+
 async function loadAccounts() {
+  if (!PLANS.length) PLANS = await api("GET", "/api/plans") || [];
   const accounts = await api("GET", "/api/accounts") || [];
-  const statusBadge = {
-    active: '<span class="badge badge-green">activa</span>',
-    trial: '<span class="badge badge-gray">trial</span>',
-    past_due: '<span class="badge badge-red">vencida</span>',
-    suspended: '<span class="badge badge-red">suspendida</span>',
-    canceled: '<span class="badge badge-gray">cancelada</span>',
-  };
-  document.getElementById("accounts-table").innerHTML = accounts.map(a => `
+  const planOpts = (sel) => PLANS.map(p =>
+    `<option value="${p.key}" ${p.key===sel?"selected":""}>${p.name}</option>`).join("");
+  const statusOpts = (sel) => STATUSES.map(s =>
+    `<option value="${s}" ${s===sel?"selected":""}>${s}</option>`).join("");
+
+  document.getElementById("accounts-table").innerHTML = accounts.map(a => {
+    const u = a.usage || {};
+    const maxTxt = u.max_devices == null ? "∞" : u.max_devices;
+    return `
     <tr>
       <td><strong>${a.name}</strong><br><span style="color:var(--muted);font-size:11px">${a.slug}</span></td>
-      <td>${a.plan}</td>
-      <td>${statusBadge[a.status] || a.status}</td>
-      <td>${a.device_count}</td>
+      <td><select onchange="updateAccount('${a.id}','plan',this.value)">${planOpts(a.plan)}</select></td>
+      <td><select onchange="updateAccount('${a.id}','status',this.value)">${statusOpts(a.status)}</select></td>
+      <td>${a.device_count} / ${maxTxt}<br><span style="color:var(--muted);font-size:11px">$${u.total_monthly ?? 0}/mes</span></td>
       <td style="color:var(--muted)">${a.created_at ? fmt_dt(a.created_at) : "—"}</td>
-    </tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Sin cuentas aún</td></tr>';
+    </tr>`;
+  }).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Sin cuentas aún</td></tr>';
+}
+
+async function updateAccount(id, field, value) {
+  const r = await api("PATCH", `/api/accounts/${id}`, { [field]: value });
+  if (r) loadAccounts();
 }
 
 document.getElementById("account-form").addEventListener("submit", async e => {
@@ -297,13 +330,24 @@ function showRegisterModal() {
 document.getElementById("register-form").addEventListener("submit", async e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  const r = await api("POST", "/api/devices/register", Object.fromEntries(fd));
-  if (r) {
+  const resp = await fetch("/api/devices/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(Object.fromEntries(fd)),
+  });
+  if (resp.ok) {
+    const r = await resp.json();
     document.getElementById("register-creds").textContent =
       `Device ID : ${r.device_id}\nAPI Key   : ${r.api_key}\n\nAgrega esto en /etc/hotspot/agent.conf del router.`;
     document.getElementById("register-form").classList.add("hidden");
     document.getElementById("register-result").classList.remove("hidden");
     loadDevices();
+    loadMe();  // refrescar indicador de uso
+  } else if (resp.status === 401) {
+    logout();
+  } else {
+    const err = await resp.json().catch(() => ({}));
+    alert(err.detail || "No se pudo registrar el gateway");
   }
 });
 

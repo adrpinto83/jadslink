@@ -10,6 +10,7 @@ from ..database import get_db
 from ..models import Device, Report, Command, Client, Code, Account, User
 from .auth import require_user
 from ..scope import scope_devices, owned_device, is_superadmin
+from .. import billing
 
 router = APIRouter(prefix="/api/devices", tags=["devices"])
 
@@ -80,6 +81,13 @@ def _resolve_account_id(payload_account_id: Optional[str], user: User, db: Sessi
 @router.post("/register")
 def register_device(payload: DeviceRegister, db: Session = Depends(get_db), user: User = Depends(require_user)):
     account_id = _resolve_account_id(payload.account_id, user, db)
+    # Límite de routers del plan (el superadmin puede exceder; él gestiona el cobro).
+    if not is_superadmin(user):
+        acc = db.query(Account).filter(Account.id == account_id).first()
+        if acc and billing.account_blocked(acc):
+            raise HTTPException(status_code=403, detail="Cuenta suspendida")
+        if acc and not billing.can_add_device(db, acc):
+            raise HTTPException(status_code=403, detail="Alcanzaste el límite de routers de tu plan. Mejora tu plan para agregar más.")
     device = Device(
         id=str(uuid.uuid4()),
         account_id=account_id,

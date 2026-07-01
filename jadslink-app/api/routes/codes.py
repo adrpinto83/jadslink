@@ -7,9 +7,10 @@ from typing import Optional
 import random, string
 
 from ..database import get_db
-from ..models import Code, Device, Command, User
+from ..models import Code, Device, Command, User, Account
 from .auth import require_user
 from ..scope import owned_device
+from .. import billing
 
 router = APIRouter(prefix="/api/devices/{device_id}/codes", tags=["codes"])
 
@@ -42,6 +43,11 @@ def gen_code(length=8, prefix="") -> str:
 @router.post("")
 def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_db), user: User = Depends(require_user)):
     d = owned_device(device_id, user, db)
+    # Gate de estado: una cuenta suspendida/cancelada no puede emitir códigos nuevos.
+    if d.account_id:
+        acc = db.query(Account).filter(Account.id == d.account_id).first()
+        if billing.account_blocked(acc):
+            raise HTTPException(status_code=403, detail="Cuenta suspendida: no puedes generar códigos")
 
     # Vencimiento del código (voucher). Por defecto 30 días si no se especifica,
     # para que los códigos impresos no sean válidos indefinidamente.
@@ -112,6 +118,13 @@ def validate_code(
 ):
     code_str = payload.code.strip().upper()
     now = datetime.utcnow()
+
+    # Gate de estado: si la cuenta dueña del router está suspendida, no se valida.
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if device and device.account_id:
+        acc = db.query(Account).filter(Account.id == device.account_id).first()
+        if billing.account_blocked(acc):
+            return {"valid": False, "reason": "account_suspended"}
 
     c = db.query(Code).filter(
         Code.device_id == device_id,

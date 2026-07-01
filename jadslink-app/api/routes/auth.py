@@ -105,6 +105,7 @@ def require_superadmin(user: User = Depends(get_current_user)) -> User:
 
 @router.get("/me")
 def me(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    from .. import billing
     account = user.account
     return {
         "username": user.username,
@@ -115,6 +116,7 @@ def me(user: User = Depends(require_user), db: Session = Depends(get_db)):
         "account": {
             "id": account.id, "name": account.name, "slug": account.slug,
             "status": account.status, "plan": account.plan,
+            "usage": billing.compute_usage(db, account),
         } if account else None,
     }
 
