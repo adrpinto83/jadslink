@@ -339,9 +339,56 @@ async function loadCodes() {
   `).join("") || '<tr><td colspan="8" style="text-align:center;color:var(--muted)">Sin códigos</td></tr>';
 }
 
+// ── Plantillas de tickets ─────────────────────────────────────────────────────
+
+const TEMPLATES = [
+  { id:"express",    icon:"⚡", name:"Express",      dur:30,    bw_dn:0,    bw_up:0,   desc:"30 min · Sin límite" },
+  { id:"bus-corto",  icon:"🚌", name:"Bus Corto",    dur:60,    bw_dn:2048, bw_up:1024, desc:"1 hora · 2 Mbps" },
+  { id:"bus-largo",  icon:"🛣️", name:"Bus Largo",    dur:180,   bw_dn:2048, bw_up:1024, desc:"3 horas · 2 Mbps" },
+  { id:"evento",     icon:"🎪", name:"Evento",       dur:300,   bw_dn:3072, bw_up:1536, desc:"5 horas · 3 Mbps" },
+  { id:"dia",        icon:"☀️", name:"Día Completo", dur:1440,  bw_dn:1536, bw_up:768,  desc:"24 horas · 1.5 Mbps" },
+  { id:"custom",     icon:"⚙️", name:"Personalizado",dur:60,    bw_dn:0,    bw_up:0,   desc:"Define tus parámetros" },
+];
+
+let selectedTemplate = TEMPLATES[1];
+
+function renderTemplates() {
+  document.getElementById("tpl-grid").innerHTML = TEMPLATES.map(t => `
+    <div class="tpl-card${t.id === selectedTemplate.id ? " selected" : ""}" onclick="selectTemplate('${t.id}')">
+      <div class="tpl-icon">${t.icon}</div>
+      <div class="tpl-name">${t.name}</div>
+      <div class="tpl-dur">${t.desc.split(" · ")[0]}</div>
+      <div class="tpl-bw">${t.desc.split(" · ")[1] || ""}</div>
+    </div>
+  `).join("");
+}
+
+function selectTemplate(id) {
+  selectedTemplate = TEMPLATES.find(t => t.id === id);
+  renderTemplates();
+  const isCustom = id === "custom";
+  document.getElementById("adv-fields").style.display = isCustom ? "block" : "none";
+  document.getElementById("adv-icon").style.transform = isCustom ? "rotate(90deg)" : "";
+  if (!isCustom) {
+    document.getElementById("adv-duration").value = selectedTemplate.dur;
+    document.getElementById("adv-bw-dn").value    = selectedTemplate.bw_dn;
+    document.getElementById("adv-bw-up").value    = selectedTemplate.bw_up;
+  }
+}
+
+function toggleAdvanced() {
+  const el = document.getElementById("adv-fields");
+  const open = el.style.display === "block";
+  el.style.display = open ? "none" : "block";
+  document.getElementById("adv-icon").style.transform = open ? "" : "rotate(90deg)";
+}
+
 function showCodesModal() {
   if (!document.getElementById("codes-device-select").value)
     return alert("Selecciona un gateway primero");
+  renderTemplates();
+  selectTemplate(selectedTemplate.id);
+  document.getElementById("gen-codes-result").classList.add("hidden");
   document.getElementById("modal-codes").classList.remove("hidden");
 }
 
@@ -349,16 +396,37 @@ document.getElementById("gen-codes-form").addEventListener("submit", async e => 
   e.preventDefault();
   const devId = document.getElementById("codes-device-select").value;
   const fd = new FormData(e.target);
-  const payload = Object.fromEntries(fd);
-  // Quitar campos vacíos: enviar "" rompe la validación de enteros del backend.
-  for (const k of Object.keys(payload)) {
-    if (payload[k] === "") delete payload[k];
-  }
-  ["quantity","duration_min","max_uses","bandwidth_dn","bandwidth_up","expires_hours"].forEach(k => {
-    if (payload[k] !== undefined) payload[k] = parseInt(payload[k]);
-  });
+  const raw = Object.fromEntries(fd);
+
+  const tpl = selectedTemplate;
+  const payload = {
+    quantity:     parseInt(raw.quantity) || 10,
+    duration_min: tpl.id === "custom" ? (parseInt(raw.duration_min) || 60) : tpl.dur,
+    max_uses:     parseInt(raw.max_uses) || 1,
+    bandwidth_dn: tpl.id === "custom" ? (parseInt(raw.bandwidth_dn) || 0) : tpl.bw_dn,
+    bandwidth_up: tpl.id === "custom" ? (parseInt(raw.bandwidth_up) || 0) : tpl.bw_up,
+    note: raw.note || tpl.name,
+  };
+  if (raw.expires_hours) payload.expires_hours = parseInt(raw.expires_hours);
+  if (raw.prefix)        payload.prefix = raw.prefix;
+
+  const btn = e.target.querySelector("button[type=submit]");
+  btn.disabled = true; btn.textContent = "Generando…";
   const r = await api("POST", `/api/devices/${devId}/codes`, payload);
-  if (r) { closeModal("modal-codes"); loadCodes(); alert(`${r.created} códigos generados`); }
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-ticket"></i> Generar';
+
+  const msg = document.getElementById("gen-codes-result");
+  if (r) {
+    msg.textContent = `✓ ${r.created} tickets generados (${tpl.name})`;
+    msg.className = "success";
+    msg.classList.remove("hidden");
+    loadCodes();
+    setTimeout(() => { closeModal("modal-codes"); msg.classList.add("hidden"); }, 1800);
+  } else {
+    msg.textContent = "✗ Error al generar tickets";
+    msg.className = "error";
+    msg.classList.remove("hidden");
+  }
 });
 
 async function revokeCode(devId, codeId) {

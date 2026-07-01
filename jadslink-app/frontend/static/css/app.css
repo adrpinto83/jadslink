@@ -109,6 +109,19 @@ button:hover  { opacity: .85; }
 .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
 pre { background: var(--surface2); border-radius: var(--radius); padding: 14px; font-size: 12px; margin-top: 12px; overflow-x: auto; }
 
+/* ── Plantillas de tickets ───────────────────────────────────── */
+.tpl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tpl-card { background: var(--surface2); border: 2px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; user-select: none; }
+.tpl-card:hover { border-color: var(--accent); background: rgba(79,142,247,.07); }
+.tpl-card.selected { border-color: var(--accent); background: rgba(79,142,247,.13); }
+.tpl-icon { font-size: 22px; margin-bottom: 5px; }
+.tpl-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.tpl-dur { font-size: 11px; color: var(--accent); font-weight: 600; margin-bottom: 2px; }
+.tpl-bw { font-size: 10px; color: var(--muted); }
+.adv-toggle { background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; }
+.adv-toggle:hover { color: var(--text); }
+#adv-icon { font-size: 10px; transition: transform .2s; }
+
 /* ── Misc ─────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 .error   { color: var(--danger);  font-size: 13px; margin-top: 8px; }

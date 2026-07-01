@@ -362,27 +362,51 @@
 
   <!-- MODAL: Generar códigos -->
   <div id="modal-codes" class="modal hidden">
-    <div class="modal-content">
-      <h3>Generar códigos de acceso</h3>
-      <form id="gen-codes-form">
-        <label>Cantidad <input type="number" name="quantity" value="10" min="1" max="500"></label>
-        <label>Duración (minutos) <input type="number" name="duration_min" value="60" min="1"></label>
-        <label>Usos máximos <input type="number" name="max_uses" value="1" min="1"></label>
-        <label>BW descarga (kbps, 0=ilimitado) <input type="number" name="bandwidth_dn" value="0"></label>
-        <label>BW subida (kbps, 0=ilimitado) <input type="number" name="bandwidth_up" value="0"></label>
-        <label>Vence en (horas, vacío=nunca) <input type="number" name="expires_hours" placeholder="24"></label>
-        <label>Prefijo <input type="text" name="prefix" placeholder="VIP-"></label>
-        <label>Nota <input type="text" name="note" placeholder="Evento X"></label>
-        <div class="modal-actions">
-          <button type="submit" class="btn-primary">Generar</button>
+    <div class="modal-content" style="max-width:520px">
+      <h3>Generar tickets</h3>
+
+      <!-- Plantillas -->
+      <div class="tpl-grid" id="tpl-grid"></div>
+
+      <!-- Cantidad + Generar -->
+      <form id="gen-codes-form" style="margin-top:18px">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <label style="flex:1;min-width:120px">Cantidad
+            <input type="number" name="quantity" value="10" min="1" max="500">
+          </label>
+          <label style="flex:1;min-width:120px">Nota (opcional)
+            <input type="text" name="note" placeholder="Ej: Ruta Caracas">
+          </label>
+        </div>
+
+        <!-- Opciones avanzadas -->
+        <div style="margin-top:12px">
+          <button type="button" class="adv-toggle" onclick="toggleAdvanced()">
+            <i class="fa-solid fa-chevron-right" id="adv-icon"></i> Opciones avanzadas
+          </button>
+          <div id="adv-fields" style="display:none;margin-top:12px">
+            <div class="form-grid">
+              <label>Duración (minutos) <input type="number" name="duration_min" id="adv-duration" min="1"></label>
+              <label>Usos por código   <input type="number" name="max_uses" value="1" min="1"></label>
+              <label>BW descarga (kbps, 0=∞) <input type="number" name="bandwidth_dn" id="adv-bw-dn"></label>
+              <label>BW subida (kbps, 0=∞)   <input type="number" name="bandwidth_up" id="adv-bw-up"></label>
+              <label>Vence en (horas, vacío=nunca) <input type="number" name="expires_hours" placeholder="24"></label>
+              <label>Prefijo <input type="text" name="prefix" placeholder="BUS-"></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:16px">
+          <button type="submit" class="btn-primary"><i class="fa-solid fa-ticket"></i> Generar</button>
           <button type="button" class="btn-secondary" onclick="closeModal('modal-codes')">Cancelar</button>
         </div>
+        <p id="gen-codes-result" class="hidden" style="margin-top:10px;text-align:center"></p>
       </form>
     </div>
   </div>
 
 </div>
 
-<script src="/static/js/app.js?v=7"></script>
+<script src="/static/js/app.js?v=8"></script>
 </body>
 </html>
