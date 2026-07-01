@@ -46,6 +46,7 @@
         <li class="nav-item" data-tab="config"><i class="fa-solid fa-gear"></i> Configuración</li>
         <li class="nav-item" data-tab="portal"><i class="fa-solid fa-paintbrush"></i> Portal</li>
         <li class="nav-item" data-tab="settings"><i class="fa-solid fa-sliders"></i> Ajustes</li>
+        <li class="nav-item" data-tab="accounts" id="nav-accounts" style="display:none"><i class="fa-solid fa-building"></i> Cuentas</li>
       </ul>
       <div class="nav-bottom">
         <span id="nav-user"></span>
@@ -336,7 +337,51 @@
         </div>
       </section>
 
+      <!-- TAB: Cuentas (solo superadmin) -->
+      <section id="tab-accounts" class="tab">
+        <div class="tab-header">
+          <h2>Cuentas de operadores</h2>
+          <button class="btn-primary" onclick="document.getElementById('modal-account').classList.remove('hidden')">
+            <i class="fa-solid fa-plus"></i> Nueva cuenta
+          </button>
+        </div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
+          Cada cuenta es un operador que gestiona sus propios routers y paga su suscripción.
+          El dueño (owner) inicia sesión con el usuario/clave que definas aquí.
+        </p>
+        <table class="data-table">
+          <thead><tr><th>Cuenta</th><th>Plan</th><th>Estado</th><th>Routers</th><th>Creada</th></tr></thead>
+          <tbody id="accounts-table"></tbody>
+        </table>
+      </section>
+
     </main>
+  </div>
+
+  <!-- MODAL: Nueva cuenta de operador -->
+  <div id="modal-account" class="modal hidden">
+    <div class="modal-content">
+      <h3>Nueva cuenta de operador</h3>
+      <form id="account-form">
+        <label>Nombre de la empresa <input type="text" id="acc-name" required placeholder="Transportes ABC"></label>
+        <label>Plan
+          <select id="acc-plan" style="width:100%">
+            <option value="trial">Trial (14 días)</option>
+            <option value="starter">Starter</option>
+            <option value="pro">Pro</option>
+            <option value="business">Business</option>
+          </select>
+        </label>
+        <label>Usuario del dueño (login) <input type="text" id="acc-user" required placeholder="abc"></label>
+        <label>Contraseña del dueño <input type="password" id="acc-pass" required minlength="6"></label>
+        <label>Email (opcional) <input type="email" id="acc-email" placeholder="dueño@empresa.com"></label>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Crear cuenta</button>
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-account')">Cancelar</button>
+        </div>
+        <p id="acc-msg" class="hidden" style="margin-top:10px"></p>
+      </form>
+    </div>
   </div>
 
   <!-- MODAL: Registrar gateway -->
@@ -427,6 +472,6 @@
 
 </div>
 
-<script src="/static/js/app.js?v=9"></script>
+<script src="/static/js/app.js?v=10"></script>
 </body>
 </html>

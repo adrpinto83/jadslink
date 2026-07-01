@@ -2,6 +2,7 @@
 const API = "";
 let token = localStorage.getItem("hcm_token") || "";
 let username = localStorage.getItem("hcm_user") || "";
+let userRole = localStorage.getItem("hcm_role") || "";
 let devices = [];
 let currentDevice = null;
 let pollInterval = null;
@@ -71,9 +72,10 @@ document.getElementById("login-form").addEventListener("submit", async e => {
   });
   if (r.ok) {
     const d = await r.json();
-    token = d.token; username = d.username;
+    token = d.token; username = d.username; userRole = d.role || "";
     localStorage.setItem("hcm_token", token);
     localStorage.setItem("hcm_user", username);
+    localStorage.setItem("hcm_role", userRole);
     showDashboard();
   } else {
     document.getElementById("login-error").textContent = "Usuario o contraseña incorrectos";
@@ -82,9 +84,10 @@ document.getElementById("login-form").addEventListener("submit", async e => {
 });
 
 function logout() {
-  token = ""; username = "";
+  token = ""; username = ""; userRole = "";
   localStorage.removeItem("hcm_token");
   localStorage.removeItem("hcm_user");
+  localStorage.removeItem("hcm_role");
   clearInterval(pollInterval);
   document.getElementById("dashboard-screen").classList.remove("active");
   document.getElementById("login-screen").classList.add("active");
@@ -97,9 +100,24 @@ document.getElementById("logout-btn").addEventListener("click", logout);
 function showDashboard() {
   document.getElementById("login-screen").classList.remove("active");
   document.getElementById("dashboard-screen").classList.add("active");
-  document.getElementById("nav-user").textContent = username;
+  // Mostrar la sección Cuentas solo al superadmin
+  document.getElementById("nav-accounts").style.display =
+    userRole === "superadmin" ? "" : "none";
+  loadMe();
   loadDevices();
   pollInterval = setInterval(loadDevices, 30000);
+}
+
+async function loadMe() {
+  const me = await api("GET", "/api/auth/me");
+  const roleLabel = { superadmin: "Superadmin", owner: "Dueño", manager: "Gestor", viewer: "Lector" };
+  let label = username;
+  if (me) {
+    const rl = roleLabel[me.role] || me.role;
+    label = me.account ? `${username} · ${me.account.name}` : `${username} · ${rl}`;
+    if (me.role === "superadmin") label = `${username} · Superadmin`;
+  }
+  document.getElementById("nav-user").textContent = label;
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -117,7 +135,51 @@ document.querySelectorAll(".nav-item").forEach(el => {
     if (el.dataset.tab === "config")   loadConfig();
     if (el.dataset.tab === "portal")   loadPortal();
     if (el.dataset.tab === "settings") loadSettings();
+    if (el.dataset.tab === "accounts") loadAccounts();
   });
+});
+
+// ── Cuentas (superadmin) ────────────────────────────────────────────────────────
+
+async function loadAccounts() {
+  const accounts = await api("GET", "/api/accounts") || [];
+  const statusBadge = {
+    active: '<span class="badge badge-green">activa</span>',
+    trial: '<span class="badge badge-gray">trial</span>',
+    past_due: '<span class="badge badge-red">vencida</span>',
+    suspended: '<span class="badge badge-red">suspendida</span>',
+    canceled: '<span class="badge badge-gray">cancelada</span>',
+  };
+  document.getElementById("accounts-table").innerHTML = accounts.map(a => `
+    <tr>
+      <td><strong>${a.name}</strong><br><span style="color:var(--muted);font-size:11px">${a.slug}</span></td>
+      <td>${a.plan}</td>
+      <td>${statusBadge[a.status] || a.status}</td>
+      <td>${a.device_count}</td>
+      <td style="color:var(--muted)">${a.created_at ? fmt_dt(a.created_at) : "—"}</td>
+    </tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Sin cuentas aún</td></tr>';
+}
+
+document.getElementById("account-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = document.getElementById("acc-msg");
+  const r = await api("POST", "/api/accounts", {
+    name: document.getElementById("acc-name").value,
+    plan: document.getElementById("acc-plan").value,
+    owner_username: document.getElementById("acc-user").value,
+    owner_password: document.getElementById("acc-pass").value,
+    owner_email: document.getElementById("acc-email").value,
+  });
+  if (r) {
+    msg.textContent = `✓ Cuenta "${r.name}" creada`;
+    msg.className = "success"; msg.classList.remove("hidden");
+    document.getElementById("account-form").reset();
+    loadAccounts();
+    setTimeout(() => { closeModal("modal-account"); msg.classList.add("hidden"); }, 1500);
+  } else {
+    msg.textContent = "✗ Error: el usuario ya existe o datos inválidos";
+    msg.className = "error"; msg.classList.remove("hidden");
+  }
 });
 
 // ── Dispositivos + Overview ───────────────────────────────────────────────────

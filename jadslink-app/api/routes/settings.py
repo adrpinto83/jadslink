@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from ..database import get_db
 from ..models import Settings
-from .auth import require_admin
+from .auth import require_superadmin
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -16,13 +16,13 @@ class AlertSettings(BaseModel):
 
 
 @router.get("")
-def get_settings(db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def get_settings(db: Session = Depends(get_db), _=Depends(require_superadmin)):
     rows = db.query(Settings).all()
     return {r.key: r.value for r in rows}
 
 
 @router.post("")
-def update_settings(payload: AlertSettings, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def update_settings(payload: AlertSettings, db: Session = Depends(get_db), _=Depends(require_superadmin)):
     for k, v in payload.model_dump().items():
         row = db.query(Settings).filter(Settings.key == k).first()
         if row:

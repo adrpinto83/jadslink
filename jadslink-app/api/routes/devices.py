@@ -7,8 +7,9 @@ from typing import Optional
 import uuid, secrets
 
 from ..database import get_db
-from ..models import Device, Report, Command, Client, Code
-from .auth import require_admin
+from ..models import Device, Report, Command, Client, Code, Account, User
+from .auth import require_user
+from ..scope import scope_devices, owned_device, is_superadmin
 
 router = APIRouter(prefix="/api/devices", tags=["devices"])
 
@@ -19,6 +20,8 @@ class DeviceRegister(BaseModel):
     name: str
     location: str = ""
     model: str = "OpenWrt"
+    account_id: Optional[str] = None   # solo superadmin puede fijarlo
+    group_id: Optional[int] = None
 
 class HeartbeatPayload(BaseModel):
     firmware: str = ""
@@ -37,6 +40,11 @@ class ConfigUpdate(BaseModel):
 class SsidUpdate(BaseModel):
     ssid: str
 
+class DeviceUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    group_id: Optional[int] = None
+
 class CommandResult(BaseModel):
     command_id: int
     status: str       # done | error
@@ -54,13 +62,28 @@ def get_device_by_key(api_key: str, db: Session) -> Device:
 def require_api_key(x_api_key: str = Header(...), db: Session = Depends(get_db)):
     return get_device_by_key(x_api_key, db)
 
+def _resolve_account_id(payload_account_id: Optional[str], user: User, db: Session) -> Optional[str]:
+    """Determina la cuenta destino de un device nuevo respetando permisos."""
+    if is_superadmin(user):
+        if payload_account_id:
+            return payload_account_id
+        # superadmin sin cuenta explícita → cuenta por defecto
+        from ..migrate import DEFAULT_ACCOUNT_SLUG
+        acc = db.query(Account).filter(Account.slug == DEFAULT_ACCOUNT_SLUG).first()
+        return acc.id if acc else None
+    # operador: siempre su propia cuenta
+    return user.account_id
+
 
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 @router.post("/register")
-def register_device(payload: DeviceRegister, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def register_device(payload: DeviceRegister, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    account_id = _resolve_account_id(payload.account_id, user, db)
     device = Device(
         id=str(uuid.uuid4()),
+        account_id=account_id,
+        group_id=payload.group_id,
         name=payload.name,
         location=payload.location,
         model=payload.model,
@@ -175,22 +198,33 @@ def command_result(
     return {"ok": True}
 
 
-# ── Admin: resumen global ─────────────────────────────────────────────────────
+# ── Admin: resumen ────────────────────────────────────────────────────────────
 
 @router.get("/overview")
-def overview(db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def overview(db: Session = Depends(get_db), user: User = Depends(require_user)):
     now = datetime.utcnow()
-    all_devices = db.query(Device).all()
+    all_devices = scope_devices(db.query(Device), user).all()
     for d in all_devices:
         if d.last_seen and (now - d.last_seen).total_seconds() > 120:
             d.online = False
     db.commit()
     online = sum(1 for d in all_devices if d.online)
-    active_clients = db.query(Client).filter(Client.active == True).count()
-    active_codes = db.query(Code).filter(Code.active == True).count()
-    recent = (db.query(Client, Device.name)
-              .join(Device, Client.device_id == Device.id)
-              .order_by(Client.connected_at.desc()).limit(20).all())
+    device_ids = [d.id for d in all_devices]
+
+    if device_ids:
+        active_clients = db.query(Client).filter(
+            Client.device_id.in_(device_ids), Client.active == True
+        ).count()
+        active_codes = db.query(Code).filter(
+            Code.device_id.in_(device_ids), Code.active == True
+        ).count()
+        recent = (db.query(Client, Device.name)
+                  .join(Device, Client.device_id == Device.id)
+                  .filter(Client.device_id.in_(device_ids))
+                  .order_by(Client.connected_at.desc()).limit(20).all())
+    else:
+        active_clients, active_codes, recent = 0, 0, []
+
     return {
         "devices_total": len(all_devices),
         "devices_online": online,
@@ -208,8 +242,8 @@ def overview(db: Session = Depends(get_db), _: str = Depends(require_admin)):
 # ── Admin: listar dispositivos ────────────────────────────────────────────────
 
 @router.get("")
-def list_devices(db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    devices = db.query(Device).all()
+def list_devices(db: Session = Depends(get_db), user: User = Depends(require_user)):
+    devices = scope_devices(db.query(Device), user).all()
     now = datetime.utcnow()
     result = []
     for d in devices:
@@ -228,6 +262,8 @@ def list_devices(db: Session = Depends(get_db), _: str = Depends(require_admin))
             "firmware": d.firmware,
             "config": d.config,
             "api_key": d.api_key,
+            "account_id": d.account_id,
+            "group_id": d.group_id,
             "active_clients": active_clients,
         })
     db.commit()
@@ -235,45 +271,50 @@ def list_devices(db: Session = Depends(get_db), _: str = Depends(require_admin))
 
 
 @router.get("/{device_id}")
-def get_device(device_id: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    d = db.query(Device).filter(Device.id == device_id).first()
-    if not d:
-        raise HTTPException(status_code=404)
+def get_device(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    d = owned_device(device_id, user, db)
     return {
         "id": d.id, "name": d.name, "location": d.location,
         "model": d.model, "online": d.online, "firmware": d.firmware,
         "last_seen": d.last_seen.isoformat() if d.last_seen else None,
         "config": d.config, "api_key": d.api_key,
+        "account_id": d.account_id, "group_id": d.group_id,
     }
 
 
+@router.patch("/{device_id}")
+def update_device(device_id: str, payload: DeviceUpdate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    d = owned_device(device_id, user, db)
+    if payload.name is not None:
+        d.name = payload.name
+    if payload.location is not None:
+        d.location = payload.location
+    if payload.group_id is not None:
+        d.group_id = payload.group_id or None
+    db.commit()
+    return {"ok": True}
+
+
 @router.put("/{device_id}/config")
-def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    d = db.query(Device).filter(Device.id == device_id).first()
-    if not d:
-        raise HTTPException(status_code=404)
+def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    d = owned_device(device_id, user, db)
     d.config = {**(d.config or {}), **payload.config}
-    # Encolar comando para que el dispositivo aplique la config
     db.add(Command(device_id=d.id, action="update_config", payload=payload.config))
     db.commit()
     return {"ok": True}
 
 
 @router.post("/{device_id}/reboot")
-def reboot_device(device_id: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    d = db.query(Device).filter(Device.id == device_id).first()
-    if not d:
-        raise HTTPException(status_code=404)
+def reboot_device(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    d = owned_device(device_id, user, db)
     db.add(Command(device_id=d.id, action="reboot", payload={}))
     db.commit()
     return {"ok": True}
 
 
 @router.post("/{device_id}/ssid")
-def set_ssid(device_id: str, payload: SsidUpdate, db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    d = db.query(Device).filter(Device.id == device_id).first()
-    if not d:
-        raise HTTPException(status_code=404)
+def set_ssid(device_id: str, payload: SsidUpdate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    d = owned_device(device_id, user, db)
     ssid = payload.ssid.strip()
     if not ssid or len(ssid) > 32:
         raise HTTPException(status_code=400, detail="SSID debe tener entre 1 y 32 caracteres")
@@ -284,7 +325,8 @@ def set_ssid(device_id: str, payload: SsidUpdate, db: Session = Depends(get_db),
 
 
 @router.get("/{device_id}/clients")
-def get_clients(device_id: str, active_only: bool = True, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def get_clients(device_id: str, active_only: bool = True, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    owned_device(device_id, user, db)
     q = db.query(Client).filter(Client.device_id == device_id)
     if active_only:
         q = q.filter(Client.active == True)
@@ -298,17 +340,16 @@ def get_clients(device_id: str, active_only: bool = True, db: Session = Depends(
 
 
 @router.post("/{device_id}/kick/{mac}")
-def kick_client(device_id: str, mac: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    d = db.query(Device).filter(Device.id == device_id).first()
-    if not d:
-        raise HTTPException(status_code=404)
+def kick_client(device_id: str, mac: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    d = owned_device(device_id, user, db)
     db.add(Command(device_id=d.id, action="kick_client", payload={"mac": mac}))
     db.commit()
     return {"ok": True}
 
 
 @router.get("/{device_id}/logs")
-def get_logs(device_id: str, limit: int = 200, days: int = 28, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def get_logs(device_id: str, limit: int = 200, days: int = 28, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    owned_device(device_id, user, db)
     since = datetime.utcnow() - timedelta(days=days)
     clients = (db.query(Client)
                .filter(Client.device_id == device_id, Client.connected_at >= since)
@@ -323,17 +364,16 @@ def get_logs(device_id: str, limit: int = 200, days: int = 28, db: Session = Dep
 
 
 @router.delete("/{device_id}")
-def delete_device(device_id: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    d = db.query(Device).filter(Device.id == device_id).first()
-    if not d:
-        raise HTTPException(status_code=404)
+def delete_device(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    d = owned_device(device_id, user, db)
     db.delete(d)
     db.commit()
     return {"ok": True}
 
 
 @router.get("/{device_id}/usage-summary")
-def usage_summary(device_id: str, days: int = 30, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def usage_summary(device_id: str, days: int = 30, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    owned_device(device_id, user, db)
     total_codes  = db.query(Code).filter(Code.device_id == device_id).count()
     active_codes = db.query(Code).filter(Code.device_id == device_id, Code.active == True).count()
     used_codes   = db.query(Code).filter(Code.device_id == device_id, Code.uses > 0).count()
@@ -362,7 +402,8 @@ def usage_summary(device_id: str, days: int = 30, db: Session = Depends(get_db),
 
 
 @router.get("/{device_id}/reports")
-def get_reports(device_id: str, limit: int = 100, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def get_reports(device_id: str, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    owned_device(device_id, user, db)
     reports = db.query(Report).filter(Report.device_id == device_id)\
                 .order_by(Report.timestamp.desc()).limit(limit).all()
     return [{
@@ -391,7 +432,10 @@ SEED_DEVICES = [
 
 
 def seed_devices(db: Session):
-    """Garantiza que los agentes conocidos existan con su api_key correcta."""
+    """Garantiza que los agentes conocidos existan con su api_key correcta.
+
+    El backfill de cuenta (account_id) lo hace run_data_migrations tras este seed.
+    """
     for spec in SEED_DEVICES:
         d = db.query(Device).filter(Device.id == spec["id"]).first()
         if d is None:

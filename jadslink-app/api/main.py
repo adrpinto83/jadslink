@@ -8,10 +8,11 @@ from datetime import datetime, timedelta
 
 from .database import engine, SessionLocal
 from .models import Base, Device, Settings
-from .routes import devices, codes, auth, portal
+from .routes import devices, codes, auth, portal, accounts
 from .routes import settings as settings_route
-from .routes.auth import seed_admin
+from .routes.auth import hash_pw, ADMIN_PASSWORD
 from .routes.devices import seed_devices
+from .migrate import run_schema_migrations, run_data_migrations
 
 # Tracks devices already alerted so we don't spam
 _alerted: set = set()
@@ -77,9 +78,10 @@ async def offline_alert_loop() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    run_schema_migrations(engine)   # ALTER TABLE en tablas preexistentes (devices.account_id, etc.)
     db = SessionLocal()
-    seed_admin(db)
-    seed_devices(db)
+    seed_devices(db)                # asegura routers conocidos
+    run_data_migrations(db, ADMIN_PASSWORD, hash_pw)  # cuenta por defecto, superadmin, backfill
     db.close()
     task = asyncio.create_task(offline_alert_loop())
     yield
@@ -98,6 +100,7 @@ app = FastAPI(
 )
 
 app.include_router(auth.router)
+app.include_router(accounts.router)
 app.include_router(devices.router)
 app.include_router(codes.router)
 app.include_router(settings_route.router)

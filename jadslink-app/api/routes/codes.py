@@ -7,8 +7,9 @@ from typing import Optional
 import random, string
 
 from ..database import get_db
-from ..models import Code, Device, Command
-from .auth import require_admin
+from ..models import Code, Device, Command, User
+from .auth import require_user
+from ..scope import owned_device
 
 router = APIRouter(prefix="/api/devices/{device_id}/codes", tags=["codes"])
 
@@ -39,10 +40,8 @@ def gen_code(length=8, prefix="") -> str:
 
 
 @router.post("")
-def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    d = db.query(Device).filter(Device.id == device_id).first()
-    if not d:
-        raise HTTPException(status_code=404)
+def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    d = owned_device(device_id, user, db)
 
     # Vencimiento del código (voucher). Por defecto 30 días si no se especifica,
     # para que los códigos impresos no sean válidos indefinidamente.
@@ -83,7 +82,8 @@ def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_
 
 
 @router.get("")
-def list_codes(device_id: str, active_only: bool = True, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def list_codes(device_id: str, active_only: bool = True, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    owned_device(device_id, user, db)
     q = db.query(Code).filter(Code.device_id == device_id)
     if active_only:
         q = q.filter(Code.active == True)
@@ -144,7 +144,8 @@ def validate_code(
 
 
 @router.delete("/{code_id}")
-def revoke_code(device_id: str, code_id: int, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+def revoke_code(device_id: str, code_id: int, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    owned_device(device_id, user, db)
     code = db.query(Code).filter(Code.id == code_id, Code.device_id == device_id).first()
     if not code:
         raise HTTPException(status_code=404)
@@ -163,11 +164,9 @@ def print_vouchers(
     device_id: str,
     active_only: bool = True,
     db: Session = Depends(get_db),
-    _: str = Depends(require_admin),
+    user: User = Depends(require_user),
 ):
-    device = db.query(Device).filter(Device.id == device_id).first()
-    if not device:
-        raise HTTPException(status_code=404)
+    device = owned_device(device_id, user, db)
 
     q = db.query(Code).filter(Code.device_id == device_id)
     if active_only:

@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import hashlib, hmac, base64, json, time, os
 
 from ..database import get_db
-from ..models import AdminUser
+from ..models import User
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -18,15 +17,20 @@ def hash_pw(pw: str) -> str:
     return hashlib.sha256(pw.encode()).hexdigest()
 
 
-def _make_token(username: str) -> str:
-    payload = base64.urlsafe_b64encode(
-        json.dumps({"u": username, "t": int(time.time())}).encode()
-    ).decode().rstrip("=")
+def _make_token(user: User) -> str:
+    data = {
+        "uid": user.id,
+        "u": user.username,
+        "aid": user.account_id or "",
+        "r": user.role,
+        "t": int(time.time()),
+    }
+    payload = base64.urlsafe_b64encode(json.dumps(data).encode()).decode().rstrip("=")
     sig = hmac.new(SECRET.encode(), payload.encode(), "sha256").hexdigest()
     return f"{payload}.{sig}"
 
 
-def _verify_token(token: str) -> str:
+def _decode_token(token: str) -> dict:
     try:
         payload, sig = token.rsplit(".", 1)
         expected = hmac.new(SECRET.encode(), payload.encode(), "sha256").hexdigest()
@@ -35,7 +39,7 @@ def _verify_token(token: str) -> str:
         data = json.loads(base64.urlsafe_b64decode(payload + "=="))
         if time.time() - data["t"] > TOKEN_TTL:
             raise HTTPException(status_code=401, detail="Sesión expirada")
-        return data["u"]
+        return data
     except HTTPException:
         raise
     except Exception:
@@ -54,52 +58,77 @@ class ChangePasswordPayload(BaseModel):
 
 @router.post("/login")
 def login(payload: LoginPayload, db: Session = Depends(get_db)):
-    user = db.query(AdminUser).filter(AdminUser.username == payload.username).first()
-    if not user or user.password_hash != hash_pw(payload.password):
+    user = db.query(User).filter(User.username == payload.username).first()
+    if not user or user.password_hash != hash_pw(payload.password) or not user.is_active:
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    return {"token": _make_token(payload.username), "username": payload.username}
+    return {
+        "token": _make_token(user),
+        "username": user.username,
+        "role": user.role,
+        "account_id": user.account_id or "",
+    }
 
 
 @router.post("/logout")
-def logout(token: str):
+def logout(token: str = ""):
     return {"ok": True}
+
+
+# ── Dependencias de autenticación ──────────────────────────────────────────────
+
+def _raw_token(authorization: str, token: str) -> str:
+    return authorization.replace("Bearer ", "").strip() or token.strip()
+
+
+def get_current_user(
+    authorization: str = Header(default=""),
+    token: str = Query(default=""),
+    db: Session = Depends(get_db),
+) -> User:
+    data = _decode_token(_raw_token(authorization, token))
+    user = db.query(User).filter(User.id == data.get("uid")).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Usuario no válido")
+    return user
+
+
+def require_user(user: User = Depends(get_current_user)) -> User:
+    """Cualquier usuario autenticado activo."""
+    return user
+
+
+def require_superadmin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Requiere superadmin")
+    return user
+
+
+@router.get("/me")
+def me(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    account = user.account
+    return {
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role,
+        "account_id": user.account_id or "",
+        "account": {
+            "id": account.id, "name": account.name, "slug": account.slug,
+            "status": account.status, "plan": account.plan,
+        } if account else None,
+    }
 
 
 @router.put("/password")
 def change_password(
     payload: ChangePasswordPayload,
-    authorization: str = Header(default=""),
+    user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    raw_token = authorization.replace("Bearer ", "").strip()
-    username = _verify_token(raw_token)
-    user = db.query(AdminUser).filter(AdminUser.username == username).first()
-    if not user or user.password_hash != hash_pw(payload.current_password):
+    if user.password_hash != hash_pw(payload.current_password):
         raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
     if len(payload.new_password) < 6:
         raise HTTPException(status_code=400, detail="Mínimo 6 caracteres")
     user.password_hash = hash_pw(payload.new_password)
     db.commit()
     return {"ok": True}
-
-
-def get_admin(token: str = "") -> str:
-    return _verify_token(token)
-
-
-def require_admin(
-    authorization: str = Header(default=""),
-    token: str = Query(default=""),
-) -> str:
-    raw = authorization.replace("Bearer ", "").strip() or token.strip()
-    return get_admin(raw)
-
-
-def seed_admin(db: Session):
-    admin = db.query(AdminUser).filter(AdminUser.username == "admin").first()
-    if admin is None:
-        db.add(AdminUser(username="admin", password_hash=hash_pw(ADMIN_PASSWORD)))
-        db.commit()
-    elif ADMIN_PASSWORD != "admin123" and admin.password_hash == hash_pw("admin123"):
-        admin.password_hash = hash_pw(ADMIN_PASSWORD)
-        db.commit()
