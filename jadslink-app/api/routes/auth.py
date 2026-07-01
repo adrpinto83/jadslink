@@ -103,6 +103,20 @@ def require_superadmin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+def require_manage(user: User = Depends(get_current_user)) -> User:
+    """Puede gestionar routers/códigos/grupos: superadmin, owner o manager (no viewer)."""
+    if user.role not in ("superadmin", "owner", "manager"):
+        raise HTTPException(status_code=403, detail="Tu rol es de solo lectura")
+    return user
+
+
+def require_owner(user: User = Depends(get_current_user)) -> User:
+    """Acciones de dueño (facturación, cuenta, usuarios): superadmin u owner."""
+    if user.role not in ("superadmin", "owner"):
+        raise HTTPException(status_code=403, detail="Requiere permisos de dueño de la cuenta")
+    return user
+
+
 @router.get("/me")
 def me(user: User = Depends(require_user), db: Session = Depends(get_db)):
     from .. import billing

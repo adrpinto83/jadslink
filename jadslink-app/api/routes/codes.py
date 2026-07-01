@@ -8,7 +8,7 @@ import random, string
 
 from ..database import get_db
 from ..models import Code, Device, Command, User, Account
-from .auth import require_user
+from .auth import require_user, require_manage
 from ..scope import owned_device
 from .. import billing
 
@@ -41,7 +41,7 @@ def gen_code(length=8, prefix="") -> str:
 
 
 @router.post("")
-def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     d = owned_device(device_id, user, db)
     # Gate de estado: una cuenta suspendida/cancelada no puede emitir códigos nuevos.
     if d.account_id:
@@ -157,7 +157,7 @@ def validate_code(
 
 
 @router.delete("/{code_id}")
-def revoke_code(device_id: str, code_id: int, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def revoke_code(device_id: str, code_id: int, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     owned_device(device_id, user, db)
     code = db.query(Code).filter(Code.id == code_id, Code.device_id == device_id).first()
     if not code:

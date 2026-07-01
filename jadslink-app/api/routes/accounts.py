@@ -11,7 +11,7 @@ from typing import Optional
 
 from ..database import get_db
 from ..models import Account, User, DeviceGroup, Device, SubscriptionPlan
-from .auth import require_user, require_superadmin, hash_pw, _make_token
+from .auth import require_user, require_superadmin, require_manage, hash_pw, _make_token
 from ..scope import is_superadmin
 from .. import billing
 
@@ -102,6 +102,29 @@ def list_plans(db: Session = Depends(get_db), _: User = Depends(require_user)):
 @router.get("/accounts")
 def list_accounts(db: Session = Depends(get_db), _: User = Depends(require_superadmin)):
     return [_account_dict(a, db) for a in db.query(Account).order_by(Account.created_at.desc()).all()]
+
+
+@router.get("/admin/revenue")
+def revenue(db: Session = Depends(get_db), _: User = Depends(require_superadmin)):
+    """Resumen de ingresos para el superadmin: MRR estimado y estado de la cartera."""
+    from ..models import Payment
+    accs = db.query(Account).all()
+    by_status: dict = {}
+    mrr = 0.0
+    devices = 0
+    for a in accs:
+        by_status[a.status] = by_status.get(a.status, 0) + 1
+        u = billing.compute_usage(db, a)
+        devices += u["device_count"]
+        if a.status in ("active", "past_due"):  # cuentas que deberían estar pagando
+            mrr += u["total_monthly"]
+    return {
+        "accounts_total": len(accs),
+        "by_status": by_status,
+        "mrr": round(mrr, 2),
+        "devices_total": devices,
+        "pending_payments": db.query(Payment).filter(Payment.status == "pending").count(),
+    }
 
 
 def create_account_with_owner(db: Session, *, name: str, plan: str, username: str,
@@ -263,7 +286,7 @@ def list_groups(account_id: Optional[str] = None, db: Session = Depends(get_db),
 
 
 @router.post("/groups")
-def create_group(payload: GroupCreate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def create_group(payload: GroupCreate, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     acc_id = _group_account_id(payload.account_id, user)
     g = DeviceGroup(account_id=acc_id, name=payload.name)
     db.add(g)
@@ -272,7 +295,7 @@ def create_group(payload: GroupCreate, db: Session = Depends(get_db), user: User
 
 
 @router.patch("/groups/{group_id}")
-def rename_group(group_id: int, payload: GroupUpdate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def rename_group(group_id: int, payload: GroupUpdate, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     g = db.query(DeviceGroup).filter(DeviceGroup.id == group_id).first()
     if not g or (not is_superadmin(user) and g.account_id != user.account_id):
         raise HTTPException(status_code=404, detail="Grupo no encontrado")
@@ -282,7 +305,7 @@ def rename_group(group_id: int, payload: GroupUpdate, db: Session = Depends(get_
 
 
 @router.delete("/groups/{group_id}")
-def delete_group(group_id: int, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def delete_group(group_id: int, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     g = db.query(DeviceGroup).filter(DeviceGroup.id == group_id).first()
     if not g or (not is_superadmin(user) and g.account_id != user.account_id):
         raise HTTPException(status_code=404, detail="Grupo no encontrado")

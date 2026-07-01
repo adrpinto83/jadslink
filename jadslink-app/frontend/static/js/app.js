@@ -165,6 +165,19 @@ async function loadMe() {
   document.getElementById("nav-user").textContent = label;
   myAccount = me && me.account ? me.account : null;
   renderUsageBanner(me);
+  applyRoleUI();
+}
+
+// Muestra/oculta acciones según el rol del usuario (RBAC en la UI; el backend es el guardián real).
+function applyRoleUI() {
+  const isViewer = userRole === "viewer";
+  const isOwnerOrSuper = userRole === "owner" || userRole === "superadmin";
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; };
+  // viewer = solo lectura: no registra routers ni genera códigos
+  show("btn-register-gateway", !isViewer);
+  show("btn-open-codes", !isViewer);
+  // solo el owner (o superadmin) reporta pagos
+  show("payment-form", isOwnerOrSuper);
 }
 
 function renderUsageBanner(me) {
@@ -276,7 +289,7 @@ function renderBillingSummary() {
     const d = b.days_left;
     venc = d >= 0 ? `vence en ${d} día${d===1?"":"s"}` : `vencido hace ${-d} día${-d===1?"":"s"}`;
   }
-  const planSel = PLANS.length ? `
+  const planSel = (PLANS.length && userRole === "owner") ? `
     <span class="u-item">Plan:
       <select onchange="updateMyPlan(this.value)">
         ${PLANS.map(p => `<option value="${p.key}" ${p.key===u.plan?"selected":""}>${p.name} ($${p.base_price_usd})</option>`).join("")}
@@ -331,7 +344,25 @@ document.getElementById("payment-form").addEventListener("submit", async e => {
 let PLANS = [];
 const STATUSES = ["active", "trial", "past_due", "suspended", "canceled"];
 
+async function loadRevenue() {
+  const r = await api("GET", "/api/admin/revenue");
+  if (!r) return;
+  const bs = r.by_status || {};
+  const cards = [
+    { icon:"fa-sack-dollar", color:"#3ecf8e", bg:"#1a3d2e", val:`$${r.mrr}`, lbl:"MRR estimado" },
+    { icon:"fa-building",    color:"#4f8ef7", bg:"#1a2d4a", val:r.accounts_total, lbl:`Cuentas (${bs.active||0} activas)` },
+    { icon:"fa-router",      color:"#a78bfa", bg:"#2d1a3d", val:r.devices_total, lbl:"Routers totales" },
+    { icon:"fa-hourglass-half", color:"#e5a53c", bg:"#3d331a", val:r.pending_payments, lbl:"Pagos por revisar" },
+  ];
+  document.getElementById("revenue-stats").innerHTML = cards.map(c => `
+    <div class="ov-card">
+      <div class="ov-icon" style="background:${c.bg}"><i class="fa-solid ${c.icon}" style="color:${c.color}"></i></div>
+      <div><div class="ov-val">${c.val}</div><div class="ov-lbl">${c.lbl}</div></div>
+    </div>`).join("");
+}
+
 async function loadAccounts() {
+  loadRevenue();
   if (!PLANS.length) PLANS = await api("GET", "/api/plans") || [];
   const accounts = await api("GET", "/api/accounts") || [];
   const planOpts = (sel) => PLANS.map(p =>

@@ -8,7 +8,7 @@ import uuid, secrets, os
 
 from ..database import get_db
 from ..models import Device, Report, Command, Client, Code, Account, User
-from .auth import require_user
+from .auth import require_user, require_manage
 from ..scope import scope_devices, owned_device, is_superadmin
 from .. import billing
 
@@ -79,7 +79,7 @@ def _resolve_account_id(payload_account_id: Optional[str], user: User, db: Sessi
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 @router.post("/register")
-def register_device(payload: DeviceRegister, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def register_device(payload: DeviceRegister, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     account_id = _resolve_account_id(payload.account_id, user, db)
     # Límite de routers del plan (el superadmin puede exceder; él gestiona el cobro).
     if not is_superadmin(user):
@@ -318,7 +318,7 @@ def onboarding(device_id: str, db: Session = Depends(get_db), user: User = Depen
 
 
 @router.patch("/{device_id}")
-def update_device(device_id: str, payload: DeviceUpdate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def update_device(device_id: str, payload: DeviceUpdate, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     d = owned_device(device_id, user, db)
     if payload.name is not None:
         d.name = payload.name
@@ -331,7 +331,7 @@ def update_device(device_id: str, payload: DeviceUpdate, db: Session = Depends(g
 
 
 @router.put("/{device_id}/config")
-def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     d = owned_device(device_id, user, db)
     d.config = {**(d.config or {}), **payload.config}
     db.add(Command(device_id=d.id, action="update_config", payload=payload.config))
@@ -340,7 +340,7 @@ def update_config(device_id: str, payload: ConfigUpdate, db: Session = Depends(g
 
 
 @router.post("/{device_id}/reboot")
-def reboot_device(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def reboot_device(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     d = owned_device(device_id, user, db)
     db.add(Command(device_id=d.id, action="reboot", payload={}))
     db.commit()
@@ -348,7 +348,7 @@ def reboot_device(device_id: str, db: Session = Depends(get_db), user: User = De
 
 
 @router.post("/{device_id}/ssid")
-def set_ssid(device_id: str, payload: SsidUpdate, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def set_ssid(device_id: str, payload: SsidUpdate, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     d = owned_device(device_id, user, db)
     ssid = payload.ssid.strip()
     if not ssid or len(ssid) > 32:
@@ -375,7 +375,7 @@ def get_clients(device_id: str, active_only: bool = True, db: Session = Depends(
 
 
 @router.post("/{device_id}/kick/{mac}")
-def kick_client(device_id: str, mac: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def kick_client(device_id: str, mac: str, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     d = owned_device(device_id, user, db)
     db.add(Command(device_id=d.id, action="kick_client", payload={"mac": mac}))
     db.commit()
@@ -399,7 +399,7 @@ def get_logs(device_id: str, limit: int = 200, days: int = 28, db: Session = Dep
 
 
 @router.delete("/{device_id}")
-def delete_device(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def delete_device(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     d = owned_device(device_id, user, db)
     db.delete(d)
     db.commit()

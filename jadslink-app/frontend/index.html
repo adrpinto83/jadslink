@@ -72,7 +72,7 @@
       <section id="tab-devices" class="tab active">
         <div class="tab-header">
           <h2>Dashboard</h2>
-          <button class="btn-primary" onclick="showRegisterModal()"><i class="fa-solid fa-plus"></i> Registrar gateway</button>
+          <button class="btn-primary" id="btn-register-gateway" onclick="showRegisterModal()"><i class="fa-solid fa-plus"></i> Registrar gateway</button>
         </div>
 
         <!-- Indicador de plan / uso (operadores) -->
@@ -154,7 +154,7 @@
         <div class="tab-header">
           <h2>Códigos de acceso</h2>
           <select id="codes-device-select"><option value="">Selecciona gateway</option></select>
-          <button class="btn-primary" onclick="showCodesModal()"><i class="fa-solid fa-plus"></i> Generar</button>
+          <button class="btn-primary" id="btn-open-codes" onclick="showCodesModal()"><i class="fa-solid fa-plus"></i> Generar</button>
           <button class="btn-secondary" onclick="exportCodes()"><i class="fa-solid fa-file-csv"></i> CSV</button>
           <button class="btn-secondary" onclick="printVouchers()"><i class="fa-solid fa-print"></i> Vouchers</button>
         </div>
@@ -404,7 +404,10 @@
             <i class="fa-solid fa-plus"></i> Nueva cuenta
           </button>
         </div>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
+        <!-- Resumen de ingresos -->
+        <div class="overview-stats" id="revenue-stats"></div>
+
+        <p style="color:var(--muted);font-size:13px;margin:16px 0">
           Cada cuenta es un operador que gestiona sus propios routers y paga su suscripción.
           El dueño (owner) inicia sesión con el usuario/clave que definas aquí.
         </p>
@@ -538,6 +541,6 @@
 
 </div>
 
-<script src="/static/js/app.js?v=13"></script>
+<script src="/static/js/app.js?v=14"></script>
 </body>
 </html>
