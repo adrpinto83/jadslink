@@ -360,53 +360,73 @@
     </div>
   </div>
 
-  <!-- MODAL: Generar códigos -->
+  <!-- MODAL: Generar tickets -->
   <div id="modal-codes" class="modal hidden">
-    <div class="modal-content" style="max-width:520px">
+    <div class="modal-content" style="max-width:500px">
       <h3>Generar tickets</h3>
 
-      <!-- Plantillas -->
-      <div class="tpl-grid" id="tpl-grid"></div>
+      <!-- Tipo de servicio -->
+      <p class="field-label">Tipo de servicio</p>
+      <div class="chip-group" id="type-chips">
+        <button type="button" class="chip active" data-type="bus">🚌 Bus</button>
+        <button type="button" class="chip" data-type="evento">🎪 Evento</button>
+        <button type="button" class="chip" data-type="playa">🏖️ Playa</button>
+        <button type="button" class="chip" data-type="express">⚡ Express</button>
+        <button type="button" class="chip" data-type="custom">⚙️ Personalizado</button>
+      </div>
 
-      <!-- Cantidad + Generar -->
-      <form id="gen-codes-form" style="margin-top:18px">
-        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <label style="flex:1;min-width:120px">Cantidad
-            <input type="number" name="quantity" value="10" min="1" max="500">
-          </label>
-          <label style="flex:1;min-width:120px">Nota (opcional)
-            <input type="text" name="note" placeholder="Ej: Ruta Caracas">
-          </label>
-        </div>
+      <!-- Duración -->
+      <p class="field-label" style="margin-top:16px">Duración</p>
+      <div class="chip-group" id="dur-chips">
+        <button type="button" class="chip" data-min="30">30 min</button>
+        <button type="button" class="chip active" data-min="60">1 hora</button>
+        <button type="button" class="chip" data-min="120">2 horas</button>
+        <button type="button" class="chip" data-min="240">4 horas</button>
+        <button type="button" class="chip" data-min="360">6 horas</button>
+        <button type="button" class="chip" data-min="480">8 horas</button>
+        <button type="button" class="chip" data-min="720">12 horas</button>
+        <button type="button" class="chip" data-min="1440">Todo el día</button>
+        <button type="button" class="chip" data-min="0">Otro…</button>
+      </div>
+      <div id="dur-custom-wrap" style="display:none;margin-top:10px">
+        <label class="field-label">Duración personalizada (horas)
+          <input type="number" id="dur-custom-val" min="0.5" step="0.5" placeholder="Ej: 1.5">
+        </label>
+      </div>
 
-        <!-- Opciones avanzadas -->
-        <div style="margin-top:12px">
-          <button type="button" class="adv-toggle" onclick="toggleAdvanced()">
-            <i class="fa-solid fa-chevron-right" id="adv-icon"></i> Opciones avanzadas
-          </button>
-          <div id="adv-fields" style="display:none;margin-top:12px">
-            <div class="form-grid">
-              <label>Duración (minutos) <input type="number" name="duration_min" id="adv-duration" min="1"></label>
-              <label>Usos por código   <input type="number" name="max_uses" value="1" min="1"></label>
-              <label>BW descarga (kbps, 0=∞) <input type="number" name="bandwidth_dn" id="adv-bw-dn"></label>
-              <label>BW subida (kbps, 0=∞)   <input type="number" name="bandwidth_up" id="adv-bw-up"></label>
-              <label>Vence en (horas, vacío=nunca) <input type="number" name="expires_hours" placeholder="24"></label>
-              <label>Prefijo <input type="text" name="prefix" placeholder="BUS-"></label>
-            </div>
-          </div>
-        </div>
+      <!-- Cantidad y nota -->
+      <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
+        <label class="field-label" style="flex:1;min-width:100px">Cantidad
+          <input type="number" id="tickets-qty" value="10" min="1" max="500">
+        </label>
+        <label class="field-label" style="flex:2;min-width:160px">Nota (aparece en el voucher)
+          <input type="text" id="tickets-note" placeholder="Ej: Ruta Caracas">
+        </label>
+      </div>
 
-        <div class="modal-actions" style="margin-top:16px">
-          <button type="submit" class="btn-primary"><i class="fa-solid fa-ticket"></i> Generar</button>
-          <button type="button" class="btn-secondary" onclick="closeModal('modal-codes')">Cancelar</button>
+      <!-- Opciones extra solo en Personalizado -->
+      <div id="adv-bw" style="display:none;margin-top:14px">
+        <div class="form-grid">
+          <label class="field-label">BW descarga kbps (0=∞) <input type="number" id="adv-bw-dn" value="0" min="0"></label>
+          <label class="field-label">BW subida kbps (0=∞)   <input type="number" id="adv-bw-up" value="0" min="0"></label>
+          <label class="field-label">Usos por código          <input type="number" id="adv-max-uses" value="1" min="1"></label>
+          <label class="field-label">Vence en horas           <input type="number" id="adv-expires" placeholder="24"></label>
+          <label class="field-label">Prefijo                  <input type="text"   id="adv-prefix"  placeholder="BUS-"></label>
         </div>
-        <p id="gen-codes-result" class="hidden" style="margin-top:10px;text-align:center"></p>
-      </form>
+      </div>
+
+      <div class="modal-actions" style="margin-top:18px">
+        <button type="button" class="btn-primary" id="btn-gen-codes">
+          <i class="fa-solid fa-ticket"></i> Generar
+        </button>
+        <button type="button" class="btn-secondary" onclick="closeModal('modal-codes')">Cancelar</button>
+      </div>
+      <p id="gen-codes-result" class="hidden" style="margin-top:10px;text-align:center;font-size:13px"></p>
     </div>
   </div>
 
 </div>
 
-<script src="/static/js/app.js?v=8"></script>
+<script src="/static/js/app.js?v=9"></script>
 </body>
 </html>

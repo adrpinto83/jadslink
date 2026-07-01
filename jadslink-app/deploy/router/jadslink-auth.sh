@@ -13,8 +13,17 @@ NDS_CODES="/tmp/nds_codes"
 NDS_SESSIONS="/tmp/nds_sessions"   # MAC|CODE — que codigo uso cada cliente activo
 CONF="/etc/hotspot/agent.conf"
 LOG="/tmp/hotspot-agent.log"
+SESSION_JS="/etc/nodogsplash/htdocs/session.js"  # connected.html lee de aqui los minutos
 
 log() { echo "[$(date '+%H:%M:%S')] BINAUTH: $1" >> "$LOG"; }
+
+# Deja en session.js los minutos otorgados para que la pantalla de "Conectado"
+# muestre la duracion real del codigo (no un valor fijo).
+write_session_js() {
+  MINS=$(( ${1:-0} / 60 ))
+  [ "$MINS" -lt 1 ] && MINS=1
+  echo "window.JADS_MINS=${MINS};" > "$SESSION_JS" 2>/dev/null
+}
 
 [ -f "$CONF" ] && . "$CONF"
 
@@ -28,15 +37,24 @@ case "$ACTION" in
       exit 1
     fi
 
-    # 1. Cache local /tmp/nds_codes (formato: CODIGO|segundos|bw_dn|bw_up)
+    # 1. Cache local /tmp/nds_codes (formato: CODIGO|segundos|bw_dn|bw_up|expira_epoch)
     if [ -f "$NDS_CODES" ] && grep -q "^${CODE}|" "$NDS_CODES" 2>/dev/null; then
       LINE=$(grep "^${CODE}|" "$NDS_CODES" | head -1)
       DUR_SEC=$(echo "$LINE" | cut -d'|' -f2)
+      EXP=$(echo "$LINE" | cut -d'|' -f5)
       [ "${DUR_SEC:-0}" -lt 60 ] 2>/dev/null && DUR_SEC=3600
+      # Vencimiento: si el codigo tiene fecha de expiracion y ya paso, rechazar
+      NOW=$(date +%s)
+      if [ "${EXP:-0}" -gt 0 ] 2>/dev/null && [ "$NOW" -gt "$EXP" ] 2>/dev/null; then
+        sed -i "/^${CODE}|/d" "$NDS_CODES"
+        log "Codigo $CODE expirado (local) para $MAC"
+        exit 1
+      fi
       sed -i "/^${CODE}|/d" "$NDS_CODES"
       # Registrar que esta MAC uso este codigo
       sed -i "/^${MAC}|/d" "$NDS_SESSIONS" 2>/dev/null
       printf '%s\n' "${MAC}|${CODE}" >> "$NDS_SESSIONS"
+      write_session_js "$DUR_SEC"
       log "Codigo $CODE valido (local) - ${DUR_SEC}s para $MAC"
       echo "$DUR_SEC"
       exit 0
@@ -57,6 +75,7 @@ case "$ACTION" in
         # Registrar que esta MAC uso este codigo
         sed -i "/^${MAC}|/d" "$NDS_SESSIONS" 2>/dev/null
         printf '%s\n' "${MAC}|${CODE}" >> "$NDS_SESSIONS"
+        write_session_js "$DUR_SEC"
         log "Codigo $CODE valido (cloud) - ${DUR_SEC}s para $MAC"
         echo "$DUR_SEC"
         exit 0

@@ -122,14 +122,15 @@ process_commands() {
         DUR_SEC=$(( ${DUR_MIN:-60} * 60 ))
         BW_DN=$(echo "$RESP" | grep -o '"bandwidth_dn":[0-9]*' | head -1 | cut -d: -f2)
         BW_UP=$(echo "$RESP" | grep -o '"bandwidth_up":[0-9]*' | head -1 | cut -d: -f2)
+        EXP=$(echo "$RESP" | grep -o '"expires_at":[0-9]*' | head -1 | cut -d: -f2)
         COUNT=0
         BLOCK=$(echo "$RESP" | grep -o '"codes":\[[^]]*\]' | grep -o '"[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9]*"' | tr -d '"')
         for CODE in $BLOCK; do
           grep -q "^${CODE}|" "$NDS_CODES" 2>/dev/null || \
-            printf '%s\n' "${CODE}|${DUR_SEC}|${BW_DN:-0}|${BW_UP:-0}" >> "$NDS_CODES"
+            printf '%s\n' "${CODE}|${DUR_SEC}|${BW_DN:-0}|${BW_UP:-0}|${EXP:-0}" >> "$NDS_CODES"
           COUNT=$((COUNT+1))
         done
-        log "add_codes: $COUNT codigos en cache"
+        log "add_codes: $COUNT codigos en cache (expira_epoch=${EXP:-0})"
         ;;
       revoke_code)
         CODE=$(echo "$RESP" | grep -o '"code":"[^"]*"' | head -1 | cut -d'"' -f4)

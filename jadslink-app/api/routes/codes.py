@@ -44,9 +44,10 @@ def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_
     if not d:
         raise HTTPException(status_code=404)
 
-    expires_at = None
-    if payload.expires_hours:
-        expires_at = datetime.utcnow() + timedelta(hours=payload.expires_hours)
+    # Vencimiento del código (voucher). Por defecto 30 días si no se especifica,
+    # para que los códigos impresos no sean válidos indefinidamente.
+    eff_hours = payload.expires_hours if payload.expires_hours else 720
+    expires_at = datetime.utcnow() + timedelta(hours=eff_hours)
 
     codes = []
     for _ in range(min(payload.quantity, 500)):
@@ -74,6 +75,7 @@ def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_
             "max_uses": payload.max_uses,
             "bandwidth_dn": payload.bandwidth_dn,
             "bandwidth_up": payload.bandwidth_up,
+            "expires_at": int(expires_at.timestamp()),
         }
     ))
     db.commit()

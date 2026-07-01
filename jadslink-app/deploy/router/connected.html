@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>JADSLink - Conectado</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#0a0a1a,#0d1b3e,#1a0a2e);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.box{background:rgba(255,255,255,0.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);padding:44px 32px;border-radius:20px;text-align:center;width:90%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.check{width:68px;height:68px;margin:0 auto 18px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:flex;align-items:center;justify-content:center;box-shadow:0 0 28px rgba(34,197,94,0.5)}
+.check svg{width:36px;height:36px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.brand{font-size:13px;color:#7a8aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.status{font-size:22px;font-weight:800;color:#fff;margin-bottom:18px}
+.card{background:rgba(79,142,247,0.10);border:1px solid rgba(79,142,247,0.20);border-radius:14px;padding:18px 20px;margin-bottom:20px}
+.dur-label{color:#7a8aaa;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.dur-val{font-size:36px;font-weight:800;background:linear-gradient(90deg,#4f8ef7,#a259f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.dur-unit{font-size:14px;color:#9aa5c0;margin-top:2px}
+.until{color:#9aa5c0;font-size:13px;margin-top:10px}
+.until strong{color:#c0cce8}
+.hint{color:#4a5568;font-size:12px;margin-bottom:20px;line-height:1.6}
+.btn{display:block;padding:15px;font-size:15px;font-weight:700;background:linear-gradient(90deg,#4f8ef7,#a259f7);color:#fff;border-radius:12px;text-decoration:none;letter-spacing:0.5px}
+.footer{margin-top:22px;color:#374151;font-size:11px}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="check">
+    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  </div>
+  <p class="brand">JADSLink</p>
+  <p class="status">&#10003;&nbsp; &iexcl;Conectado!</p>
+
+  <div class="card">
+    <p class="dur-label">Tiempo de acceso</p>
+    <p class="dur-val" id="dur-val">&mdash;</p>
+    <p class="dur-unit" id="dur-unit">minutos</p>
+    <p class="until" id="until"></p>
+  </div>
+
+  <p class="hint">Esta ventana se cerrar&aacute; sola.<br>Ya puedes usar internet normalmente.</p>
+  <a class="btn" href="http://jadsstudio.com">Comenzar a navegar &rarr;</a>
+  <div class="footer">&copy; 2026 JADS Software</div>
+</div>
+<!-- session.js lo escribe el binauth (jadslink-auth.sh) en cada activacion: window.JADS_MINS=<minutos> -->
+<script src="session.js?t=0" onerror="window.JADS_MINS=window.JADS_MINS||0"></script>
+<script>
+try {
+  sessionStorage.removeItem('jads_tried');
+  var mins = parseInt(window.JADS_MINS, 10) || 60;
+
+  // Mostrar en la unidad mas legible
+  var valEl = document.getElementById('dur-val');
+  var unitEl = document.getElementById('dur-unit');
+  if (mins % 1440 === 0 && mins >= 1440) {
+    var d = mins / 1440;
+    valEl.textContent = d;
+    unitEl.textContent = d === 1 ? 'día' : 'días';
+  } else if (mins % 60 === 0 && mins >= 60) {
+    var h = mins / 60;
+    valEl.textContent = h;
+    unitEl.textContent = h === 1 ? 'hora' : 'horas';
+  } else if (mins >= 60) {
+    valEl.textContent = (mins / 60).toFixed(1);
+    unitEl.textContent = 'horas';
+  } else {
+    valEl.textContent = mins;
+    unitEl.textContent = 'minutos';
+  }
+
+  var end = new Date(Date.now() + mins * 60000);
+  var hh = end.getHours().toString().padStart(2, '0');
+  var mm = end.getMinutes().toString().padStart(2, '0');
+  document.getElementById('until').innerHTML =
+    'Acceso hasta las <strong>' + hh + ':' + mm + '</strong>';
+} catch (e) {}
+</script>
+</body>
+</html>
