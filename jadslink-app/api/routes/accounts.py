@@ -23,6 +23,7 @@ router = APIRouter(prefix="/api", tags=["accounts"])
 class AccountCreate(BaseModel):
     name: str
     plan: str = "trial"
+    contact_phone: str = ""
     # Owner inicial de la cuenta (login del operador)
     owner_username: str
     owner_password: str
@@ -32,6 +33,7 @@ class AccountUpdate(BaseModel):
     name: Optional[str] = None
     status: Optional[str] = None
     plan: Optional[str] = None
+    contact_phone: Optional[str] = None
 
 class UserCreate(BaseModel):
     username: str
@@ -67,8 +69,10 @@ def _account_dict(a: Account, db: Session) -> dict:
     return {
         "id": a.id, "name": a.name, "slug": a.slug,
         "status": a.status, "plan": a.plan,
+        "contact_phone": a.contact_phone,
         "device_count": usage["device_count"],
         "usage": usage,
+        "billing": billing.billing_info(a),
         "billing_cycle_end": a.billing_cycle_end.isoformat() if a.billing_cycle_end else None,
         "created_at": a.created_at.isoformat() if a.created_at else None,
     }
@@ -103,7 +107,9 @@ def create_account(payload: AccountCreate, db: Session = Depends(get_db), _: Use
         slug=_unique_slug(db, payload.name),
         status="active",
         plan=payload.plan,
+        contact_phone=payload.contact_phone,
     )
+    billing.init_billing_for_new_account(acc, payload.plan)  # fija vencimiento/trial
     db.add(acc)
     db.flush()  # obtener acc.id sin cerrar la transacción
     db.add(User(
@@ -138,7 +144,9 @@ def update_account(account_id: str, payload: AccountUpdate, db: Session = Depend
         raise HTTPException(status_code=403, detail="Sin permiso")
     if payload.name is not None:
         acc.name = payload.name
-    # status y plan solo los cambia el superadmin (FASE C: pagos)
+    if payload.contact_phone is not None:
+        acc.contact_phone = payload.contact_phone
+    # status y plan solo los cambia el superadmin
     if is_superadmin(user):
         if payload.status is not None:
             acc.status = payload.status

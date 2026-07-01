@@ -1,10 +1,77 @@
-"""Lógica de planes: cálculo de uso/costo híbrido y gates de estado de cuenta."""
+"""Lógica de planes: cálculo de uso/costo híbrido, gates de estado y ciclo de facturación."""
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from .models import Account, SubscriptionPlan, Device
 
 # Estados en los que la cuenta NO puede operar (generar códigos, validar).
 BLOCKED_STATUSES = {"suspended", "canceled"}
+
+CYCLE_DAYS = 30   # duración de un ciclo pagado
+GRACE_DAYS = 5    # días de gracia tras el vencimiento antes de suspender
+TRIAL_DAYS = 14   # duración del trial
+
+
+def billing_info(account: Account) -> dict:
+    """Estado de facturación: cuándo vence y días restantes."""
+    end = account.billing_cycle_end if account else None
+    if end is None:
+        return {"billing_cycle_end": None, "days_left": None, "expired": False, "grace": False}
+    now = datetime.utcnow()
+    delta = end - now
+    days_left = delta.days if delta.total_seconds() >= 0 else -((-delta).days + (1 if (-delta).seconds else 0))
+    return {
+        "billing_cycle_end": end.isoformat(),
+        "days_left": days_left,
+        "expired": now > end,
+        "grace": end < now <= end + timedelta(days=GRACE_DAYS),
+    }
+
+
+def init_billing_for_new_account(account: Account, plan_key: str) -> None:
+    """Fija fechas iniciales al crear la cuenta según el plan."""
+    now = datetime.utcnow()
+    if plan_key == "trial":
+        account.trial_ends_at = now + timedelta(days=TRIAL_DAYS)
+        account.billing_cycle_end = account.trial_ends_at
+        account.status = "trial"
+    else:
+        # Primer ciclo de cortesía; el operador reporta su pago dentro del periodo.
+        account.billing_cycle_end = now + timedelta(days=CYCLE_DAYS)
+        account.status = "active"
+
+
+def approve_and_extend(account: Account, days: int = CYCLE_DAYS) -> tuple:
+    """Extiende el ciclo pagado y reactiva la cuenta. Devuelve (inicio, fin)."""
+    now = datetime.utcnow()
+    base = account.billing_cycle_end if (account.billing_cycle_end and account.billing_cycle_end > now) else now
+    account.billing_cycle_end = base + timedelta(days=days)
+    account.status = "active"
+    return base, account.billing_cycle_end
+
+
+def run_billing_cycle(db: Session) -> int:
+    """Marca cuentas vencidas como past_due y, pasada la gracia, suspended.
+
+    Cuentas con billing_cycle_end = NULL nunca vencen (p. ej. la cuenta JADS Studio).
+    Devuelve cuántas cuentas cambiaron de estado.
+    """
+    now = datetime.utcnow()
+    accts = (db.query(Account)
+             .filter(Account.billing_cycle_end.isnot(None),
+                     Account.status.in_(["active", "trial", "past_due"]))
+             .all())
+    changed = 0
+    for a in accts:
+        if now > a.billing_cycle_end + timedelta(days=GRACE_DAYS):
+            if a.status != "suspended":
+                a.status = "suspended"; changed += 1
+        elif now > a.billing_cycle_end:
+            if a.status != "past_due":
+                a.status = "past_due"; changed += 1
+    if changed:
+        db.commit()
+    return changed
 
 
 def get_plan(db: Session, plan_key: str) -> SubscriptionPlan | None:

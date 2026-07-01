@@ -6,6 +6,7 @@ let userRole = localStorage.getItem("hcm_role") || "";
 let devices = [];
 let currentDevice = null;
 let pollInterval = null;
+let myAccount = null;   // cuenta del usuario (null si superadmin)
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
@@ -118,6 +119,7 @@ async function loadMe() {
     if (me.role === "superadmin") label = `${username} · Superadmin`;
   }
   document.getElementById("nav-user").textContent = label;
+  myAccount = me && me.account ? me.account : null;
   renderUsageBanner(me);
 }
 
@@ -158,7 +160,112 @@ document.querySelectorAll(".nav-item").forEach(el => {
     if (el.dataset.tab === "portal")   loadPortal();
     if (el.dataset.tab === "settings") loadSettings();
     if (el.dataset.tab === "accounts") loadAccounts();
+    if (el.dataset.tab === "payments") loadPayments();
   });
+});
+
+// ── Pagos y facturación ─────────────────────────────────────────────────────────
+
+const METHOD_LABEL = { pago_movil:"Pago móvil", transferencia:"Transferencia", zelle:"Zelle", usdt:"USDT", efectivo:"Efectivo" };
+const PAY_STATUS = {
+  pending:  '<span class="badge badge-gray">pendiente</span>',
+  approved: '<span class="badge badge-green">aprobado</span>',
+  rejected: '<span class="badge badge-red">rechazado</span>',
+};
+
+function loadPayments() {
+  const isSuper = userRole === "superadmin";
+  document.getElementById("pay-admin").style.display = isSuper ? "" : "none";
+  document.getElementById("pay-operator").style.display = isSuper ? "none" : "";
+  if (isSuper) loadPendingPayments();
+  else loadMyPayments();
+}
+
+async function loadPendingPayments() {
+  const rows = await api("GET", "/api/payments?status=pending") || [];
+  document.getElementById("pay-pending").innerHTML = rows.map(p => `
+    <tr>
+      <td style="color:var(--muted)">${fmt_dt(p.created_at)}</td>
+      <td><strong>${p.account_name}</strong></td>
+      <td>$${p.amount_usd}</td>
+      <td>${METHOD_LABEL[p.method] || p.method}</td>
+      <td>${p.reference || "—"}</td>
+      <td>${p.has_proof ? `<a href="/api/payments/${p.id}/proof?token=${encodeURIComponent(token)}" target="_blank">ver</a>` : "—"}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm" style="background:var(--accent2)" onclick="approvePayment(${p.id})">Aprobar</button>
+        <button class="btn-sm" onclick="rejectPayment(${p.id})">Rechazar</button>
+      </td>
+    </tr>`).join("") || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No hay pagos pendientes</td></tr>';
+}
+
+async function approvePayment(id) {
+  if (await api("POST", `/api/payments/${id}/approve`)) loadPendingPayments();
+}
+async function rejectPayment(id) {
+  const note = prompt("Motivo del rechazo (opcional):") ?? "";
+  if (await api("POST", `/api/payments/${id}/reject`, { note })) loadPendingPayments();
+}
+
+async function loadMyPayments() {
+  renderBillingSummary();
+  if (!myAccount) return;
+  const rows = await api("GET", `/api/accounts/${myAccount.id}/payments`) || [];
+  document.getElementById("pay-history").innerHTML = rows.map(p => `
+    <tr>
+      <td style="color:var(--muted)">${fmt_dt(p.created_at)}</td>
+      <td>$${p.amount_usd}</td>
+      <td>${METHOD_LABEL[p.method] || p.method}</td>
+      <td>${p.reference || "—"}</td>
+      <td>${PAY_STATUS[p.status] || p.status}${p.status==="rejected" && p.review_note ? `<br><span style="color:var(--muted);font-size:11px">${p.review_note}</span>` : ""}</td>
+    </tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Sin pagos aún</td></tr>';
+}
+
+function renderBillingSummary() {
+  const el = document.getElementById("billing-summary");
+  if (!myAccount) { el.classList.add("hidden"); return; }
+  const b = myAccount.billing || {};
+  const u = myAccount.usage || {};
+  const suspended = myAccount.status === "suspended" || myAccount.status === "canceled";
+  let venc = "sin vencimiento";
+  if (b.billing_cycle_end) {
+    const d = b.days_left;
+    venc = d >= 0 ? `vence en ${d} día${d===1?"":"s"}` : `vencido hace ${-d} día${-d===1?"":"s"}`;
+  }
+  el.classList.toggle("u-warn", suspended || b.expired);
+  el.classList.remove("hidden");
+  el.innerHTML = `
+    <span class="u-plan"><i class="fa-solid fa-file-invoice-dollar"></i> ${u.plan_name || u.plan || ""} · $${u.total_monthly ?? 0}/mes</span>
+    <span class="u-item">Estado: <strong>${myAccount.status}</strong></span>
+    <span class="u-item">${venc}</span>`;
+}
+
+document.getElementById("payment-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!myAccount) return;
+  const fd = new FormData();
+  fd.append("amount_usd", document.getElementById("pay-amount").value);
+  fd.append("method", document.getElementById("pay-method").value);
+  fd.append("reference", document.getElementById("pay-ref").value);
+  fd.append("note", document.getElementById("pay-note").value);
+  const proof = document.getElementById("pay-proof").files[0];
+  if (proof) fd.append("proof", proof);
+
+  const msg = document.getElementById("pay-msg");
+  const resp = await fetch(`/api/accounts/${myAccount.id}/payments`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
+  });
+  if (resp.ok) {
+    msg.textContent = "✓ Pago reportado. Queda pendiente de aprobación.";
+    msg.className = "success"; msg.classList.remove("hidden");
+    document.getElementById("payment-form").reset();
+    loadMyPayments();
+  } else if (resp.status === 401) {
+    logout();
+  } else {
+    const err = await resp.json().catch(() => ({}));
+    msg.textContent = "✗ " + (err.detail || "No se pudo reportar el pago");
+    msg.className = "error"; msg.classList.remove("hidden");
+  }
 });
 
 // ── Cuentas (superadmin) ────────────────────────────────────────────────────────
@@ -202,6 +309,7 @@ document.getElementById("account-form").addEventListener("submit", async e => {
     owner_username: document.getElementById("acc-user").value,
     owner_password: document.getElementById("acc-pass").value,
     owner_email: document.getElementById("acc-email").value,
+    contact_phone: document.getElementById("acc-phone").value,
   });
   if (r) {
     msg.textContent = `✓ Cuenta "${r.name}" creada`;

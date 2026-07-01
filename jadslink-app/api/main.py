@@ -8,11 +8,12 @@ from datetime import datetime, timedelta
 
 from .database import engine, SessionLocal
 from .models import Base, Device, Settings
-from .routes import devices, codes, auth, portal, accounts
+from .routes import devices, codes, auth, portal, accounts, payments
 from .routes import settings as settings_route
 from .routes.auth import hash_pw, ADMIN_PASSWORD
 from .routes.devices import seed_devices
 from .migrate import run_schema_migrations, run_data_migrations
+from . import billing
 
 # Tracks devices already alerted so we don't spam
 _alerted: set = set()
@@ -75,6 +76,21 @@ async def offline_alert_loop() -> None:
         await asyncio.sleep(300)  # check every 5 minutes
 
 
+async def billing_cycle_loop() -> None:
+    """Marca cuentas vencidas como past_due/suspended (con periodo de gracia)."""
+    await asyncio.sleep(60)  # esperar a que arranque
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                billing.run_billing_cycle(db)
+            finally:
+                db.close()
+        except Exception:
+            pass
+        await asyncio.sleep(6 * 3600)  # revisar cada 6 horas
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
@@ -83,13 +99,16 @@ async def lifespan(app: FastAPI):
     seed_devices(db)                # asegura routers conocidos
     run_data_migrations(db, ADMIN_PASSWORD, hash_pw)  # cuenta por defecto, superadmin, backfill
     db.close()
-    task = asyncio.create_task(offline_alert_loop())
+    tasks = [asyncio.create_task(offline_alert_loop()),
+             asyncio.create_task(billing_cycle_loop())]
     yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    for t in tasks:
+        t.cancel()
+    for t in tasks:
+        try:
+            await t
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(
@@ -101,6 +120,7 @@ app = FastAPI(
 
 app.include_router(auth.router)
 app.include_router(accounts.router)
+app.include_router(payments.router)
 app.include_router(devices.router)
 app.include_router(codes.router)
 app.include_router(settings_route.router)

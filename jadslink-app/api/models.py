@@ -14,14 +14,38 @@ class Account(Base):
     status        = Column(String, default="active")        # trial|active|past_due|suspended|canceled
     # Suscripción (FASE B/C: SubscriptionPlan y facturación). Placeholders aquí.
     plan          = Column(String, default="trial")         # starter|pro|business|trial
-    billing_cycle_end = Column(DateTime, nullable=True)     # hasta cuándo está pagado
+    billing_cycle_end = Column(DateTime, nullable=True)     # hasta cuándo está pagado (NULL = nunca vence)
     trial_ends_at = Column(DateTime, nullable=True)
+    contact_phone = Column(String, default="")              # para notificaciones/WhatsApp
     created_at    = Column(DateTime, default=datetime.utcnow)
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     users         = relationship("User",        back_populates="account", cascade="all, delete")
     devices       = relationship("Device",      back_populates="account")
     groups        = relationship("DeviceGroup", back_populates="account", cascade="all, delete")
+    payments      = relationship("Payment",     back_populates="account", cascade="all, delete")
+
+
+class Payment(Base):
+    """Reporte de pago de suscripción (flujo semi-manual: reportar → aprobar)."""
+    __tablename__ = "payments"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    account_id    = Column(String, ForeignKey("accounts.id"), nullable=False)
+    amount_usd    = Column(Float, default=0.0)
+    method        = Column(String, default="")   # pago_movil|transferencia|zelle|usdt|efectivo
+    reference     = Column(String, default="")    # nro. de referencia / hash tx
+    proof_file    = Column(String, default="")    # nombre del comprobante subido
+    note          = Column(String, default="")
+    status        = Column(String, default="pending")  # pending|approved|rejected
+    period_start  = Column(DateTime, nullable=True)
+    period_end    = Column(DateTime, nullable=True)
+    reviewed_by   = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at   = Column(DateTime, nullable=True)
+    review_note   = Column(String, default="")
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
+    account       = relationship("Account", back_populates="payments")
 
 
 class SubscriptionPlan(Base):

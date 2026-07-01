@@ -69,6 +69,10 @@ def run_schema_migrations(engine: Engine) -> None:
         if "group_id" not in dev_cols:
             _add_column(engine, "devices", "group_id INTEGER")
 
+    acc_cols = _existing_columns(engine, "accounts")
+    if acc_cols and "contact_phone" not in acc_cols:
+        _add_column(engine, "accounts", "contact_phone VARCHAR DEFAULT ''")
+
 
 def _get_or_create_default_account(db: Session) -> Account:
     acc = db.query(Account).filter(Account.slug == DEFAULT_ACCOUNT_SLUG).first()

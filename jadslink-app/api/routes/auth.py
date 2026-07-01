@@ -117,6 +117,7 @@ def me(user: User = Depends(require_user), db: Session = Depends(get_db)):
             "id": account.id, "name": account.name, "slug": account.slug,
             "status": account.status, "plan": account.plan,
             "usage": billing.compute_usage(db, account),
+            "billing": billing.billing_info(account),
         } if account else None,
     }
 

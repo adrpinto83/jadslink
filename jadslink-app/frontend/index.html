@@ -45,6 +45,7 @@
         <li class="nav-item" data-tab="reports"><i class="fa-solid fa-chart-bar"></i> Reportes</li>
         <li class="nav-item" data-tab="config"><i class="fa-solid fa-gear"></i> Configuración</li>
         <li class="nav-item" data-tab="portal"><i class="fa-solid fa-paintbrush"></i> Portal</li>
+        <li class="nav-item" data-tab="payments"><i class="fa-solid fa-credit-card"></i> Pagos</li>
         <li class="nav-item" data-tab="settings"><i class="fa-solid fa-sliders"></i> Ajustes</li>
         <li class="nav-item" data-tab="accounts" id="nav-accounts" style="display:none"><i class="fa-solid fa-building"></i> Cuentas</li>
       </ul>
@@ -340,6 +341,50 @@
         </div>
       </section>
 
+      <!-- TAB: Pagos y facturación -->
+      <section id="tab-payments" class="tab">
+        <div class="tab-header"><h2>Pagos y facturación</h2></div>
+
+        <!-- Vista operador -->
+        <div id="pay-operator" style="display:none">
+          <div id="billing-summary" class="usage-banner"></div>
+          <div class="settings-card" style="max-width:620px">
+            <div class="settings-card-head"><i class="fa-solid fa-money-bill-wave"></i> Reportar un pago</div>
+            <form id="payment-form" class="settings-form">
+              <label>Monto (USD) <input type="number" id="pay-amount" step="0.01" min="0.01" required></label>
+              <label>Método de pago
+                <select id="pay-method" style="width:100%">
+                  <option value="pago_movil">Pago móvil</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="zelle">Zelle</option>
+                  <option value="usdt">USDT / Binance</option>
+                  <option value="efectivo">Efectivo</option>
+                </select>
+              </label>
+              <label>Referencia <input type="text" id="pay-ref" placeholder="Nro. de referencia / hash"></label>
+              <label>Nota (opcional) <input type="text" id="pay-note" placeholder="Ej: pago de enero"></label>
+              <label>Comprobante (imagen, opcional) <input type="file" id="pay-proof" accept="image/*"></label>
+              <div class="form-actions"><button type="submit" class="btn-primary">Enviar pago</button></div>
+              <p id="pay-msg" class="hidden" style="margin-top:10px"></p>
+            </form>
+          </div>
+          <div class="section-title" style="margin-top:24px">Historial de pagos</div>
+          <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Estado</th></tr></thead>
+            <tbody id="pay-history"></tbody>
+          </table>
+        </div>
+
+        <!-- Vista superadmin: cola de aprobación -->
+        <div id="pay-admin" style="display:none">
+          <div class="section-title"><i class="fa-solid fa-hourglass-half"></i> Pagos pendientes de aprobación</div>
+          <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Cuenta</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Comprobante</th><th></th></tr></thead>
+            <tbody id="pay-pending"></tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- TAB: Cuentas (solo superadmin) -->
       <section id="tab-accounts" class="tab">
         <div class="tab-header">
@@ -378,6 +423,7 @@
         <label>Usuario del dueño (login) <input type="text" id="acc-user" required placeholder="abc"></label>
         <label>Contraseña del dueño <input type="password" id="acc-pass" required minlength="6"></label>
         <label>Email (opcional) <input type="email" id="acc-email" placeholder="dueño@empresa.com"></label>
+        <label>Teléfono / WhatsApp (opcional) <input type="text" id="acc-phone" placeholder="+58 412 ..."></label>
         <div class="modal-actions">
           <button type="submit" class="btn-primary">Crear cuenta</button>
           <button type="button" class="btn-secondary" onclick="closeModal('modal-account')">Cancelar</button>
@@ -475,6 +521,6 @@
 
 </div>
 
-<script src="/static/js/app.js?v=11"></script>
+<script src="/static/js/app.js?v=12"></script>
 </body>
 </html>
