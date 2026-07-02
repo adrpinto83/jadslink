@@ -24,6 +24,16 @@ async function api(method, path, body) {
   return r.ok ? r.json() : null;
 }
 
+// Abre en una pestaña nueva un recurso que requiere Authorization (el token
+// nunca viaja en la URL: las query strings quedan en logs de proxys).
+function openAuthed(path) {
+  const w = window.open("", "_blank");
+  fetch(API + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+    .then(b => { w.location = URL.createObjectURL(b); })
+    .catch(() => { if (w) w.close(); alert("No se pudo abrir el documento"); });
+}
+
 function fmt_bytes(b) {
   if (!b) return "0 B";
   if (b < 1024) return `${b} B`;
@@ -247,7 +257,7 @@ async function loadPendingPayments() {
       <td>$${p.amount_usd}</td>
       <td>${METHOD_LABEL[p.method] || p.method}</td>
       <td>${p.reference || "—"}</td>
-      <td>${p.has_proof ? `<a href="/api/payments/${p.id}/proof?token=${encodeURIComponent(token)}" target="_blank">ver</a>` : "—"}</td>
+      <td>${p.has_proof ? `<a href="#" onclick="openAuthed('/api/payments/${p.id}/proof');return false">ver</a>` : "—"}</td>
       <td style="white-space:nowrap">
         <button class="btn-sm" style="background:var(--accent2)" onclick="approvePayment(${p.id})">Aprobar</button>
         <button class="btn-sm" onclick="rejectPayment(${p.id})">Rechazar</button>
@@ -767,7 +777,7 @@ function exportCodes() {
 function printVouchers() {
   const devId = document.getElementById("codes-device-select").value;
   if (!devId) return alert("Selecciona un gateway primero");
-  window.open(`/api/devices/${devId}/codes/vouchers?token=${encodeURIComponent(token)}`, "_blank");
+  openAuthed(`/api/devices/${devId}/codes/vouchers`);
 }
 
 // ── Reportes / Monitor ────────────────────────────────────────────────────────

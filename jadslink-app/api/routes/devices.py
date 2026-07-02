@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
-import uuid, secrets, os
+import uuid, secrets, os, json
 
 from ..database import get_db
 from ..models import Device, Report, Command, Client, Code, Account, User
@@ -119,7 +119,8 @@ def heartbeat(
     device.last_seen = datetime.utcnow()
     device.online = True
     device.firmware = payload.firmware or device.firmware
-    device.wan_ip = payload.wan_ip  # type: ignore[attr-defined]
+    if payload.wan_ip:
+        device.wan_ip = payload.wan_ip
 
     # Guardar snapshot de métricas
     report = Report(
@@ -208,15 +209,24 @@ def command_result(
 
 # ── Admin: resumen ────────────────────────────────────────────────────────────
 
+OFFLINE_AFTER_SEC = 120
+
+
+def _is_online(d: Device, now: datetime) -> bool:
+    """Online efectivo según el último heartbeat (sin escribir en la BD)."""
+    return bool(d.last_seen and (now - d.last_seen).total_seconds() <= OFFLINE_AFTER_SEC)
+
+
+def _can_see_api_key(user: User) -> bool:
+    """El api_key es la credencial del agente: no se muestra a roles de solo lectura."""
+    return user.role in ("superadmin", "owner", "manager")
+
+
 @router.get("/overview")
 def overview(db: Session = Depends(get_db), user: User = Depends(require_user)):
     now = datetime.utcnow()
     all_devices = scope_devices(db.query(Device), user).all()
-    for d in all_devices:
-        if d.last_seen and (now - d.last_seen).total_seconds() > 120:
-            d.online = False
-    db.commit()
-    online = sum(1 for d in all_devices if d.online)
+    online = sum(1 for d in all_devices if _is_online(d, now))
     device_ids = [d.id for d in all_devices]
 
     if device_ids:
@@ -253,10 +263,9 @@ def overview(db: Session = Depends(get_db), user: User = Depends(require_user)):
 def list_devices(db: Session = Depends(get_db), user: User = Depends(require_user)):
     devices = scope_devices(db.query(Device), user).all()
     now = datetime.utcnow()
+    show_key = _can_see_api_key(user)
     result = []
     for d in devices:
-        if d.last_seen and (now - d.last_seen).total_seconds() > 120:
-            d.online = False
         active_clients = db.query(Client).filter(
             Client.device_id == d.id, Client.active == True
         ).count()
@@ -265,16 +274,15 @@ def list_devices(db: Session = Depends(get_db), user: User = Depends(require_use
             "name": d.name,
             "location": d.location,
             "model": d.model,
-            "online": d.online,
+            "online": _is_online(d, now),
             "last_seen": d.last_seen.isoformat() if d.last_seen else None,
             "firmware": d.firmware,
             "config": d.config,
-            "api_key": d.api_key,
+            "api_key": d.api_key if show_key else None,
             "account_id": d.account_id,
             "group_id": d.group_id,
             "active_clients": active_clients,
         })
-    db.commit()
     return result
 
 
@@ -283,15 +291,15 @@ def get_device(device_id: str, db: Session = Depends(get_db), user: User = Depen
     d = owned_device(device_id, user, db)
     return {
         "id": d.id, "name": d.name, "location": d.location,
-        "model": d.model, "online": d.online, "firmware": d.firmware,
+        "model": d.model, "online": _is_online(d, datetime.utcnow()), "firmware": d.firmware,
         "last_seen": d.last_seen.isoformat() if d.last_seen else None,
-        "config": d.config, "api_key": d.api_key,
+        "config": d.config, "api_key": d.api_key if _can_see_api_key(user) else None,
         "account_id": d.account_id, "group_id": d.group_id,
     }
 
 
 @router.get("/{device_id}/onboarding")
-def onboarding(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+def onboarding(device_id: str, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     """Datos para dar de alta el router: agent.conf listo + pasos de instalación."""
     d = owned_device(device_id, user, db)
     cloud_url = os.getenv("PUBLIC_URL", "https://link.jadsstudio.com")
@@ -454,16 +462,27 @@ def get_reports(device_id: str, limit: int = 100, db: Session = Depends(get_db),
 # Reinsertados en cada arranque para sobrevivir recreaciones de la BD SQLite.
 # Sin esto, un redeploy borra la fila del agente del router y su device_id/api_key
 # quedan huérfanos -> heartbeat 401 -> dispositivo offline.
-SEED_DEVICES = [
-    {
-        "id": "e4916825-74af-42ac-b3dc-ba26e4647e19",
-        "name": "Router Hotspot Principal",
-        "api_key": "Pysp-zQZE3h230DhEALCAkOTpqZ3d3tjOGkpyl_axoI",
-        "location": "Lobby",
-        "model": "OpenWrt 23.05.3",
-        "firmware": "OpenWrt 23.05.3",
-    },
-]
+#
+# Los api_keys son credenciales: NUNCA se hardcodean aquí. Se cargan desde
+# la env SEED_DEVICES_JSON o el archivo <DATA_DIR>/seed_devices.json:
+#   [{"id": "...", "name": "...", "api_key": "...", "location": "...", "model": "..."}]
+
+def _load_seed_devices() -> list:
+    raw = os.getenv("SEED_DEVICES_JSON", "")
+    if not raw:
+        from ..database import DATA_DIR
+        path = os.path.join(DATA_DIR, "seed_devices.json")
+        if os.path.isfile(path):
+            with open(path) as f:
+                raw = f.read()
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return []
+    return [d for d in data if isinstance(d, dict) and d.get("id") and d.get("api_key")] \
+        if isinstance(data, list) else []
 
 
 def seed_devices(db: Session):
@@ -471,11 +490,11 @@ def seed_devices(db: Session):
 
     El backfill de cuenta (account_id) lo hace run_data_migrations tras este seed.
     """
-    for spec in SEED_DEVICES:
+    for spec in _load_seed_devices():
         d = db.query(Device).filter(Device.id == spec["id"]).first()
         if d is None:
             db.add(Device(
-                id=spec["id"], name=spec["name"], api_key=spec["api_key"],
+                id=spec["id"], name=spec.get("name", "Router"), api_key=spec["api_key"],
                 location=spec.get("location", ""), model=spec.get("model", "OpenWrt"),
                 firmware=spec.get("firmware", ""), config={},
             ))

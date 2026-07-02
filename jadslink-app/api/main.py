@@ -2,12 +2,13 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
-import os, asyncio, smtplib
+import os, asyncio, smtplib, logging
 from email.message import EmailMessage
 from datetime import datetime, timedelta
 
-from .database import engine, SessionLocal
-from .models import Base, Device, Settings
+from . import database
+from .database import SessionLocal, DATA_DIR
+from .models import Base, Device, Settings, Report, Client
 from .routes import devices, codes, auth, portal, accounts, payments
 from .routes import settings as settings_route
 from .routes.auth import hash_pw, ADMIN_PASSWORD
@@ -15,8 +16,13 @@ from .routes.devices import seed_devices
 from .migrate import run_schema_migrations, run_data_migrations
 from . import billing
 
+log = logging.getLogger("jadslink")
+
 # Tracks devices already alerted so we don't spam
 _alerted: set = set()
+
+REPORT_RETENTION_DAYS = int(os.getenv("REPORT_RETENTION_DAYS", "30"))
+CLIENT_RETENTION_DAYS = int(os.getenv("CLIENT_RETENTION_DAYS", "90"))
 
 
 def _send_email(device_name: str, last_seen, to_email: str) -> None:
@@ -43,7 +49,7 @@ def _send_email(device_name: str, last_seen, to_email: str) -> None:
                 s.login(user, pw)
             s.send_message(msg)
     except Exception:
-        pass
+        log.exception("No se pudo enviar la alerta por email")
 
 
 async def offline_alert_loop() -> None:
@@ -72,7 +78,7 @@ async def offline_alert_loop() -> None:
             finally:
                 db.close()
         except Exception:
-            pass
+            log.exception("offline_alert_loop")
         await asyncio.sleep(300)  # check every 5 minutes
 
 
@@ -87,20 +93,73 @@ async def billing_cycle_loop() -> None:
             finally:
                 db.close()
         except Exception:
-            pass
+            log.exception("billing_cycle_loop")
         await asyncio.sleep(6 * 3600)  # revisar cada 6 horas
+
+
+async def retention_loop() -> None:
+    """Poda datos históricos para que la BD no crezca sin límite:
+    - reports (un snapshot por heartbeat) más viejos que REPORT_RETENTION_DAYS
+    - clients inactivos desconectados hace más de CLIENT_RETENTION_DAYS
+    """
+    await asyncio.sleep(120)
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                now = datetime.utcnow()
+                db.query(Report).filter(
+                    Report.timestamp < now - timedelta(days=REPORT_RETENTION_DAYS)
+                ).delete(synchronize_session=False)
+                db.query(Client).filter(
+                    Client.active == False,
+                    Client.disconnected_at.isnot(None),
+                    Client.disconnected_at < now - timedelta(days=CLIENT_RETENTION_DAYS),
+                ).delete(synchronize_session=False)
+                db.commit()
+            finally:
+                db.close()
+        except Exception:
+            log.exception("retention_loop")
+        await asyncio.sleep(6 * 3600)
+
+
+def _acquire_loop_lock():
+    """Lock de instancia única para los loops de fondo: si algún día corren
+    varios workers, solo uno envía alertas/factura/poda (evita duplicados)."""
+    try:
+        import fcntl
+        f = open(os.path.join(DATA_DIR, "loops.lock"), "w")
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return f
+    except (OSError, ImportError):
+        return None
+
+
+def _startup_checks() -> None:
+    """Advertencias de configuración insegura (no bloquean el arranque)."""
+    if ADMIN_PASSWORD == "admin123":
+        log.warning("ADMIN_PASSWORD no está configurado: el seed inicial usa 'admin123'. "
+                    "Cambia la contraseña del superadmin desde el panel o define ADMIN_PASSWORD.")
+    if not os.getenv("JWT_SECRET"):
+        log.info("JWT_SECRET no definido: usando secreto autogenerado en %s/jwt_secret", DATA_DIR)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    run_schema_migrations(engine)   # ALTER TABLE en tablas preexistentes (devices.account_id, etc.)
+    _startup_checks()
+    Base.metadata.create_all(bind=database.engine)
+    run_schema_migrations(database.engine)   # ALTER TABLE en tablas preexistentes (devices.account_id, etc.)
     db = SessionLocal()
     seed_devices(db)                # asegura routers conocidos
     run_data_migrations(db, ADMIN_PASSWORD, hash_pw)  # cuenta por defecto, superadmin, backfill
     db.close()
-    tasks = [asyncio.create_task(offline_alert_loop()),
-             asyncio.create_task(billing_cycle_loop())]
+    tasks = []
+    lock = _acquire_loop_lock()
+    if lock is not None:
+        tasks = [asyncio.create_task(offline_alert_loop()),
+                 asyncio.create_task(billing_cycle_loop()),
+                 asyncio.create_task(retention_loop())]
     yield
     for t in tasks:
         t.cancel()
@@ -109,12 +168,14 @@ async def lifespan(app: FastAPI):
             await t
         except asyncio.CancelledError:
             pass
+    if lock is not None:
+        lock.close()
 
 
 app = FastAPI(
     title="Hotspot Cloud Manager",
     description="API para gestión remota de dispositivos hotspot OpenWrt",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 

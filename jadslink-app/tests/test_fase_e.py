@@ -1,15 +1,7 @@
 """Test de FASE E: enforcement de roles (RBAC) y panel de ingresos (MRR)."""
-import os, tempfile, sys
 
-DB = os.path.join(tempfile.mkdtemp(), "fe.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{DB}"
-os.environ["ADMIN_PASSWORD"] = "admin123"
 
-sys.path.insert(0, "/home/adrpinto/jadslink/jadslink-app")
-from fastapi.testclient import TestClient
-from api.main import app
-
-with TestClient(app) as client:
+def test_fase_e(client):
     T = client.post("/api/auth/login", json={"username":"admin","password":"admin123"}).json()["token"]
     H = {"Authorization": f"Bearer {T}"}
 
@@ -32,14 +24,17 @@ with TestClient(app) as client:
     dev = client.post("/api/devices/register", headers=Ho, json={"name":"R1"}).json()["device_id"]
 
     # ── VIEWER: solo lectura ─────────────────────────────────────────────────────
-    assert client.get("/api/devices", headers=Hv).status_code==200          # lee
+    r = client.get("/api/devices", headers=Hv)
+    assert r.status_code==200          # lee
+    assert all(d["api_key"] is None for d in r.json()), "viewer NO debe ver api_keys"
     assert client.get(f"/api/devices/{dev}/codes", headers=Hv).status_code==200
     assert client.post("/api/devices/register", headers=Hv, json={"name":"X"}).status_code==403  # no registra
     assert client.post(f"/api/devices/{dev}/codes", headers=Hv, json={"quantity":1}).status_code==403  # no genera
     assert client.post(f"/api/devices/{dev}/reboot", headers=Hv).status_code==403
     assert client.post(f"/api/devices/{dev}/ssid", headers=Hv, json={"ssid":"X"}).status_code==403
     assert client.delete(f"/api/devices/{dev}", headers=Hv).status_code==403
-    print("✓ Viewer: lee todo, pero registrar/generar/reboot/ssid/borrar → 403")
+    assert client.get(f"/api/devices/{dev}/onboarding", headers=Hv).status_code==403  # credenciales del agente
+    print("✓ Viewer: lee todo (sin api_keys), pero registrar/generar/reboot/ssid/borrar/onboarding → 403")
 
     # ── MANAGER: gestiona routers/códigos, pero no facturación/cuenta/usuarios ───
     assert client.post("/api/devices/register", headers=Hm, json={"name":"R2"}).status_code==200  # registra
@@ -74,4 +69,4 @@ with TestClient(app) as client:
     assert client.get("/api/admin/revenue", headers=Ho).status_code==403
     print("✓ Operador no accede a /api/admin/revenue (403)")
 
-print("\n🎉 TODOS LOS TESTS DE FASE E PASARON")
+    print("\n🎉 TODOS LOS TESTS DE FASE E PASARON")

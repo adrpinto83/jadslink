@@ -1,15 +1,7 @@
 """Test de FASE B: catálogo de planes, uso híbrido, tope max_devices y gates de estado."""
-import os, tempfile, sys
 
-DB = os.path.join(tempfile.mkdtemp(), "fb.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{DB}"
-os.environ["ADMIN_PASSWORD"] = "admin123"
 
-sys.path.insert(0, "/home/adrpinto/jadslink/jadslink-app")
-from fastapi.testclient import TestClient
-from api.main import app
-
-with TestClient(app) as client:
+def test_fase_b(client):
     T = client.post("/api/auth/login", json={"username":"admin","password":"admin123"}).json()["token"]
     H = {"Authorization": f"Bearer {T}"}
 
@@ -40,9 +32,12 @@ with TestClient(app) as client:
     print(f"✓ Uso inicial: {u['device_count']}/{u['included_devices']} incl, total ${u['total_monthly']}")
 
     # ── 4. Cobro híbrido: 3 routers → 1 extra → $15 + $6 = $21 ────────────────────
+    dev_key = None
     for i in range(3):
-        assert client.post("/api/devices/register", headers=Ho,
-                           json={"name":f"Bus {i+1}"}).status_code==200
+        r = client.post("/api/devices/register", headers=Ho, json={"name":f"Bus {i+1}"})
+        assert r.status_code==200
+        if dev_key is None:
+            dev, dev_key = r.json()["device_id"], r.json()["api_key"]
     u = client.get("/api/auth/me", headers=Ho).json()["account"]["usage"]
     assert u["device_count"]==3 and u["extra_devices"]==1 and u["extra_cost"]==6.0 and u["total_monthly"]==21.0, u
     print(f"✓ 3 routers → 1 extra × $6 = ${u['extra_cost']}; total ${u['total_monthly']}")
@@ -60,14 +55,20 @@ with TestClient(app) as client:
     print("✓ Superadmin puede exceder el tope (6 routers en la cuenta)")
 
     # ── 6. Preparar un código para probar el gate de validación ──────────────────
-    dev = client.get("/api/devices", headers=Ho).json()[0]["id"]
+    Hkey = {"X-Api-Key": dev_key}
     assert client.post(f"/api/devices/{dev}/codes", headers=Ho,
                       json={"quantity":1,"duration_min":60}).status_code==200
     code = client.get(f"/api/devices/{dev}/codes", headers=Ho).json()[0]["code"]
-    # validación normal (cuenta activa) → válido
-    r = client.post(f"/api/devices/{dev}/codes/validate", json={"code":code,"mac":"aa:bb"})
+    # validación normal (cuenta activa, con la API key del router) → válido
+    r = client.post(f"/api/devices/{dev}/codes/validate", headers=Hkey, json={"code":code,"mac":"aa:bb"})
     assert r.json()["valid"] is True, r.text
     print("✓ Código válido con cuenta activa")
+
+    # sin API key (o con una ajena) el endpoint de validación rechaza
+    assert client.post(f"/api/devices/{dev}/codes/validate", json={"code":code,"mac":"aa:bb"}).status_code in (401, 422)
+    assert client.post(f"/api/devices/{dev}/codes/validate",
+                       headers={"X-Api-Key":"clave-falsa"}, json={"code":code,"mac":"aa:bb"}).status_code==401
+    print("✓ /validate requiere la API key del router (sin key o key falsa → 401)")
 
     # ── 7. Suspensión: superadmin suspende la cuenta ─────────────────────────────
     r = client.patch(f"/api/accounts/{acc_id}", headers=H, json={"status":"suspended"})
@@ -83,8 +84,7 @@ with TestClient(app) as client:
     print("✓ Cuenta suspendida: registrar router → 403")
 
     # validación (agente) rechaza por cuenta suspendida
-    code2 = client.get(f"/api/devices/{dev}/codes", headers=Ho)  # aún puede leer
-    r = client.post(f"/api/devices/{dev}/codes/validate", json={"code":code,"mac":"cc:dd"})
+    r = client.post(f"/api/devices/{dev}/codes/validate", headers=Hkey, json={"code":code,"mac":"cc:dd"})
     assert r.json()["valid"] is False and r.json()["reason"]=="account_suspended", r.text
     print("✓ Cuenta suspendida: /validate del agente → account_suspended")
 
@@ -94,4 +94,4 @@ with TestClient(app) as client:
     assert r.status_code==200, r.text
     print("✓ Reactivada: vuelve a generar códigos")
 
-print("\n🎉 TODOS LOS TESTS DE FASE B PASARON")
+    print("\n🎉 TODOS LOS TESTS DE FASE B PASARON")

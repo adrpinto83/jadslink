@@ -4,7 +4,7 @@
 - Owner: gestiona su propia cuenta, sus usuarios (manager/viewer) y sus grupos.
 """
 import uuid, re
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -13,7 +13,7 @@ from ..database import get_db
 from ..models import Account, User, DeviceGroup, Device, SubscriptionPlan
 from .auth import require_user, require_superadmin, require_manage, hash_pw, _make_token
 from ..scope import is_superadmin
-from .. import billing
+from .. import billing, ratelimit
 
 router = APIRouter(prefix="/api", tags=["accounts"])
 
@@ -155,8 +155,10 @@ def create_account_with_owner(db: Session, *, name: str, plan: str, username: st
 
 
 @router.post("/signup")
-def signup(payload: SignupPayload, db: Session = Depends(get_db)):
+def signup(payload: SignupPayload, request: Request, db: Session = Depends(get_db)):
     """Registro público self-service → crea una cuenta trial y devuelve token (auto-login)."""
+    # Endpoint público: rate limit para evitar creación masiva de cuentas trial.
+    ratelimit.check(f"signup:{ratelimit.client_ip(request)}", limit=10, window_sec=3600)
     name = payload.company_name.strip()
     username = payload.username.strip()
     if len(name) < 2:

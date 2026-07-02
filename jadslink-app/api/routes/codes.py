@@ -4,13 +4,14 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, field_validator
 from typing import Optional
-import random, string
+import secrets, string
 
 from ..database import get_db
 from ..models import Code, Device, Command, User, Account
 from .auth import require_user, require_manage
+from .devices import require_api_key
 from ..scope import owned_device
-from .. import billing
+from .. import billing, ratelimit
 
 router = APIRouter(prefix="/api/devices/{device_id}/codes", tags=["codes"])
 
@@ -35,8 +36,9 @@ class CodeCreate(BaseModel):
 
 
 def gen_code(length=8, prefix="") -> str:
+    # secrets (CSPRNG): los códigos son dinero, no deben ser predecibles.
     chars = string.ascii_uppercase + string.digits
-    code = "".join(random.choices(chars, k=length))
+    code = "".join(secrets.choice(chars) for _ in range(length))
     return f"{prefix}{code}" if prefix else code
 
 
@@ -113,15 +115,24 @@ class ValidateCodeRequest(BaseModel):
 def validate_code(
     device_id: str,
     payload: ValidateCodeRequest,
-    x_api_key: Optional[str] = None,
+    device: Device = Depends(require_api_key),
     db: Session = Depends(get_db),
 ):
+    # Solo el router dueño (con su API key) puede validar códigos: sin esto,
+    # cualquiera en internet podría fuerza-bruta o quemar códigos ajenos.
+    if device.id != device_id:
+        raise HTTPException(status_code=403, detail="API key no corresponde al dispositivo")
+
+    # Rate limit: frena fuerza bruta desde un cliente WiFi malicioso.
+    mac = (payload.mac or "").strip().lower()
+    ratelimit.check(f"validate:{device_id}:{mac}", limit=10, window_sec=60)
+    ratelimit.check(f"validate:{device_id}", limit=120, window_sec=60)
+
     code_str = payload.code.strip().upper()
     now = datetime.utcnow()
 
     # Gate de estado: si la cuenta dueña del router está suspendida, no se valida.
-    device = db.query(Device).filter(Device.id == device_id).first()
-    if device and device.account_id:
+    if device.account_id:
         acc = db.query(Account).filter(Account.id == device.account_id).first()
         if billing.account_blocked(acc):
             return {"valid": False, "reason": "account_suspended"}

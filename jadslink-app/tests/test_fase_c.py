@@ -1,19 +1,12 @@
 """Test de FASE C: pagos con comprobante, aprobación que extiende el ciclo, y vencimientos."""
-import os, tempfile, sys
 from datetime import datetime, timedelta
 
-DB = os.path.join(tempfile.mkdtemp(), "fc.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{DB}"
-os.environ["ADMIN_PASSWORD"] = "admin123"
 
-sys.path.insert(0, "/home/adrpinto/jadslink/jadslink-app")
-from fastapi.testclient import TestClient
-from api.main import app
-from api.database import SessionLocal
-from api.models import Account, Payment
-from api import billing
+def test_fase_c(client):
+    from api.database import SessionLocal
+    from api.models import Account
+    from api import billing
 
-with TestClient(app) as client:
     T = client.post("/api/auth/login", json={"username":"admin","password":"admin123"}).json()["token"]
     H = {"Authorization": f"Bearer {T}"}
 
@@ -70,8 +63,8 @@ with TestClient(app) as client:
     print("✓ Operador no accede a la cola ni aprueba (403)")
 
     # aislamiento: otro operador no ve/paga esta cuenta
-    other = client.post("/api/accounts", headers=H, json={
-        "name":"Otro","plan":"starter","owner_username":"ot","owner_password":"ot123456"}).json()["id"]
+    client.post("/api/accounts", headers=H, json={
+        "name":"Otro","plan":"starter","owner_username":"ot","owner_password":"ot123456"})
     Hot = {"Authorization": f"Bearer {client.post('/api/auth/login', json={'username':'ot','password':'ot123456'}).json()['token']}"}
     assert client.get(f"/api/accounts/{acc_id}/payments", headers=Hot).status_code==404
     print("✓ Aislamiento: operador ajeno no ve pagos de otra cuenta (404)")
@@ -113,4 +106,4 @@ with TestClient(app) as client:
     assert client.post(f"/api/devices/{dev}/codes", headers=Ho, json={"quantity":1}).status_code==403
     print("✓ Cuenta suspendida por impago → no genera códigos (403)")
 
-print("\n🎉 TODOS LOS TESTS DE FASE C PASARON")
+    print("\n🎉 TODOS LOS TESTS DE FASE C PASARON")

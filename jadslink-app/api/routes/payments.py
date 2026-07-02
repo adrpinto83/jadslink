@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 
-from ..database import get_db
+from ..database import get_db, DATA_DIR
 from ..models import Payment, Account, User
 from .auth import require_user, require_superadmin
 from ..scope import is_superadmin
@@ -20,7 +20,7 @@ from .. import billing
 router = APIRouter(prefix="/api", tags=["payments"])
 
 METHODS = {"pago_movil", "transferencia", "zelle", "usdt", "efectivo"}
-PROOFS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "proofs"))
+PROOFS_DIR = os.path.join(DATA_DIR, "proofs")
 os.makedirs(PROOFS_DIR, exist_ok=True)
 MAX_PROOF_BYTES = 4 * 1024 * 1024  # 4 MB
 

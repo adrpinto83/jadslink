@@ -68,10 +68,19 @@ def run_schema_migrations(engine: Engine) -> None:
             _add_column(engine, "devices", "account_id VARCHAR")
         if "group_id" not in dev_cols:
             _add_column(engine, "devices", "group_id INTEGER")
+        if "wan_ip" not in dev_cols:
+            _add_column(engine, "devices", "wan_ip VARCHAR DEFAULT ''")
 
     acc_cols = _existing_columns(engine, "accounts")
     if acc_cols and "contact_phone" not in acc_cols:
         _add_column(engine, "accounts", "contact_phone VARCHAR DEFAULT ''")
+
+    # Índices para las consultas calientes (validate, listados, retención).
+    # CREATE INDEX IF NOT EXISTS funciona en SQLite y Postgres.
+    with engine.begin() as conn:
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_codes_device_code ON codes (device_id, code)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_clients_device_active ON clients (device_id, active)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_device_ts ON reports (device_id, timestamp)"))
 
 
 def _get_or_create_default_account(db: Session) -> Account:

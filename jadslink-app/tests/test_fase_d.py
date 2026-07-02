@@ -1,16 +1,7 @@
 """Test de FASE D: signup público, plan self-service, onboarding wizard."""
-import os, tempfile, sys
 
-DB = os.path.join(tempfile.mkdtemp(), "fd.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{DB}"
-os.environ["ADMIN_PASSWORD"] = "admin123"
-os.environ["PUBLIC_URL"] = "https://link.jadsstudio.com"
 
-sys.path.insert(0, "/home/adrpinto/jadslink/jadslink-app")
-from fastapi.testclient import TestClient
-from api.main import app
-
-with TestClient(app) as client:
+def test_fase_d(client):
     # ── 1. Registro público (sin auth) → cuenta trial + token ────────────────────
     r = client.post("/api/signup", json={
         "company_name": "Rutas del Sur", "username": "sur", "password": "sur12345",
@@ -58,7 +49,7 @@ with TestClient(app) as client:
     print("✓ Owner cambia su plan a Pro (self-service) → tope 20, registra 2º router")
 
     # ── 7. Owner NO puede cambiar el estado ni poner plan inválido ───────────────
-    r = client.patch(f"/api/accounts/{d['account_id']}", headers=Ho, json={"status": "active"})
+    client.patch(f"/api/accounts/{d['account_id']}", headers=Ho, json={"status": "active"})
     # status ignorado para owner: sigue en trial
     assert client.get("/api/auth/me", headers=Ho).json()["account"]["status"] == "trial"
     assert client.patch(f"/api/accounts/{d['account_id']}", headers=Ho, json={"plan":"inexistente"}).status_code==400
@@ -78,4 +69,4 @@ with TestClient(app) as client:
     assert {"Rutas del Sur","Otra"} <= names, names
     print(f"✓ Superadmin ve {len(accts)} cuentas (incluye las de signup)")
 
-print("\n🎉 TODOS LOS TESTS DE FASE D PASARON")
+    print("\n🎉 TODOS LOS TESTS DE FASE D PASARON")

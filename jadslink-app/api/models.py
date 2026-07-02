@@ -89,6 +89,7 @@ class Device(Base):
     model         = Column(String, default="OpenWrt")
     last_seen     = Column(DateTime, nullable=True)
     online        = Column(Boolean, default=False)
+    wan_ip        = Column(String, default="")
 
     # Espejo de persist: configuración activa del dispositivo
     config        = Column(JSON, default=dict)

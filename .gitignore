@@ -53,3 +53,6 @@ htmlcov/
 # User uploads
 /api/uploads/
 uploads/
+
+# jadslink-app: datos persistentes (BD, secretos, seeds con credenciales)
+jadslink-app/data/
