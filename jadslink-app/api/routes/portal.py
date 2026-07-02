@@ -118,6 +118,7 @@ button:active{transform:scale(.98)}
       <span class="powered-name">JADS Studio</span>
     </span>
   </a>
+  @@BUY_CHIP@@
   <a class="ad-chip" href="https://jadsstudio.com" target="_blank" rel="noopener">Plataforma WiFi para tu negocio &rarr;</a>
 </div>
 <script>
@@ -148,7 +149,7 @@ def _hex_to_rgb(hex_color: str) -> str:
         return "79,142,247"
 
 
-def render_splash(cfg: dict, overrides: dict | None = None) -> str:
+def render_splash(cfg: dict, overrides: dict | None = None, buy_url: str = "") -> str:
     """Renderiza el splash a partir de la config del device, con overrides
     opcionales (usados para el preview en vivo del dashboard)."""
     cfg = cfg or {}
@@ -180,7 +181,14 @@ def render_splash(cfg: dict, overrides: dict | None = None) -> str:
     if footer:
         op_footer_html = f'<div class="op-footer">{html.escape(str(footer))}</div>'
 
+    buy_chip = ""
+    if buy_url:
+        buy_chip = (f'<a class="ad-chip" href="{html.escape(buy_url, quote=True)}" '
+                    f'target="_blank" rel="noopener">&#128179; &iquest;No tienes c&oacute;digo? '
+                    f'C&oacute;mpralo aqu&iacute; (usa tus datos m&oacute;viles) &rarr;</a>')
+
     out = TEMPLATE
+    out = out.replace("@@BUY_CHIP@@", buy_chip)
     out = out.replace("@@TITLE@@", title)
     out = out.replace("@@TAGLINE@@", tagline)
     out = out.replace("@@PROMPT@@", prompt)
@@ -199,10 +207,20 @@ def get_splash(device_id: str, request: Request, db: Session = Depends(get_db)):
     """Página HTML del portal cautivo (pública). El agente la descarga y la
     escribe en /etc/nodogsplash/htdocs/splash.html. El dashboard la usa como
     preview pasando overrides por query string."""
+    import os
     device = db.query(Device).filter(Device.id == device_id).first()
     cfg = device.config if device else {}
 
+    # Link de compra online: aparece solo si el operador tiene la tienda lista
+    # (productos activos + datos de cobro). El comprador la abre con datos móviles.
+    buy_url = ""
+    if device:
+        from .shop import shop_enabled
+        if shop_enabled(device, db):
+            public_url = os.getenv("PUBLIC_URL", "https://link.jadsstudio.com")
+            buy_url = f"{public_url}/buy/{device.id}"
+
     # Overrides de preview: solo claves portal_*
     overrides = {k: v for k, v in request.query_params.items() if k.startswith("portal_")}
-    html_out = render_splash(cfg, overrides)
+    html_out = render_splash(cfg, overrides, buy_url=buy_url)
     return HTMLResponse(content=html_out, headers={"Cache-Control": "no-store"})

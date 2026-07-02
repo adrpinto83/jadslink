@@ -17,6 +17,9 @@ class Account(Base):
     billing_cycle_end = Column(DateTime, nullable=True)     # hasta cuándo está pagado (NULL = nunca vence)
     trial_ends_at = Column(DateTime, nullable=True)
     contact_phone = Column(String, default="")              # para notificaciones/WhatsApp
+    # Datos de cobro del operador para la venta online de códigos:
+    # {"pago_movil": "0412... CI ... Banco ...", "zelle": "...", "usdt": "...", ...}
+    payment_methods = Column(JSON, default=dict)
     created_at    = Column(DateTime, default=datetime.utcnow)
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -171,6 +174,54 @@ class Command(Base):
     result        = Column(Text, default="")
 
     device        = relationship("Device", back_populates="commands")
+
+
+class CodeProduct(Base):
+    """Producto de venta online: duración + precio que el operador ofrece a sus usuarios."""
+    __tablename__ = "code_products"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    account_id    = Column(String, ForeignKey("accounts.id"), nullable=False)
+    name          = Column(String, nullable=False)   # "1 Hora", "1 Día"
+    duration_min  = Column(Integer, default=60)
+    price_usd     = Column(Float, default=0.0)
+    price_ves     = Column(Float, default=0.0)       # opcional: precio en bolívares (0 = no mostrar)
+    bandwidth_dn  = Column(Integer, default=0)
+    bandwidth_up  = Column(Integer, default=0)
+    is_active     = Column(Boolean, default=True)
+    sort_order    = Column(Integer, default=0)
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
+
+class CodeOrder(Base):
+    """Pedido de compra online de un código (flujo: comprar → reportar pago → aprobar → entregar)."""
+    __tablename__ = "code_orders"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    token         = Column(String, unique=True, nullable=False)  # público: el comprador consulta su pedido
+    account_id    = Column(String, ForeignKey("accounts.id"), nullable=False)
+    device_id     = Column(String, ForeignKey("devices.id"), nullable=False)
+    product_id    = Column(Integer, ForeignKey("code_products.id"), nullable=True)
+
+    # Snapshot del producto al momento de comprar (por si el operador lo edita después)
+    product_name  = Column(String, default="")
+    duration_min  = Column(Integer, default=60)
+    price_usd     = Column(Float, default=0.0)
+    bandwidth_dn  = Column(Integer, default=0)
+    bandwidth_up  = Column(Integer, default=0)
+
+    buyer_name    = Column(String, default="")
+    buyer_phone   = Column(String, default="")
+    method        = Column(String, default="")   # pago_movil|transferencia|zelle|usdt|efectivo
+    reference     = Column(String, default="")   # nro. de referencia del pago
+
+    status        = Column(String, default="pending")  # pending|approved|rejected
+    code          = Column(String, default="")   # código entregado al aprobar
+    review_note   = Column(String, default="")
+    reviewed_by   = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at   = Column(DateTime, nullable=True)
+    buyer_ip      = Column(String, default="")
+    created_at    = Column(DateTime, default=datetime.utcnow)
 
 
 class AdminUser(Base):

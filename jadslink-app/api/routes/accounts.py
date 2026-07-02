@@ -34,6 +34,7 @@ class AccountUpdate(BaseModel):
     status: Optional[str] = None
     plan: Optional[str] = None
     contact_phone: Optional[str] = None
+    payment_methods: Optional[dict] = None   # datos de cobro para la venta online
 
 class SignupPayload(BaseModel):
     company_name: str
@@ -77,6 +78,7 @@ def _account_dict(a: Account, db: Session) -> dict:
         "id": a.id, "name": a.name, "slug": a.slug,
         "status": a.status, "plan": a.plan,
         "contact_phone": a.contact_phone,
+        "payment_methods": a.payment_methods or {},
         "device_count": usage["device_count"],
         "usage": usage,
         "billing": billing.billing_info(a),
@@ -213,6 +215,13 @@ def update_account(account_id: str, payload: AccountUpdate, db: Session = Depend
         acc.name = payload.name
     if payload.contact_phone is not None:
         acc.contact_phone = payload.contact_phone
+    if payload.payment_methods is not None:
+        # Solo métodos conocidos, valores de texto plano acotados
+        from .shop import METHODS
+        acc.payment_methods = {
+            k: str(v).strip()[:300]
+            for k, v in payload.payment_methods.items() if k in METHODS
+        }
     # El owner puede elegir su propio plan (self-service); el pago se aprueba aparte.
     if payload.plan is not None:
         plan = db.query(SubscriptionPlan).filter(

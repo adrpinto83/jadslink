@@ -89,7 +89,10 @@ document.getElementById("login-form").addEventListener("submit", async e => {
     localStorage.setItem("hcm_role", userRole);
     showDashboard();
   } else {
-    document.getElementById("login-error").textContent = "Usuario o contraseña incorrectos";
+    // Mostrar el motivo real: 429 = rate limit (esperar), 401 = credenciales
+    const d = await r.json().catch(() => ({}));
+    document.getElementById("login-error").textContent =
+      d.detail || "Usuario o contraseña incorrectos";
     document.getElementById("login-error").classList.remove("hidden");
   }
 });
@@ -228,8 +231,143 @@ document.querySelectorAll(".nav-item").forEach(el => {
     if (el.dataset.tab === "settings") loadSettings();
     if (el.dataset.tab === "accounts") loadAccounts();
     if (el.dataset.tab === "payments") loadPayments();
+    if (el.dataset.tab === "sales")    loadSales();
   });
 });
+
+// ── Venta online de códigos ─────────────────────────────────────────────────────
+
+function loadSales() {
+  const isViewer = userRole === "viewer";
+  document.getElementById("sales-operator").style.display =
+    (userRole === "superadmin" || isViewer) ? "none" : "";
+  loadOrders();
+  if (userRole !== "superadmin" && !isViewer) {
+    loadProducts();
+    loadPayMethods();
+    renderSalesLink();
+  }
+}
+
+async function loadOrders() {
+  const orders = await api("GET", "/api/orders") || [];
+  const canManage = userRole !== "viewer";
+  const pending = orders.filter(o => o.status === "pending");
+  document.getElementById("orders-pending").innerHTML = pending.map(o => `
+    <tr>
+      <td style="color:var(--muted)">${fmt_dt(o.created_at)}</td>
+      <td>${o.device_name}</td>
+      <td><strong>${o.product_name}</strong></td>
+      <td>$${o.price_usd.toFixed(2)}</td>
+      <td>${METHOD_LABEL[o.method] || o.method}</td>
+      <td>${o.reference || "—"}</td>
+      <td>${o.buyer_phone || "—"}</td>
+      <td style="white-space:nowrap">${canManage ? `
+        <button class="btn-sm" style="background:var(--accent2)" onclick="approveOrder(${o.id})">Aprobar</button>
+        <button class="btn-sm" onclick="rejectOrder(${o.id})">Rechazar</button>` : ""}
+      </td>
+    </tr>`).join("") || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No hay pedidos pendientes</td></tr>';
+
+  const hist = orders.filter(o => o.status !== "pending").slice(0, 50);
+  document.getElementById("orders-history").innerHTML = hist.map(o => `
+    <tr>
+      <td style="color:var(--muted)">${fmt_dt(o.created_at)}</td>
+      <td>${o.device_name}</td>
+      <td>${o.product_name}</td>
+      <td>$${o.price_usd.toFixed(2)}</td>
+      <td>${METHOD_LABEL[o.method] || o.method}</td>
+      <td>${o.reference || "—"}</td>
+      <td><code>${o.code || "—"}</code></td>
+      <td>${PAY_STATUS[o.status] || o.status}</td>
+    </tr>`).join("") || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Sin ventas todavía</td></tr>';
+}
+
+async function approveOrder(id) {
+  if (!confirm("¿Confirmas que recibiste este pago? Se generará y entregará el código.")) return;
+  if (await api("POST", `/api/orders/${id}/approve`)) loadOrders();
+}
+
+async function rejectOrder(id) {
+  const note = prompt("Motivo del rechazo (lo verá el comprador):", "No se encontró el pago");
+  if (note === null) return;
+  if (await api("POST", `/api/orders/${id}/reject`, { note })) loadOrders();
+}
+
+async function loadProducts() {
+  const prods = await api("GET", "/api/products") || [];
+  document.getElementById("products-table").innerHTML = prods.map(p => `
+    <tr style="${p.is_active ? "" : "opacity:.45"}">
+      <td><strong>${p.name}</strong></td>
+      <td>${p.duration_min} min</td>
+      <td>$${p.price_usd.toFixed(2)}</td>
+      <td>${p.price_ves > 0 ? "Bs. " + p.price_ves.toFixed(2) : "—"}</td>
+      <td>${p.is_active ? '<span class="badge badge-green">activo</span>' : '<span class="badge badge-gray">inactivo</span>'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm" onclick="toggleProduct(${p.id}, ${!p.is_active})">${p.is_active ? "Desactivar" : "Activar"}</button>
+      </td>
+    </tr>`).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Crea tu primer producto para activar la tienda</td></tr>';
+}
+
+document.getElementById("product-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const r = await api("POST", "/api/products", {
+    name: document.getElementById("prod-name").value,
+    duration_min: parseInt(document.getElementById("prod-dur").value, 10),
+    price_usd: parseFloat(document.getElementById("prod-usd").value),
+    price_ves: parseFloat(document.getElementById("prod-ves").value) || 0,
+  });
+  if (r) { document.getElementById("product-form").reset(); document.getElementById("prod-dur").value = 60; loadProducts(); }
+});
+
+async function toggleProduct(id, active) {
+  if (await api("PATCH", `/api/products/${id}`, { is_active: active })) loadProducts();
+}
+
+const PM_KEYS = ["pago_movil", "transferencia", "zelle", "usdt", "efectivo"];
+
+async function loadPayMethods() {
+  if (!myAccount) return;
+  const acc = await api("GET", `/api/accounts/${myAccount.id}`);
+  const pm = (acc && acc.payment_methods) || {};
+  PM_KEYS.forEach(k => { const el = document.getElementById("pm-" + k); if (el) el.value = pm[k] || ""; });
+  // solo el owner puede editar los datos de cobro
+  const canEdit = userRole === "owner";
+  PM_KEYS.forEach(k => { const el = document.getElementById("pm-" + k); if (el) el.disabled = !canEdit; });
+  document.querySelector("#paymethods-form .form-actions").style.display = canEdit ? "" : "none";
+}
+
+document.getElementById("paymethods-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const pm = {};
+  PM_KEYS.forEach(k => { const v = document.getElementById("pm-" + k).value.trim(); if (v) pm[k] = v; });
+  const msg = document.getElementById("pm-msg");
+  const r = await api("PATCH", `/api/accounts/${myAccount.id}`, { payment_methods: pm });
+  msg.textContent = r ? "✓ Datos de cobro guardados" : "✗ No se pudo guardar";
+  msg.className = r ? "success" : "error";
+  msg.classList.remove("hidden");
+  setTimeout(() => msg.classList.add("hidden"), 3000);
+});
+
+function renderSalesLink() {
+  const sel = document.getElementById("sales-device-select");
+  sel.innerHTML = devices.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+  updateSalesLink();
+}
+
+function updateSalesLink() {
+  const devId = document.getElementById("sales-device-select").value;
+  if (!devId) return;
+  const url = `${window.location.origin}/buy/${devId}`;
+  document.getElementById("sales-link").textContent = url;
+  document.getElementById("sales-qr").src =
+    `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(url)}&margin=4`;
+}
+
+document.getElementById("sales-device-select").addEventListener("change", updateSalesLink);
+
+function copySalesLink(btn) {
+  copyText(document.getElementById("sales-link").textContent, btn);
+}
 
 // ── Pagos y facturación ─────────────────────────────────────────────────────────
 

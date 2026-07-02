@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from . import database
 from .database import SessionLocal, DATA_DIR
 from .models import Base, Device, Settings, Report, Client
-from .routes import devices, codes, auth, portal, accounts, payments
+from .routes import devices, codes, auth, portal, accounts, payments, shop
 from .routes import settings as settings_route
 from .routes.auth import hash_pw, ADMIN_PASSWORD
 from .routes.devices import seed_devices
@@ -186,6 +186,7 @@ app.include_router(devices.router)
 app.include_router(codes.router)
 app.include_router(settings_route.router)
 app.include_router(portal.router)
+app.include_router(shop.router)
 
 # Servir frontend estático
 FRONTEND = os.path.join(os.path.dirname(__file__), "..", "frontend")

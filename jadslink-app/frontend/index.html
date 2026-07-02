@@ -53,6 +53,7 @@
         <li class="nav-item" data-tab="clients"><i class="fa-solid fa-users"></i> Clientes</li>
         <li class="nav-item" data-tab="logs"><i class="fa-solid fa-database"></i> Logs</li>
         <li class="nav-item" data-tab="codes"><i class="fa-solid fa-ticket"></i> Códigos</li>
+        <li class="nav-item" data-tab="sales"><i class="fa-solid fa-cart-shopping"></i> Ventas</li>
         <li class="nav-item" data-tab="reports"><i class="fa-solid fa-chart-bar"></i> Reportes</li>
         <li class="nav-item" data-tab="config"><i class="fa-solid fa-gear"></i> Configuración</li>
         <li class="nav-item" data-tab="portal"><i class="fa-solid fa-paintbrush"></i> Portal</li>
@@ -353,6 +354,71 @@
       </section>
 
       <!-- TAB: Pagos y facturación -->
+      <section id="tab-sales" class="tab">
+        <div class="tab-header"><h2>Venta online de códigos</h2></div>
+
+        <!-- Pedidos pendientes (todos los roles los ven; aprobar solo manage) -->
+        <div class="section-title"><i class="fa-solid fa-hourglass-half"></i> Pedidos pendientes</div>
+        <table class="data-table">
+          <thead><tr><th>Fecha</th><th>Router</th><th>Producto</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Teléfono</th><th></th></tr></thead>
+          <tbody id="orders-pending"></tbody>
+        </table>
+
+        <div id="sales-operator" style="display:none">
+          <!-- Productos en venta -->
+          <div class="section-title" style="margin-top:24px"><i class="fa-solid fa-tags"></i> Productos en venta</div>
+          <div class="settings-card" style="max-width:720px" id="product-form-card">
+            <form id="product-form" class="settings-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <label style="flex:1;min-width:130px">Nombre <input type="text" id="prod-name" placeholder="Ej: 1 Hora" required></label>
+              <label style="width:110px">Duración (min) <input type="number" id="prod-dur" min="1" value="60" required></label>
+              <label style="width:100px">Precio USD <input type="number" id="prod-usd" step="0.01" min="0" required></label>
+              <label style="width:100px">Precio Bs <input type="number" id="prod-ves" step="0.01" min="0" value="0"></label>
+              <button type="submit" class="btn-primary">Agregar</button>
+            </form>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Nombre</th><th>Duración</th><th>USD</th><th>Bs</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="products-table"></tbody>
+          </table>
+
+          <!-- Datos de cobro (solo owner) -->
+          <div class="section-title" style="margin-top:24px"><i class="fa-solid fa-hand-holding-dollar"></i> Datos de cobro (lo que ve el comprador)</div>
+          <div class="settings-card" style="max-width:720px" id="paymethods-card">
+            <form id="paymethods-form" class="settings-form">
+              <label>Pago móvil <input type="text" id="pm-pago_movil" placeholder="0412-1234567 · CI 12.345.678 · Banco de Venezuela" maxlength="300"></label>
+              <label>Transferencia <input type="text" id="pm-transferencia" placeholder="Cuenta 0102-... · Nombre del titular" maxlength="300"></label>
+              <label>Zelle <input type="text" id="pm-zelle" placeholder="correo@ejemplo.com · Nombre" maxlength="300"></label>
+              <label>USDT <input type="text" id="pm-usdt" placeholder="Dirección TRC20 / Binance Pay" maxlength="300"></label>
+              <label>Efectivo <input type="text" id="pm-efectivo" placeholder="Ej: paga al conductor / en la caja" maxlength="300"></label>
+              <div class="form-actions"><button type="submit" class="btn-primary">Guardar datos de cobro</button></div>
+              <p id="pm-msg" class="hidden" style="margin-top:10px"></p>
+            </form>
+          </div>
+
+          <!-- Link de la tienda por router -->
+          <div class="section-title" style="margin-top:24px"><i class="fa-solid fa-qrcode"></i> Página de venta por router</div>
+          <div class="settings-card" style="max-width:720px">
+            <p style="color:var(--muted);font-size:13px;margin-bottom:10px">
+              Comparte este link o imprime el QR. También aparece automáticamente en el portal cautivo
+              cuando tienes productos y datos de cobro configurados.
+            </p>
+            <select id="sales-device-select" style="width:100%;margin-bottom:12px"></select>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+              <code id="sales-link" style="flex:1;min-width:220px;word-break:break-all"></code>
+              <button class="btn-sm" onclick="copySalesLink(this)"><i class="fa-regular fa-copy"></i> Copiar</button>
+              <img id="sales-qr" alt="QR" style="width:110px;height:110px;border-radius:8px">
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="section-title" style="margin-top:24px">Historial de ventas</div>
+        <table class="data-table">
+          <thead><tr><th>Fecha</th><th>Router</th><th>Producto</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Código</th><th>Estado</th></tr></thead>
+          <tbody id="orders-history"></tbody>
+        </table>
+      </section>
+
       <section id="tab-payments" class="tab">
         <div class="tab-header"><h2>Pagos y facturación</h2></div>
 
@@ -541,6 +607,6 @@
 
 </div>
 
-<script src="/static/js/app.js?v=15"></script>
+<script src="/static/js/app.js?v=16"></script>
 </body>
 </html>
