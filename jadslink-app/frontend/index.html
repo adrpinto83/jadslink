@@ -365,6 +365,13 @@
         </table>
 
         <div id="sales-operator" style="display:none">
+          <!-- Selector de cuenta (solo superadmin) -->
+          <div id="sales-account-picker" class="settings-card" style="display:none;max-width:720px;margin-top:20px">
+            <label style="display:block">Cuenta a configurar
+              <select id="sales-account-select" style="width:100%;margin-top:6px"></select>
+            </label>
+          </div>
+
           <!-- Productos en venta -->
           <div class="section-title" style="margin-top:24px"><i class="fa-solid fa-tags"></i> Productos en venta</div>
           <div class="settings-card" style="max-width:720px" id="product-form-card">
@@ -607,6 +614,6 @@
 
 </div>
 
-<script src="/static/js/app.js?v=16"></script>
+<script src="/static/js/app.js?v=17"></script>
 </body>
 </html>

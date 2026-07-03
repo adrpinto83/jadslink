@@ -237,16 +237,39 @@ document.querySelectorAll(".nav-item").forEach(el => {
 
 // ── Venta online de códigos ─────────────────────────────────────────────────────
 
+let salesAccountId = null;   // cuenta cuya tienda se está configurando
+
 function loadSales() {
   const isViewer = userRole === "viewer";
-  document.getElementById("sales-operator").style.display =
-    (userRole === "superadmin" || isViewer) ? "none" : "";
+  document.getElementById("sales-operator").style.display = isViewer ? "none" : "";
   loadOrders();
-  if (userRole !== "superadmin" && !isViewer) {
-    loadProducts();
-    loadPayMethods();
-    renderSalesLink();
+  if (isViewer) return;
+  if (userRole === "superadmin") {
+    setupSalesAccountPicker();   // el superadmin elige qué cuenta configurar
+  } else {
+    salesAccountId = myAccount ? myAccount.id : null;
+    refreshSalesConfig();
   }
+}
+
+async function setupSalesAccountPicker() {
+  document.getElementById("sales-account-picker").style.display = "";
+  const sel = document.getElementById("sales-account-select");
+  const accs = await api("GET", "/api/accounts") || [];
+  sel.innerHTML = accs.map(a => `<option value="${a.id}">${a.name} (${a.plan})</option>`).join("");
+  if (!salesAccountId || !accs.some(a => a.id === salesAccountId)) {
+    salesAccountId = accs.length ? accs[0].id : null;
+  }
+  sel.value = salesAccountId || "";
+  sel.onchange = () => { salesAccountId = sel.value; refreshSalesConfig(); };
+  refreshSalesConfig();
+}
+
+function refreshSalesConfig() {
+  if (!salesAccountId) return;
+  loadProducts();
+  loadPayMethods();
+  renderSalesLink();
 }
 
 async function loadOrders() {
@@ -294,7 +317,8 @@ async function rejectOrder(id) {
 }
 
 async function loadProducts() {
-  const prods = await api("GET", "/api/products") || [];
+  const q = userRole === "superadmin" ? `?account_id=${encodeURIComponent(salesAccountId)}` : "";
+  const prods = await api("GET", "/api/products" + q) || [];
   document.getElementById("products-table").innerHTML = prods.map(p => `
     <tr style="${p.is_active ? "" : "opacity:.45"}">
       <td><strong>${p.name}</strong></td>
@@ -315,6 +339,7 @@ document.getElementById("product-form").addEventListener("submit", async e => {
     duration_min: parseInt(document.getElementById("prod-dur").value, 10),
     price_usd: parseFloat(document.getElementById("prod-usd").value),
     price_ves: parseFloat(document.getElementById("prod-ves").value) || 0,
+    account_id: salesAccountId,   // requerido para superadmin; ignorado para operador
   });
   if (r) { document.getElementById("product-form").reset(); document.getElementById("prod-dur").value = 60; loadProducts(); }
 });
@@ -326,12 +351,12 @@ async function toggleProduct(id, active) {
 const PM_KEYS = ["pago_movil", "transferencia", "zelle", "usdt", "efectivo"];
 
 async function loadPayMethods() {
-  if (!myAccount) return;
-  const acc = await api("GET", `/api/accounts/${myAccount.id}`);
+  if (!salesAccountId) return;
+  const acc = await api("GET", `/api/accounts/${salesAccountId}`);
   const pm = (acc && acc.payment_methods) || {};
   PM_KEYS.forEach(k => { const el = document.getElementById("pm-" + k); if (el) el.value = pm[k] || ""; });
-  // solo el owner puede editar los datos de cobro
-  const canEdit = userRole === "owner";
+  // datos de cobro: los edita el owner de la cuenta o el superadmin
+  const canEdit = userRole === "owner" || userRole === "superadmin";
   PM_KEYS.forEach(k => { const el = document.getElementById("pm-" + k); if (el) el.disabled = !canEdit; });
   document.querySelector("#paymethods-form .form-actions").style.display = canEdit ? "" : "none";
 }
@@ -341,7 +366,7 @@ document.getElementById("paymethods-form").addEventListener("submit", async e =>
   const pm = {};
   PM_KEYS.forEach(k => { const v = document.getElementById("pm-" + k).value.trim(); if (v) pm[k] = v; });
   const msg = document.getElementById("pm-msg");
-  const r = await api("PATCH", `/api/accounts/${myAccount.id}`, { payment_methods: pm });
+  const r = await api("PATCH", `/api/accounts/${salesAccountId}`, { payment_methods: pm });
   msg.textContent = r ? "✓ Datos de cobro guardados" : "✗ No se pudo guardar";
   msg.className = r ? "success" : "error";
   msg.classList.remove("hidden");
@@ -350,7 +375,9 @@ document.getElementById("paymethods-form").addEventListener("submit", async e =>
 
 function renderSalesLink() {
   const sel = document.getElementById("sales-device-select");
-  sel.innerHTML = devices.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+  const mine = devices.filter(d => userRole !== "superadmin" || d.account_id === salesAccountId);
+  sel.innerHTML = mine.map(d => `<option value="${d.id}">${d.name}</option>`).join("")
+    || '<option value="">(esta cuenta no tiene routers)</option>';
   updateSalesLink();
 }
 
