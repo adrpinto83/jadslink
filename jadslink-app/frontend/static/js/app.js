@@ -8,6 +8,48 @@ let currentDevice = null;
 let pollInterval = null;
 let myAccount = null;   // cuenta del usuario (null si superadmin)
 
+// ── Tema (Claro/Oscuro) ───────────────────────────────────────────────────────
+
+const theme = {
+  current: localStorage.getItem("hcm_theme") || "dark",
+
+  init() {
+    this.apply(this.current);
+    const btn = document.getElementById("theme-toggle");
+    if (btn) {
+      btn.addEventListener("click", () => this.toggle());
+      this.updateIcon();
+    }
+  },
+
+  apply(themeName) {
+    this.current = themeName;
+    document.documentElement.setAttribute("data-theme", themeName);
+    localStorage.setItem("hcm_theme", themeName);
+    this.updateIcon();
+  },
+
+  toggle() {
+    this.apply(this.current === "dark" ? "light" : "dark");
+  },
+
+  updateIcon() {
+    const btn = document.getElementById("theme-toggle");
+    if (!btn) return;
+    const icon = btn.querySelector("i");
+    if (this.current === "dark") {
+      icon.className = "fa-solid fa-moon";
+      btn.title = "Cambiar a tema claro";
+    } else {
+      icon.className = "fa-solid fa-sun";
+      btn.title = "Cambiar a tema oscuro";
+    }
+  }
+};
+
+// Aplicar tema al cargar
+theme.init();
+
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
 async function api(method, path, body) {
