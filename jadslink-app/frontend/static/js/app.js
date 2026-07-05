@@ -628,7 +628,15 @@ async function grantTickets(id, name) {
 
 async function updateAccount(id, field, value) {
   const r = await api("PATCH", `/api/accounts/${id}`, { [field]: value });
-  if (r) loadAccounts();
+  if (r) {
+    // Mostrar confirmación visual
+    const msg = document.createElement('div');
+    msg.textContent = `✓ ${field === 'plan' ? 'Plan' : 'Estado'} actualizado`;
+    msg.style.cssText = 'position:fixed;top:20px;right:20px;background:var(--accent2);color:white;padding:12px 20px;border-radius:8px;z-index:9999;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 2000);
+    loadAccounts();
+  }
 }
 
 document.getElementById("account-form").addEventListener("submit", async e => {
