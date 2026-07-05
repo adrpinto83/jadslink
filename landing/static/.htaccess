@@ -1,0 +1,12 @@
+# Deshabilitar caché completamente para desarrollo
+<IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+</IfModule>
+
+# Si mod_headers no está disponible, usar FileETag
+FileETag None
+<IfModule mod_expires.c>
+    ExpiresActive Off
+</IfModule>

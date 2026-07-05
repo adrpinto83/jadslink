@@ -1,0 +1,3 @@
+TEST TIMESTAMP: $(date)
+Si ves este archivo, los archivos estaticos se estan sirviendo correctamente
+Sun Jul  5 07:16:48 -04 2026
