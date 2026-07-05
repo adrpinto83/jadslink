@@ -76,6 +76,17 @@ button:active{transform:scale(.98)}
 .ad-chip{display:inline-block;margin-top:10px;padding:5px 12px;border:1px solid rgba(@@COLOR1_RGB@@,0.25);border-radius:20px;font-size:10px;color:#5a7aaa;letter-spacing:.5px;text-decoration:none;transition:border-color .2s,color .2s}
 .ad-chip:hover{border-color:@@COLOR1@@;color:@@COLOR1@@}
 .hidden{display:none}
+.scan-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;padding:12px;font-size:13px;font-weight:600;letter-spacing:.5px;background:rgba(@@COLOR1_RGB@@,0.15);color:@@COLOR1@@;border:1px solid rgba(@@COLOR1_RGB@@,0.35);border-radius:12px;cursor:pointer;transition:all .2s}
+.scan-btn:hover{background:rgba(@@COLOR1_RGB@@,0.25);border-color:@@COLOR1@@}
+.scan-btn svg{width:18px;height:18px}
+#scanner-container{margin-top:14px;border-radius:12px;overflow:hidden;display:none}
+#scanner-container.active{display:block}
+#reader{width:100%;border-radius:12px}
+.scanner-controls{display:flex;gap:8px;margin-top:10px}
+.scanner-controls button{margin:0;flex:1;padding:10px;font-size:12px}
+.close-scanner{background:linear-gradient(90deg,#ef4444,#dc2626)!important}
+.success-msg{display:none;color:#4ade80;font-size:13px;margin-top:10px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);padding:10px 14px;border-radius:10px}
+.success-msg.show{display:block}
 </style>
 </head>
 <body>
@@ -91,10 +102,11 @@ button:active{transform:scale(.98)}
   <p class="tagline">@@TAGLINE@@</p>
   <p class="prompt">@@PROMPT@@</p>
   <div id="errmsg">C&oacute;digo incorrecto. Por favor verifica e intenta de nuevo.</div>
+  <div id="successmsg" class="success-msg">✓ Código escaneado correctamente</div>
   <form method="get" action="$authaction">
     <input type="hidden" name="tok" value="$tok">
     <input type="hidden" name="redir" value="$redir">
-    <input type="text" name="username"
+    <input type="text" name="username" id="code-input"
            placeholder="XXXXXXXX"
            maxlength="12"
            autocapitalize="characters"
@@ -102,6 +114,20 @@ button:active{transform:scale(.98)}
            autocorrect="off"
            spellcheck="false"
            required>
+    <button type="button" class="scan-btn" id="scan-btn" onclick="toggleScanner()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="3" y1="9" x2="21" y2="9"></line>
+        <line x1="9" y1="21" x2="9" y2="9"></line>
+      </svg>
+      <span id="scan-text">Escanear código de barras</span>
+    </button>
+    <div id="scanner-container">
+      <div id="reader"></div>
+      <div class="scanner-controls">
+        <button type="button" class="close-scanner" onclick="stopScanner()">Cerrar cámara</button>
+      </div>
+    </div>
     <button type="submit">@@BUTTON@@</button>
   </form>
   @@OP_FOOTER@@
@@ -121,16 +147,133 @@ button:active{transform:scale(.98)}
   @@BUY_CHIP@@
   <a class="ad-chip" href="https://jadsstudio.com" target="_blank" rel="noopener">Plataforma WiFi para tu negocio &rarr;</a>
 </div>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 try {
   if (sessionStorage.getItem('jads_tried')) {
     document.getElementById('errmsg').style.display = 'block';
   }
-  document.querySelector('form').addEventListener('submit', function() {
-    var code = document.querySelector('[name="username"]').value.trim();
-    if (code.length > 0) sessionStorage.setItem('jads_tried', '1');
+  document.querySelector('form').addEventListener('submit', function(e) {
+    if (e.target.tagName === 'FORM') {
+      var code = document.querySelector('[name="username"]').value.trim();
+      if (code.length > 0) sessionStorage.setItem('jads_tried', '1');
+    }
   });
 } catch(e) {}
+
+// Escáner de códigos de barras y QR
+var html5QrCode = null;
+var isScanning = false;
+
+function toggleScanner() {
+  var container = document.getElementById('scanner-container');
+  var scanBtn = document.getElementById('scan-btn');
+  var scanText = document.getElementById('scan-text');
+
+  if (!isScanning) {
+    startScanner();
+  } else {
+    stopScanner();
+  }
+}
+
+function startScanner() {
+  var container = document.getElementById('scanner-container');
+  var scanBtn = document.getElementById('scan-btn');
+  var scanText = document.getElementById('scan-text');
+
+  container.classList.add('active');
+  scanText.textContent = 'Escaneando...';
+  scanBtn.style.background = 'rgba(239,68,68,0.15)';
+  scanBtn.style.borderColor = 'rgba(239,68,68,0.35)';
+  scanBtn.style.color = '#ef4444';
+
+  html5QrCode = new Html5Qrcode("reader");
+
+  // Configuración para soportar códigos de barras y QR
+  var config = {
+    fps: 10,
+    qrbox: { width: 250, height: 150 },
+    formatsToSupport: [
+      Html5QrcodeScanType.SCAN_TYPE_CAMERA
+    ],
+    // Formatos soportados: Code128, Code39, EAN, UPC, QR, etc.
+    experimentalFeatures: {
+      useBarCodeDetectorIfSupported: true
+    }
+  };
+
+  html5QrCode.start(
+    { facingMode: "environment" }, // Cámara trasera
+    config,
+    onScanSuccess,
+    onScanError
+  ).catch(err => {
+    console.error("Error al iniciar cámara:", err);
+    alert("No se pudo acceder a la cámara. Por favor permite el acceso.");
+    stopScanner();
+  });
+
+  isScanning = true;
+}
+
+function stopScanner() {
+  if (html5QrCode && isScanning) {
+    html5QrCode.stop().then(() => {
+      html5QrCode.clear();
+      var container = document.getElementById('scanner-container');
+      var scanBtn = document.getElementById('scan-btn');
+      var scanText = document.getElementById('scan-text');
+
+      container.classList.remove('active');
+      scanText.textContent = 'Escanear código de barras';
+      scanBtn.style.background = '';
+      scanBtn.style.borderColor = '';
+      scanBtn.style.color = '';
+      isScanning = false;
+    }).catch(err => {
+      console.error("Error al detener escáner:", err);
+    });
+  }
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+  // Código escaneado exitosamente
+  var input = document.getElementById('code-input');
+  var successMsg = document.getElementById('successmsg');
+
+  // Limpiar y formatear el código
+  var cleanCode = decodedText.trim().toUpperCase();
+
+  // Llenar el input con el código
+  input.value = cleanCode;
+
+  // Mostrar mensaje de éxito
+  successMsg.classList.add('show');
+  setTimeout(function() {
+    successMsg.classList.remove('show');
+  }, 3000);
+
+  // Detener el escáner
+  stopScanner();
+
+  // Opcional: enviar automáticamente después de escanear
+  // setTimeout(function() {
+  //   document.querySelector('form').submit();
+  // }, 1000);
+}
+
+function onScanError(errorMessage) {
+  // Errores de escaneo (normal mientras busca códigos)
+  // No mostrar nada para no saturar la UI
+}
+
+// Limpiar al salir
+window.addEventListener('beforeunload', function() {
+  if (isScanning) {
+    stopScanner();
+  }
+});
 </script>
 </body>
 </html>
