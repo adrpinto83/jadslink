@@ -197,12 +197,30 @@ function renderUsageBanner(me) {
   const el = document.getElementById("usage-banner");
   if (!me || !me.account || !me.account.usage) { el.classList.add("hidden"); return; }
   const u = me.account.usage;
+  const q = me.account.quota || {};
   const suspended = me.account.status === "suspended" || me.account.status === "canceled";
   const maxTxt = u.max_devices == null ? "∞" : u.max_devices;
   const pct = u.max_devices == null ? Math.min(100, (u.device_count / Math.max(u.included_devices,1)) * 100)
                                     : (u.device_count / u.max_devices) * 100;
   const extraTxt = u.extra_devices > 0
     ? `<span class="u-item"><strong>+${u.extra_devices}</strong> extra ($${u.extra_cost}/mes)</span>` : "";
+
+  // Cuota de tickets
+  let ticketsTxt = "";
+  if (q.unlimited) {
+    ticketsTxt = `<span class="u-item"><i class="fa-solid fa-ticket"></i> Tickets <strong>ilimitados</strong></span>`;
+  } else {
+    const ticketsAvail = q.available || 0;
+    const ticketsUsed = q.used || 0;
+    const ticketsLimit = q.limit || 0;
+    const ticketsPct = ticketsLimit > 0 ? Math.min(100, (ticketsUsed / ticketsLimit) * 100) : 0;
+    const lowTickets = ticketsAvail < 20 && ticketsLimit > 0;
+    const bonusTxt = q.bonus > 0 ? `<span style="color:var(--accent2)">+${q.bonus} bonus</span>` : "";
+    ticketsTxt = `
+      <span class="u-item ${lowTickets ? 'u-low' : ''}"><i class="fa-solid fa-ticket"></i> Tickets: <strong>${ticketsAvail}</strong> disponibles ${bonusTxt}</span>
+      <span class="u-item-sm">(${ticketsUsed}/${ticketsLimit} usados este mes)</span>`;
+  }
+
   el.classList.toggle("u-warn", suspended || u.at_limit);
   el.classList.remove("hidden");
   el.innerHTML = `
@@ -211,6 +229,7 @@ function renderUsageBanner(me) {
     <div class="u-bar"><span style="width:${Math.min(100,pct)}%"></span></div>
     <span class="u-item">${u.included_devices} incluidos</span>
     ${extraTxt}
+    ${ticketsTxt}
     <span class="u-item">Total <strong>$${u.total_monthly}/mes</strong></span>`;
 }
 
@@ -539,7 +558,8 @@ async function loadRevenue() {
 async function loadAccounts() {
   loadRevenue();
   if (!PLANS.length) PLANS = await api("GET", "/api/plans") || [];
-  const accounts = await api("GET", "/api/accounts") || [];
+  const showDeleted = document.getElementById("show-deleted-accounts")?.checked || false;
+  const accounts = await api("GET", `/api/accounts?include_deleted=${showDeleted}`) || [];
   const planOpts = (sel) => PLANS.map(p =>
     `<option value="${p.key}" ${p.key===sel?"selected":""}>${p.name}</option>`).join("");
   const statusOpts = (sel) => STATUSES.map(s =>
@@ -547,16 +567,63 @@ async function loadAccounts() {
 
   document.getElementById("accounts-table").innerHTML = accounts.map(a => {
     const u = a.usage || {};
+    const q = a.quota || {};
     const maxTxt = u.max_devices == null ? "∞" : u.max_devices;
+    const isDeleted = a.deleted_at != null;
+    const ticketsTxt = q.unlimited
+      ? '<span class="badge badge-green">ilimitados</span>'
+      : `<strong>${q.available ?? 0}</strong> disp.${q.bonus > 0 ? ` <span style="color:var(--accent2)">+${q.bonus}</span>` : ""}<br><span style="color:var(--muted);font-size:11px">${q.used ?? 0}/${q.limit ?? 0} usados</span>`;
+
+    const actionBtns = isDeleted
+      ? `<button class="btn-sm" style="background:var(--accent2)" onclick="restoreAccount('${a.id}')"><i class="fa-solid fa-rotate-left"></i></button>`
+      : `<button class="btn-sm" onclick="grantTickets('${a.id}','${a.name}')" title="Otorgar tickets"><i class="fa-solid fa-gift"></i></button>
+         <button class="btn-sm btn-del" onclick="deleteAccount('${a.id}','${a.name}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>`;
+
     return `
-    <tr>
-      <td><strong>${a.name}</strong><br><span style="color:var(--muted);font-size:11px">${a.slug}</span></td>
-      <td><select onchange="updateAccount('${a.id}','plan',this.value)">${planOpts(a.plan)}</select></td>
-      <td><select onchange="updateAccount('${a.id}','status',this.value)">${statusOpts(a.status)}</select></td>
+    <tr style="${isDeleted ? 'opacity:0.5;background:#2d1a1a' : ''}">
+      <td>
+        <strong>${a.name}</strong>${isDeleted ? ' <span class="badge badge-red">Eliminada</span>' : ''}
+        <br><span style="color:var(--muted);font-size:11px">${a.slug}</span>
+      </td>
+      <td><select onchange="updateAccount('${a.id}','plan',this.value)" ${isDeleted ? 'disabled' : ''}>${planOpts(a.plan)}</select></td>
+      <td><select onchange="updateAccount('${a.id}','status',this.value)" ${isDeleted ? 'disabled' : ''}>${statusOpts(a.status)}</select></td>
       <td>${a.device_count} / ${maxTxt}<br><span style="color:var(--muted);font-size:11px">$${u.total_monthly ?? 0}/mes</span></td>
+      <td>${ticketsTxt}</td>
       <td style="color:var(--muted)">${a.created_at ? fmt_dt(a.created_at) : "—"}</td>
+      <td style="white-space:nowrap">${actionBtns}</td>
     </tr>`;
-  }).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Sin cuentas aún</td></tr>';
+  }).join("") || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Sin cuentas aún</td></tr>';
+}
+
+async function deleteAccount(id, name) {
+  if (!confirm(`¿Eliminar la cuenta "${name}"? Los usuarios no podrán acceder, pero los datos se preservan.`)) return;
+  const r = await api("DELETE", `/api/accounts/${id}`);
+  if (r && r.ok) {
+    alert(r.message || "Cuenta eliminada");
+    loadAccounts();
+  }
+}
+
+async function restoreAccount(id) {
+  if (!confirm("¿Restaurar esta cuenta?")) return;
+  const r = await api("POST", `/api/accounts/${id}/restore`);
+  if (r && r.ok) {
+    alert(r.message || "Cuenta restaurada");
+    loadAccounts();
+  }
+}
+
+async function grantTickets(id, name) {
+  const qty = prompt(`¿Cuántos tickets bonus otorgar a "${name}"?`, "100");
+  if (qty === null) return;
+  const qtyNum = parseInt(qty, 10);
+  if (isNaN(qtyNum) || qtyNum <= 0) return alert("Cantidad inválida");
+  const note = prompt("Nota (opcional):", "") || "";
+  const r = await api("POST", `/api/accounts/${id}/tickets/grant`, { quantity: qtyNum, note });
+  if (r && r.ok) {
+    alert(r.message || "Tickets otorgados");
+    loadAccounts();
+  }
 }
 
 async function updateAccount(id, field, value) {
@@ -904,17 +971,36 @@ document.getElementById("btn-gen-codes").addEventListener("click", async () => {
 
   const btn = document.getElementById("btn-gen-codes");
   btn.disabled = true; btn.textContent = "Generando…";
-  const r = await api("POST", `/api/devices/${devId}/codes`, payload);
-  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-ticket"></i> Generar';
 
+  const resp = await fetch(`/api/devices/${devId}/codes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-ticket"></i> Generar';
   const msg = document.getElementById("gen-codes-result");
-  if (r) {
-    msg.textContent = `✓ ${r.created} tickets generados`;
+
+  if (resp.ok) {
+    const r = await resp.json();
+    let quotaMsg = "";
+    if (r.quota && !r.quota.unlimited) {
+      const avail = r.quota.available || 0;
+      if (avail < 20) {
+        quotaMsg = ` — Quedan ${avail} tickets`;
+      }
+    }
+    msg.textContent = `✓ ${r.created} tickets generados${quotaMsg}`;
     msg.className = "success"; msg.classList.remove("hidden");
     loadCodes();
-    setTimeout(() => { closeModal("modal-codes"); msg.classList.add("hidden"); }, 1800);
+    loadMe(); // refrescar indicador de cuota
+    setTimeout(() => { closeModal("modal-codes"); msg.classList.add("hidden"); }, 2500);
+  } else if (resp.status === 401) {
+    logout();
   } else {
-    msg.textContent = "✗ Error al generar"; msg.className = "error"; msg.classList.remove("hidden");
+    const err = await resp.json().catch(() => ({}));
+    msg.textContent = "✗ " + (err.detail || "Error al generar");
+    msg.className = "error"; msg.classList.remove("hidden");
   }
 });
 

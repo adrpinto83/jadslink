@@ -23,10 +23,20 @@ class Account(Base):
     created_at    = Column(DateTime, default=datetime.utcnow)
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    users         = relationship("User",        back_populates="account", cascade="all, delete")
+    # Soft delete
+    deleted_at    = Column(DateTime, nullable=True)
+    deleted_by    = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # Sistema de cuotas de tickets
+    tickets_used_this_month = Column(Integer, default=0)
+    ticket_quota_reset_at   = Column(DateTime, nullable=True)
+    bonus_tickets           = Column(Integer, default=0)    # Tickets gratis del superadmin
+
+    users         = relationship("User",        back_populates="account", cascade="all, delete", primaryjoin="Account.id == User.account_id")
     devices       = relationship("Device",      back_populates="account")
     groups        = relationship("DeviceGroup", back_populates="account", cascade="all, delete")
     payments      = relationship("Payment",     back_populates="account", cascade="all, delete")
+    quota_logs    = relationship("TicketQuotaLog", back_populates="account", cascade="all, delete")
 
 
 class Payment(Base):
@@ -61,6 +71,7 @@ class SubscriptionPlan(Base):
     included_devices = Column(Integer, default=1)        # routers incluidos en la base
     price_per_extra_device_usd = Column(Float, default=0.0)
     max_devices   = Column(Integer, nullable=True)       # tope duro (NULL = ilimitado)
+    tickets_per_month = Column(Integer, default=0)       # cuota mensual de tickets (0 = ilimitado)
     features      = Column(JSON, default=dict)
     sort_order    = Column(Integer, default=0)
     is_active     = Column(Boolean, default=True)
@@ -248,7 +259,22 @@ class User(Base):
     is_active     = Column(Boolean, default=True)
     created_at    = Column(DateTime, default=datetime.utcnow)
 
-    account       = relationship("Account", back_populates="users")
+    account       = relationship("Account", back_populates="users", foreign_keys=[account_id])
+
+
+class TicketQuotaLog(Base):
+    """Registro de acciones sobre la cuota de tickets (auditoría)."""
+    __tablename__ = "ticket_quota_logs"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    account_id    = Column(String, ForeignKey("accounts.id"), nullable=False)
+    action        = Column(String, nullable=False)    # grant_bonus, usage, reset_monthly
+    quantity      = Column(Integer, default=0)
+    performed_by  = Column(Integer, ForeignKey("users.id"), nullable=True)
+    note          = Column(String, default="")
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
+    account       = relationship("Account", back_populates="quota_logs")
 
 
 class Settings(Base):

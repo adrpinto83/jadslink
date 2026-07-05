@@ -473,6 +473,10 @@
       <section id="tab-accounts" class="tab">
         <div class="tab-header">
           <h2>Cuentas de operadores</h2>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">
+            <input type="checkbox" id="show-deleted-accounts" onchange="loadAccounts()" style="width:auto;margin:0">
+            Mostrar eliminadas
+          </label>
           <button class="btn-primary" onclick="document.getElementById('modal-account').classList.remove('hidden')">
             <i class="fa-solid fa-plus"></i> Nueva cuenta
           </button>
@@ -485,7 +489,7 @@
           El dueño (owner) inicia sesión con el usuario/clave que definas aquí.
         </p>
         <table class="data-table">
-          <thead><tr><th>Cuenta</th><th>Plan</th><th>Estado</th><th>Routers</th><th>Creada</th></tr></thead>
+          <thead><tr><th>Cuenta</th><th>Plan</th><th>Estado</th><th>Routers</th><th>Tickets</th><th>Creada</th><th></th></tr></thead>
           <tbody id="accounts-table"></tbody>
         </table>
       </section>
@@ -614,6 +618,6 @@
 
 </div>
 
-<script src="/static/js/app.js?v=17"></script>
+<script src="/static/js/app.js?v=18"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@ from ..models import Code, Device, Command, User, Account
 from .auth import require_user, require_manage
 from .devices import require_api_key
 from ..scope import owned_device
-from .. import billing, ratelimit
+from .. import billing, ratelimit, quota
 
 router = APIRouter(prefix="/api/devices/{device_id}/codes", tags=["codes"])
 
@@ -45,11 +45,19 @@ def gen_code(length=8, prefix="") -> str:
 @router.post("")
 def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_db), user: User = Depends(require_manage)):
     d = owned_device(device_id, user, db)
+    acc = None
+
     # Gate de estado: una cuenta suspendida/cancelada no puede emitir códigos nuevos.
     if d.account_id:
         acc = db.query(Account).filter(Account.id == d.account_id).first()
         if billing.account_blocked(acc):
             raise HTTPException(status_code=403, detail="Cuenta suspendida: no puedes generar códigos")
+
+        # Verificar cuota de tickets
+        qty = min(payload.quantity, 500)
+        can_gen, reason = quota.can_generate_tickets(db, acc, qty)
+        if not can_gen:
+            raise HTTPException(status_code=403, detail=reason)
 
     # Vencimiento del código (voucher). Por defecto 30 días si no se especifica,
     # para que los códigos impresos no sean válidos indefinidamente.
@@ -72,6 +80,10 @@ def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_
         db.add(obj)
         codes.append(code)
 
+    # Consumir cuota de tickets
+    if acc:
+        quota.consume_tickets(db, acc, len(codes))
+
     # Enviar códigos al dispositivo para que los active en nodogsplash
     db.add(Command(
         device_id=device_id,
@@ -86,7 +98,10 @@ def create_codes(device_id: str, payload: CodeCreate, db: Session = Depends(get_
         }
     ))
     db.commit()
-    return {"created": len(codes), "codes": codes}
+
+    # Incluir info de cuota en la respuesta
+    quota_info = quota.get_quota_info(db, acc) if acc else None
+    return {"created": len(codes), "codes": codes, "quota": quota_info}
 
 
 @router.get("")
