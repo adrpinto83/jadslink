@@ -8,6 +8,48 @@ let currentDevice = null;
 let pollInterval = null;
 let myAccount = null;   // cuenta del usuario (null si superadmin)
 
+// ── Tema (Claro/Oscuro) ───────────────────────────────────────────────────────
+
+const theme = {
+  current: localStorage.getItem("hcm_theme") || "dark",
+
+  init() {
+    this.apply(this.current);
+    const btn = document.getElementById("theme-toggle");
+    if (btn) {
+      btn.addEventListener("click", () => this.toggle());
+      this.updateIcon();
+    }
+  },
+
+  apply(themeName) {
+    this.current = themeName;
+    document.documentElement.setAttribute("data-theme", themeName);
+    localStorage.setItem("hcm_theme", themeName);
+    this.updateIcon();
+  },
+
+  toggle() {
+    this.apply(this.current === "dark" ? "light" : "dark");
+  },
+
+  updateIcon() {
+    const btn = document.getElementById("theme-toggle");
+    if (!btn) return;
+    const icon = btn.querySelector("i");
+    if (this.current === "dark") {
+      icon.className = "fa-solid fa-moon";
+      btn.title = "Cambiar a tema claro";
+    } else {
+      icon.className = "fa-solid fa-sun";
+      btn.title = "Cambiar a tema oscuro";
+    }
+  }
+};
+
+// Aplicar tema al cargar
+theme.init();
+
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
 async function api(method, path, body) {
@@ -98,6 +140,8 @@ document.getElementById("login-form").addEventListener("submit", async e => {
 });
 
 function showSignup() {
+  document.getElementById("landing-screen").classList.remove("active");
+  document.getElementById("login-screen").classList.add("active");
   document.getElementById("login-form").classList.add("hidden");
   document.getElementById("toggle-signup").classList.add("hidden");
   document.getElementById("signup-form").classList.remove("hidden");
@@ -105,6 +149,8 @@ function showSignup() {
   document.getElementById("login-subtitle").textContent = "Crea tu cuenta de operador";
 }
 function showLogin() {
+  document.getElementById("landing-screen").classList.remove("active");
+  document.getElementById("login-screen").classList.add("active");
   document.getElementById("signup-form").classList.add("hidden");
   document.getElementById("toggle-login").classList.add("hidden");
   document.getElementById("login-form").classList.remove("hidden");
@@ -197,12 +243,30 @@ function renderUsageBanner(me) {
   const el = document.getElementById("usage-banner");
   if (!me || !me.account || !me.account.usage) { el.classList.add("hidden"); return; }
   const u = me.account.usage;
+  const q = me.account.quota || {};
   const suspended = me.account.status === "suspended" || me.account.status === "canceled";
   const maxTxt = u.max_devices == null ? "∞" : u.max_devices;
   const pct = u.max_devices == null ? Math.min(100, (u.device_count / Math.max(u.included_devices,1)) * 100)
                                     : (u.device_count / u.max_devices) * 100;
   const extraTxt = u.extra_devices > 0
     ? `<span class="u-item"><strong>+${u.extra_devices}</strong> extra ($${u.extra_cost}/mes)</span>` : "";
+
+  // Cuota de tickets
+  let ticketsTxt = "";
+  if (q.unlimited) {
+    ticketsTxt = `<span class="u-item"><i class="fa-solid fa-ticket"></i> Tickets <strong>ilimitados</strong></span>`;
+  } else {
+    const ticketsAvail = q.available || 0;
+    const ticketsUsed = q.used || 0;
+    const ticketsLimit = q.limit || 0;
+    const ticketsPct = ticketsLimit > 0 ? Math.min(100, (ticketsUsed / ticketsLimit) * 100) : 0;
+    const lowTickets = ticketsAvail < 20 && ticketsLimit > 0;
+    const bonusTxt = q.bonus > 0 ? `<span style="color:var(--accent2)">+${q.bonus} bonus</span>` : "";
+    ticketsTxt = `
+      <span class="u-item ${lowTickets ? 'u-low' : ''}"><i class="fa-solid fa-ticket"></i> Tickets: <strong>${ticketsAvail}</strong> disponibles ${bonusTxt}</span>
+      <span class="u-item-sm">(${ticketsUsed}/${ticketsLimit} usados este mes)</span>`;
+  }
+
   el.classList.toggle("u-warn", suspended || u.at_limit);
   el.classList.remove("hidden");
   el.innerHTML = `
@@ -211,6 +275,7 @@ function renderUsageBanner(me) {
     <div class="u-bar"><span style="width:${Math.min(100,pct)}%"></span></div>
     <span class="u-item">${u.included_devices} incluidos</span>
     ${extraTxt}
+    ${ticketsTxt}
     <span class="u-item">Total <strong>$${u.total_monthly}/mes</strong></span>`;
 }
 
@@ -539,7 +604,8 @@ async function loadRevenue() {
 async function loadAccounts() {
   loadRevenue();
   if (!PLANS.length) PLANS = await api("GET", "/api/plans") || [];
-  const accounts = await api("GET", "/api/accounts") || [];
+  const showDeleted = document.getElementById("show-deleted-accounts")?.checked || false;
+  const accounts = await api("GET", `/api/accounts?include_deleted=${showDeleted}`) || [];
   const planOpts = (sel) => PLANS.map(p =>
     `<option value="${p.key}" ${p.key===sel?"selected":""}>${p.name}</option>`).join("");
   const statusOpts = (sel) => STATUSES.map(s =>
@@ -547,21 +613,77 @@ async function loadAccounts() {
 
   document.getElementById("accounts-table").innerHTML = accounts.map(a => {
     const u = a.usage || {};
+    const q = a.quota || {};
     const maxTxt = u.max_devices == null ? "∞" : u.max_devices;
+    const isDeleted = a.deleted_at != null;
+    const ticketsTxt = q.unlimited
+      ? '<span class="badge badge-green">ilimitados</span>'
+      : `<strong>${q.available ?? 0}</strong> disp.${q.bonus > 0 ? ` <span style="color:var(--accent2)">+${q.bonus}</span>` : ""}<br><span style="color:var(--muted);font-size:11px">${q.used ?? 0}/${q.limit ?? 0} usados</span>`;
+
+    const actionBtns = isDeleted
+      ? `<button class="btn-sm" style="background:var(--accent2)" onclick="restoreAccount('${a.id}')"><i class="fa-solid fa-rotate-left"></i></button>`
+      : a.has_superadmin
+      ? `<span style="color:var(--muted);font-size:11px;font-style:italic">Cuenta del sistema</span>`
+      : `<button class="btn-sm" onclick="grantTickets('${a.id}','${a.name}')" title="Otorgar tickets"><i class="fa-solid fa-gift"></i></button>
+         <button class="btn-sm btn-del" onclick="deleteAccount('${a.id}','${a.name}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>`;
     return `
-    <tr>
-      <td><strong>${a.name}</strong><br><span style="color:var(--muted);font-size:11px">${a.slug}</span></td>
-      <td><select onchange="updateAccount('${a.id}','plan',this.value)">${planOpts(a.plan)}</select></td>
-      <td><select onchange="updateAccount('${a.id}','status',this.value)">${statusOpts(a.status)}</select></td>
+    <tr style="${isDeleted ? 'opacity:0.5;background:#2d1a1a' : ''}">
+      <td>
+        <strong>${a.name}</strong>${isDeleted ? ' <span class="badge badge-red">Eliminada</span>' : ''}
+        <br><span style="color:var(--muted);font-size:11px">${a.slug}</span>
+      </td>
+      <td><select onchange="updateAccount('${a.id}','plan',this.value)" ${isDeleted ? 'disabled' : ''}>${planOpts(a.plan)}</select></td>
+      <td><select onchange="updateAccount('${a.id}','status',this.value)" ${isDeleted ? 'disabled' : ''}>${statusOpts(a.status)}</select></td>
       <td>${a.device_count} / ${maxTxt}<br><span style="color:var(--muted);font-size:11px">$${u.total_monthly ?? 0}/mes</span></td>
+      <td>${ticketsTxt}</td>
       <td style="color:var(--muted)">${a.created_at ? fmt_dt(a.created_at) : "—"}</td>
+      <td style="white-space:nowrap">${actionBtns}</td>
     </tr>`;
-  }).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Sin cuentas aún</td></tr>';
+  }).join("") || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Sin cuentas aún</td></tr>';
+}
+
+async function deleteAccount(id, name) {
+  if (!confirm(`¿Eliminar la cuenta "${name}"? Los usuarios no podrán acceder, pero los datos se preservan.`)) return;
+  const r = await api("DELETE", `/api/accounts/${id}`);
+  if (r && r.ok) {
+    alert(r.message || "Cuenta eliminada");
+    loadAccounts();
+  }
+}
+
+async function restoreAccount(id) {
+  if (!confirm("¿Restaurar esta cuenta?")) return;
+  const r = await api("POST", `/api/accounts/${id}/restore`);
+  if (r && r.ok) {
+    alert(r.message || "Cuenta restaurada");
+    loadAccounts();
+  }
+}
+
+async function grantTickets(id, name) {
+  const qty = prompt(`¿Cuántos tickets bonus otorgar a "${name}"?`, "100");
+  if (qty === null) return;
+  const qtyNum = parseInt(qty, 10);
+  if (isNaN(qtyNum) || qtyNum <= 0) return alert("Cantidad inválida");
+  const note = prompt("Nota (opcional):", "") || "";
+  const r = await api("POST", `/api/accounts/${id}/tickets/grant`, { quantity: qtyNum, note });
+  if (r && r.ok) {
+    alert(r.message || "Tickets otorgados");
+    loadAccounts();
+  }
 }
 
 async function updateAccount(id, field, value) {
   const r = await api("PATCH", `/api/accounts/${id}`, { [field]: value });
-  if (r) loadAccounts();
+  if (r) {
+    // Mostrar confirmación visual
+    const msg = document.createElement('div');
+    msg.textContent = `✓ ${field === 'plan' ? 'Plan' : 'Estado'} actualizado`;
+    msg.style.cssText = 'position:fixed;top:20px;right:20px;background:var(--accent2);color:white;padding:12px 20px;border-radius:8px;z-index:9999;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 2000);
+    loadAccounts();
+  }
 }
 
 document.getElementById("account-form").addEventListener("submit", async e => {
@@ -904,17 +1026,36 @@ document.getElementById("btn-gen-codes").addEventListener("click", async () => {
 
   const btn = document.getElementById("btn-gen-codes");
   btn.disabled = true; btn.textContent = "Generando…";
-  const r = await api("POST", `/api/devices/${devId}/codes`, payload);
-  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-ticket"></i> Generar';
 
+  const resp = await fetch(`/api/devices/${devId}/codes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-ticket"></i> Generar';
   const msg = document.getElementById("gen-codes-result");
-  if (r) {
-    msg.textContent = `✓ ${r.created} tickets generados`;
+
+  if (resp.ok) {
+    const r = await resp.json();
+    let quotaMsg = "";
+    if (r.quota && !r.quota.unlimited) {
+      const avail = r.quota.available || 0;
+      if (avail < 20) {
+        quotaMsg = ` — Quedan ${avail} tickets`;
+      }
+    }
+    msg.textContent = `✓ ${r.created} tickets generados${quotaMsg}`;
     msg.className = "success"; msg.classList.remove("hidden");
     loadCodes();
-    setTimeout(() => { closeModal("modal-codes"); msg.classList.add("hidden"); }, 1800);
+    loadMe(); // refrescar indicador de cuota
+    setTimeout(() => { closeModal("modal-codes"); msg.classList.add("hidden"); }, 2500);
+  } else if (resp.status === 401) {
+    logout();
   } else {
-    msg.textContent = "✗ Error al generar"; msg.className = "error"; msg.classList.remove("hidden");
+    const err = await resp.json().catch(() => ({}));
+    msg.textContent = "✗ " + (err.detail || "Error al generar");
+    msg.className = "error"; msg.classList.remove("hidden");
   }
 });
 
@@ -1251,4 +1392,262 @@ document.getElementById("alert-form").addEventListener("submit", async e => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-if (token) showDashboard();
+if (token) {
+  showDashboard();
+} else {
+  document.getElementById("landing-screen").classList.add("active");
+}
+// ── Gestión de cuentas mejorada ───────────────────────────────────────────────
+
+async function deleteAccount(id, name) {
+  showConfirmModal(
+    '¿Eliminar cuenta?',
+    `¿Estás seguro de eliminar la cuenta "<strong>${name}</strong>"?<br><br>
+    <span style="color:var(--muted);font-size:13px">
+    Los usuarios no podrán acceder, pero los datos se preservan para auditoría.
+    </span>`,
+    async () => {
+      const r = await api('DELETE', `/api/accounts/${id}`);
+      if (r && r.ok) {
+        showToast('✓ Cuenta eliminada correctamente', 'success');
+        loadAccounts();
+      }
+    }
+  );
+}
+
+async function restoreAccount(id, name) {
+  showConfirmModal(
+    '¿Restaurar cuenta?',
+    `¿Restaurar la cuenta "<strong>${name}</strong>"?<br><br>
+    <span style="color:var(--muted);font-size:13px">
+    Los usuarios podrán volver a iniciar sesión y usar sus servicios.
+    </span>`,
+    async () => {
+      const r = await api('POST', `/api/accounts/${id}/restore`);
+      if (r && r.ok) {
+        showToast('✓ Cuenta restaurada correctamente', 'success');
+        loadAccounts();
+      }
+    }
+  );
+}
+
+let grantTicketsAccountId = null;
+let grantTicketsAccountName = null;
+
+function grantTickets(id, name) {
+  grantTicketsAccountId = id;
+  grantTicketsAccountName = name;
+  document.getElementById('grant-account-name').textContent = name;
+  document.getElementById('grant-qty').value = '100';
+  document.getElementById('grant-note').value = '';
+  document.getElementById('modal-grant-tickets').classList.remove('hidden');
+}
+
+async function submitGrantTickets() {
+  const qty = parseInt(document.getElementById('grant-qty').value, 10);
+  const note = document.getElementById('grant-note').value.trim();
+
+  if (isNaN(qty) || qty <= 0) {
+    showToast('✗ Cantidad inválida', 'error');
+    return;
+  }
+
+  const r = await api('POST', `/api/accounts/${grantTicketsAccountId}/tickets/grant`, {
+    quantity: qty,
+    note: note
+  });
+
+  if (r && r.ok) {
+    showToast(`✓ ${qty} tickets otorgados a ${grantTicketsAccountName}`, 'success');
+    closeModal('modal-grant-tickets');
+    loadAccounts();
+  }
+}
+
+async function updateAccount(id, field, value) {
+  showConfirmModal(
+    'Confirmar cambio',
+    `¿Cambiar el ${field === 'plan' ? 'plan' : 'estado'} de esta cuenta?<br><br>
+    <span style="color:var(--muted);font-size:13px">
+    Nuevo valor: <strong>${value}</strong>
+    </span>`,
+    async () => {
+      const r = await api('PATCH', `/api/accounts/${id}`, { [field]: value });
+      if (r) {
+        showToast(`✓ ${field === 'plan' ? 'Plan' : 'Estado'} actualizado`, 'success');
+        loadAccounts();
+      }
+    },
+    () => {
+      // Si cancela, recargar para restaurar el valor anterior del select
+      loadAccounts();
+    }
+  );
+}
+
+// ── Modales y toasts ──────────────────────────────────────────────────────────
+
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'success' ? 'var(--accent2)' : 'var(--danger)'};
+    color: white;
+    padding: 14px 24px;
+    border-radius: 8px;
+    z-index: 10000;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    animation: slideIn 0.3s ease;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+let confirmCallback = null;
+let cancelCallback = null;
+
+function showConfirmModal(title, message, onConfirm, onCancel) {
+  confirmCallback = onConfirm;
+  cancelCallback = onCancel;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').innerHTML = message;
+  document.getElementById('modal-confirm').classList.remove('hidden');
+}
+
+async function confirmAction() {
+  closeModal('modal-confirm');
+  if (confirmCallback) await confirmCallback();
+  confirmCallback = null;
+  cancelCallback = null;
+}
+
+function cancelAction() {
+  closeModal('modal-confirm');
+  if (cancelCallback) cancelCallback();
+  confirmCallback = null;
+  cancelCallback = null;
+}
+// ── Hero Carousel con Contenido Dinámico ─────────────────────────────────────
+
+const heroSlider = {
+  currentSlide: 0,
+  slides: [],
+  dots: [],
+  interval: null,
+
+  // Contenido dinámico para cada slide
+  content: [
+    {
+      title: "WiFi Premium en Buses Interurbanos",
+      subtitle: "Ofrece conectividad de alta velocidad en rutas de larga distancia. Tus pasajeros navegan, trabajan y se entretienen mientras viajan. Cobra por hora o por viaje."
+    },
+    {
+      title: "Conectividad para Eventos Masivos",
+      subtitle: "Despliega puntos de acceso temporales en conciertos, festivales y ferias. Miles de usuarios conectados simultáneamente. Sistema de pago automático por tiempo de uso."
+    },
+    {
+      title: "Internet en Camping y Zonas Remotas",
+      subtitle: "Lleva WiFi profesional a campamentos, cabañas y sitios alejados. Tus huéspedes disfrutan de conectividad satelital donde antes era imposible. Monetiza cada sesión."
+    },
+    {
+      title: "WiFi en Playas y Destinos Turísticos",
+      subtitle: "Instala puntos de acceso en costas, ríos y montañas. Los turistas pagan por conectarse mientras disfrutan de la naturaleza. Sin cables, sin complicaciones."
+    }
+  ],
+
+  init() {
+    this.slides = document.querySelectorAll('.hero-slide');
+    this.dots = document.querySelectorAll('.slider-dot');
+
+    if (this.slides.length === 0) return;
+
+    // Iniciar autoplay
+    this.startAutoplay();
+
+    // Pausar en hover
+    const heroSection = document.querySelector('.landing-hero');
+    if (heroSection) {
+      heroSection.addEventListener('mouseenter', () => this.stopAutoplay());
+      heroSection.addEventListener('mouseleave', () => this.startAutoplay());
+    }
+  },
+
+  goToSlide(index) {
+    // Remover active de slide y dot actuales
+    this.slides[this.currentSlide].classList.remove('active');
+    this.dots[this.currentSlide].classList.remove('active');
+
+    // Actualizar índice
+    this.currentSlide = index;
+
+    // Agregar active a nuevos slide y dot
+    this.slides[this.currentSlide].classList.add('active');
+    this.dots[this.currentSlide].classList.add('active');
+
+    // Actualizar contenido dinámico
+    this.updateContent();
+  },
+
+  nextSlide() {
+    const next = (this.currentSlide + 1) % this.slides.length;
+    this.goToSlide(next);
+  },
+
+  updateContent() {
+    const titleEl = document.getElementById('hero-title');
+    const subtitleEl = document.getElementById('hero-subtitle');
+    const content = this.content[this.currentSlide];
+
+    if (titleEl && subtitleEl && content) {
+      // Fade out
+      titleEl.style.opacity = '0';
+      subtitleEl.style.opacity = '0';
+
+      setTimeout(() => {
+        // Cambiar texto
+        titleEl.textContent = content.title;
+        subtitleEl.textContent = content.subtitle;
+
+        // Fade in
+        titleEl.style.transition = 'opacity 0.6s ease';
+        subtitleEl.style.transition = 'opacity 0.6s ease';
+        titleEl.style.opacity = '1';
+        subtitleEl.style.opacity = '1';
+      }, 300);
+    }
+  },
+
+  startAutoplay() {
+    this.stopAutoplay(); // Limpiar interval anterior
+    this.interval = setInterval(() => this.nextSlide(), 6000); // Cambiar cada 6 segundos
+  },
+
+  stopAutoplay() {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+  }
+};
+
+// Inicializar carousel cuando se muestra el landing
+const originalShowSignup = showSignup;
+const originalShowLogin = showLogin;
+
+// Override para inicializar el carousel cuando se vuelve al landing
+window.addEventListener('load', () => {
+  // Solo inicializar si estamos en el landing (sin token)
+  if (!token) {
+    setTimeout(() => heroSlider.init(), 100);
+  }
+});

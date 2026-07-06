@@ -17,18 +17,19 @@ DEFAULT_ACCOUNT_SLUG = "jads-studio"
 DEFAULT_ACCOUNT_NAME = "JADS Studio"
 
 # Catálogo de planes (cobro híbrido: base + extra por router). Ver SUBSCRIPTION_PLAN.md.
+# tickets_per_month: 0 = ilimitado
 PLAN_CATALOG = [
     {"key": "trial",    "name": "Trial",    "base_price_usd": 0.0,  "included_devices": 1,
-     "price_per_extra_device_usd": 0.0, "max_devices": 1,    "sort_order": 0,
+     "price_per_extra_device_usd": 0.0, "max_devices": 1,    "tickets_per_month": 50,  "sort_order": 0,
      "features": {"trial_days": 14}},
     {"key": "starter",  "name": "Starter",  "base_price_usd": 15.0, "included_devices": 2,
-     "price_per_extra_device_usd": 6.0, "max_devices": 5,    "sort_order": 1,
+     "price_per_extra_device_usd": 6.0, "max_devices": 5,    "tickets_per_month": 200, "sort_order": 1,
      "features": {"reports": True, "portal_branding": True}},
     {"key": "pro",      "name": "Pro",      "base_price_usd": 29.0, "included_devices": 5,
-     "price_per_extra_device_usd": 5.0, "max_devices": 20,   "sort_order": 2,
+     "price_per_extra_device_usd": 5.0, "max_devices": 20,   "tickets_per_month": 1000, "sort_order": 2,
      "features": {"reports": True, "portal_branding": True, "groups": True, "multi_user": True}},
     {"key": "business", "name": "Business", "base_price_usd": 79.0, "included_devices": 15,
-     "price_per_extra_device_usd": 4.0, "max_devices": None, "sort_order": 3,
+     "price_per_extra_device_usd": 4.0, "max_devices": None, "tickets_per_month": 0,    "sort_order": 3,
      "features": {"reports": True, "portal_branding": True, "groups": True, "multi_user": True,
                   "whitelabel": True, "api": True}},
 ]
@@ -72,10 +73,26 @@ def run_schema_migrations(engine: Engine) -> None:
             _add_column(engine, "devices", "wan_ip VARCHAR DEFAULT ''")
 
     acc_cols = _existing_columns(engine, "accounts")
-    if acc_cols and "contact_phone" not in acc_cols:
-        _add_column(engine, "accounts", "contact_phone VARCHAR DEFAULT ''")
-    if acc_cols and "payment_methods" not in acc_cols:
-        _add_column(engine, "accounts", "payment_methods JSON")
+    if acc_cols:
+        if "contact_phone" not in acc_cols:
+            _add_column(engine, "accounts", "contact_phone VARCHAR DEFAULT ''")
+        if "payment_methods" not in acc_cols:
+            _add_column(engine, "accounts", "payment_methods JSON")
+        # Nuevas columnas para soft delete y cuotas
+        if "deleted_at" not in acc_cols:
+            _add_column(engine, "accounts", "deleted_at DATETIME")
+        if "deleted_by" not in acc_cols:
+            _add_column(engine, "accounts", "deleted_by INTEGER")
+        if "tickets_used_this_month" not in acc_cols:
+            _add_column(engine, "accounts", "tickets_used_this_month INTEGER DEFAULT 0")
+        if "ticket_quota_reset_at" not in acc_cols:
+            _add_column(engine, "accounts", "ticket_quota_reset_at DATETIME")
+        if "bonus_tickets" not in acc_cols:
+            _add_column(engine, "accounts", "bonus_tickets INTEGER DEFAULT 0")
+
+    plan_cols = _existing_columns(engine, "subscription_plans")
+    if plan_cols and "tickets_per_month" not in plan_cols:
+        _add_column(engine, "subscription_plans", "tickets_per_month INTEGER DEFAULT 0")
 
     # Índices para las consultas calientes (validate, listados, retención).
     # CREATE INDEX IF NOT EXISTS funciona en SQLite y Postgres.
@@ -86,6 +103,9 @@ def run_schema_migrations(engine: Engine) -> None:
         insp = inspect(engine)
         if "code_orders" in insp.get_table_names():
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_orders_account_status ON code_orders (account_id, status)"))
+        # Índice para filtrar cuentas no eliminadas
+        if "accounts" in insp.get_table_names():
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_accounts_deleted_at ON accounts (deleted_at)"))
 
 
 def _get_or_create_default_account(db: Session) -> Account:

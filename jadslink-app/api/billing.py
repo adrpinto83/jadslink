@@ -97,6 +97,7 @@ def compute_usage(db: Session, account: Account) -> dict:
             "device_count": count, "included_devices": None, "max_devices": None,
             "extra_devices": 0, "base_price": 0.0, "extra_cost": 0.0, "total_monthly": 0.0,
             "at_limit": False,
+            "tickets_per_month": 0, "tickets_used": 0, "tickets_bonus": 0, "tickets_unlimited": True,
         }
 
     included = plan.included_devices
@@ -104,6 +105,12 @@ def compute_usage(db: Session, account: Account) -> dict:
     extra_cost = round(extra * plan.price_per_extra_device_usd, 2)
     total = round(plan.base_price_usd + extra_cost, 2)
     at_limit = plan.max_devices is not None and count >= plan.max_devices
+
+    # Cuotas de tickets
+    tickets_per_month = plan.tickets_per_month if hasattr(plan, 'tickets_per_month') else 0
+    tickets_used = account.tickets_used_this_month if account else 0
+    tickets_bonus = account.bonus_tickets if account else 0
+    tickets_unlimited = tickets_per_month == 0
 
     return {
         "plan": plan.key,
@@ -117,6 +124,10 @@ def compute_usage(db: Session, account: Account) -> dict:
         "extra_cost": extra_cost,
         "total_monthly": total,
         "at_limit": at_limit,
+        "tickets_per_month": tickets_per_month,
+        "tickets_used": tickets_used or 0,
+        "tickets_bonus": tickets_bonus or 0,
+        "tickets_unlimited": tickets_unlimited,
     }
 
 

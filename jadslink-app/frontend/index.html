@@ -1,18 +1,522 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- ÚLTIMA ACTUALIZACIÓN: 2026-07-05 - SEO OPTIMIZADO -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JADSLink</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📶</text></svg>">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="stylesheet" href="/static/css/app.css">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SEO META TAGS
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Primary Meta Tags -->
+<title>JADSLink - Vende Internet Satelital | WiFi en Buses, Eventos y Zonas Remotas</title>
+<meta name="title" content="JADSLink - Vende Internet Satelital | WiFi en Buses, Eventos y Zonas Remotas">
+<meta name="description" content="Monetiza conectividad satelital Starlink en buses interurbanos, eventos, camping y lugares remotos. Sistema completo de venta de internet: genera códigos WiFi, cobra automáticamente, gestiona clientes. Setup en 5 minutos sin infraestructura fija.">
+
+<!-- Keywords -->
+<meta name="keywords" content="internet satelital, starlink comercial, wifi móvil, hotspot pagado, vender internet, conectividad remota, wifi en buses, internet para eventos, wifi camping, monetizar starlink, portal cautivo, gestión de internet, wifi temporal, internet zonas remotas, negocio de internet, wifi prepago, sistema de tickets wifi, internet sin cables, conectividad móvil, wifi en transporte, internet satelital comercial, starlink negocio, venta de internet, wifi en festivales, internet en playas">
+
+<!-- Author & Publisher -->
+<meta name="author" content="JADS Studio">
+<meta name="publisher" content="JADS Studio">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="googlebot" content="index, follow">
+<meta name="bingbot" content="index, follow">
+
+<!-- Language & Geographic -->
+<meta name="language" content="Spanish">
+<meta name="geo.region" content="VE">
+<meta name="geo.placename" content="Venezuela">
+<meta name="geo.position" content="10.4806;-66.9036">
+<meta name="ICBM" content="10.4806, -66.9036">
+
+<!-- Canonical URL -->
+<link rel="canonical" href="https://link.jadsstudio.com">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     OPEN GRAPH / FACEBOOK
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://link.jadsstudio.com">
+<meta property="og:site_name" content="JADSLink">
+<meta property="og:title" content="JADSLink - Vende Internet Satelital en Buses, Eventos y Zonas Remotas">
+<meta property="og:description" content="Monetiza conectividad Starlink donde quieras. Sistema completo para vender WiFi temporal: genera códigos, cobra automáticamente, gestiona clientes. Setup en 5 minutos.">
+<meta property="og:image" content="https://link.jadsstudio.com/static/images/og-image.jpg">
+<meta property="og:image:secure_url" content="https://link.jadsstudio.com/static/images/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="JADSLink - Sistema de venta de internet satelital">
+<meta property="og:locale" content="es_VE">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="es_MX">
+<meta property="og:locale:alternate" content="es_CO">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TWITTER CARD
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://link.jadsstudio.com">
+<meta name="twitter:title" content="JADSLink - Vende Internet Satelital | WiFi en Buses y Eventos">
+<meta name="twitter:description" content="Monetiza Starlink donde quieras: buses, eventos, camping, zonas remotas. Sistema completo de venta de WiFi temporal. Setup en 5 minutos.">
+<meta name="twitter:image" content="https://link.jadsstudio.com/static/images/twitter-card.jpg">
+<meta name="twitter:image:alt" content="JADSLink - Sistema de venta de internet satelital">
+<meta name="twitter:creator" content="@jadsstudio">
+<meta name="twitter:site" content="@jadsstudio">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     FAVICON & APP ICONS
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📶</text></svg>">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#4f8ef7">
+<meta name="msapplication-TileColor" content="#4f8ef7">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     STRUCTURED DATA (JSON-LD) - SCHEMA.ORG
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://link.jadsstudio.com/#organization",
+      "name": "JADS Studio",
+      "url": "https://link.jadsstudio.com",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://link.jadsstudio.com/static/images/logo.png",
+        "width": 300,
+        "height": 60
+      },
+      "sameAs": [
+        "https://twitter.com/jadsstudio",
+        "https://facebook.com/jadsstudio",
+        "https://instagram.com/jadsstudio"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Customer Service",
+        "availableLanguage": ["Spanish", "English"]
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://link.jadsstudio.com/#website",
+      "url": "https://link.jadsstudio.com",
+      "name": "JADSLink",
+      "publisher": {
+        "@id": "https://link.jadsstudio.com/#organization"
+      },
+      "inLanguage": "es-VE"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://link.jadsstudio.com/#webpage",
+      "url": "https://link.jadsstudio.com",
+      "name": "JADSLink - Vende Internet Satelital | WiFi en Buses, Eventos y Zonas Remotas",
+      "description": "Monetiza conectividad satelital Starlink en buses interurbanos, eventos, camping y lugares remotos. Sistema completo de venta de internet.",
+      "isPartOf": {
+        "@id": "https://link.jadsstudio.com/#website"
+      },
+      "about": {
+        "@id": "https://link.jadsstudio.com/#organization"
+      },
+      "inLanguage": "es-VE"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "JADSLink",
+      "operatingSystem": "Web, Linux, OpenWrt",
+      "applicationCategory": "BusinessApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "29.00",
+        "priceCurrency": "USD",
+        "priceValidUntil": "2027-12-31",
+        "availability": "https://schema.org/InStock"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "47"
+      },
+      "description": "Sistema SaaS multi-tenant para monetizar conectividad satelital. Gestiona venta de tickets WiFi, cobros automáticos y control de sesiones.",
+      "featureList": [
+        "Generación de códigos WiFi únicos",
+        "Portal cautivo personalizable",
+        "Cobro automático por tiempo de uso",
+        "Dashboard de gestión en tiempo real",
+        "Integración con Starlink",
+        "Soporte para múltiples nodos",
+        "Reportes de ingresos y uso",
+        "API REST completa"
+      ]
+    },
+    {
+      "@type": "Service",
+      "serviceType": "Internet Satelital Comercial",
+      "provider": {
+        "@id": "https://link.jadsstudio.com/#organization"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "Venezuela"
+      },
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Planes JADSLink",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Plan Starter",
+              "description": "Hasta 3 nodos, 1000 tickets/mes"
+            },
+            "price": "29.00",
+            "priceCurrency": "USD"
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Plan Growth",
+              "description": "Hasta 10 nodos, 5000 tickets/mes"
+            },
+            "price": "99.00",
+            "priceCurrency": "USD"
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Plan Enterprise",
+              "description": "Nodos ilimitados, tickets ilimitados"
+            },
+            "price": "299.00",
+            "priceCurrency": "USD"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Inicio",
+          "item": "https://link.jadsstudio.com"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PRECONNECT & DNS PREFETCH
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<link rel="preconnect" href="https://images.unsplash.com" crossorigin>
+<link rel="dns-prefetch" href="https://images.unsplash.com">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     STYLESHEETS
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="all">
+<link rel="stylesheet" href="/static/css/app.css?v=1783268723" media="all">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PERFORMANCE & SECURITY
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<meta name="referrer" content="origin-when-cross-origin">
+<meta http-equiv="x-dns-prefetch-control" content="on">
+
 </head>
 <body>
 <div id="app">
 
+  <!-- LANDING PAGE -->
+  <div id="landing-screen" class="screen">
+    <!-- Header -->
+    <header class="landing-header">
+      <div class="landing-container">
+        <div class="landing-logo">
+          <svg width="40" height="34" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 5C4.87 1.8 9.72 0 13 0s8.13 1.8 12 5" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".3"/>
+            <path d="M3.5 8.5C6.8 5.8 9.8 4.5 13 4.5s6.2 1.3 9.5 4" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+            <path d="M6.5 12C8.9 10 10.9 9 13 9s4.1 1 6.5 3" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="13" cy="18" r="2.5" fill="#4f8ef7"/>
+          </svg>
+          <span>JADSLink</span>
+        </div>
+        <button class="btn-login" onclick="showLogin()">Iniciar sesión</button>
+      </div>
+    </header>
+
+    <!-- Hero con Carousel Dinámico -->
+    <section class="landing-hero">
+      <div class="hero-slider">
+        <!-- Slide 1: Buses -->
+        <div class="hero-slide active" data-index="0">
+          <div class="hero-slide-bg" style="background-image: url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1920&h=1080&fit=crop&q=80')"></div>
+          <div class="hero-slide-overlay"></div>
+        </div>
+        <!-- Slide 2: Eventos -->
+        <div class="hero-slide" data-index="1">
+          <div class="hero-slide-bg" style="background-image: url('https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&h=1080&fit=crop&q=80')"></div>
+          <div class="hero-slide-overlay"></div>
+        </div>
+        <!-- Slide 3: Camping -->
+        <div class="hero-slide" data-index="2">
+          <div class="hero-slide-bg" style="background-image: url('https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1920&h=1080&fit=crop&q=80')"></div>
+          <div class="hero-slide-overlay"></div>
+        </div>
+        <!-- Slide 4: Playa -->
+        <div class="hero-slide" data-index="3">
+          <div class="hero-slide-bg" style="background-image: url('https://images.unsplash.com/photo-1519046904884-53103b34b206?w=1920&h=1080&fit=crop&q=80')"></div>
+          <div class="hero-slide-overlay"></div>
+        </div>
+      </div>
+
+      <div class="landing-container hero-container">
+        <div class="hero-content">
+          <h1 class="hero-title" id="hero-title">Vende Internet Donde Quieras</h1>
+          <p class="hero-subtitle" id="hero-subtitle">Monetiza conectividad satelital en eventos, camping, buses y lugares remotos sin infraestructura. Configura en minutos, cobra automáticamente.</p>
+          <div class="hero-cta">
+            <button class="btn-primary-lg" onclick="showSignup()">
+              <i class="fa-solid fa-rocket"></i> Comenzar ahora
+            </button>
+            <button class="btn-secondary-lg" onclick="showLogin()">
+              <i class="fa-solid fa-right-to-bracket"></i> Ya tengo cuenta
+            </button>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-item">
+              <div class="stat-number"><i class="fa-solid fa-clock"></i> 5 min</div>
+              <div class="stat-label">Setup inicial</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number"><i class="fa-solid fa-ban"></i> 0</div>
+              <div class="stat-label">Infraestructura fija</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number"><i class="fa-solid fa-globe"></i> 24/7</div>
+              <div class="stat-label">Acceso remoto</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navegación del carousel -->
+      <div class="hero-slider-nav">
+        <button class="slider-dot active" onclick="heroSlider.goToSlide(0)"></button>
+        <button class="slider-dot" onclick="heroSlider.goToSlide(1)"></button>
+        <button class="slider-dot" onclick="heroSlider.goToSlide(2)"></button>
+        <button class="slider-dot" onclick="heroSlider.goToSlide(3)"></button>
+      </div>
+    </section>
+
+    <!-- Casos de uso -->
+    <section class="landing-section">
+      <div class="landing-container">
+        <h2 class="section-title">Casos de uso perfectos</h2>
+        <p class="section-subtitle">Lleva conectividad de calidad a cualquier lugar</p>
+        <div class="use-cases-grid">
+          <div class="use-case-card use-case-with-image">
+            <div class="use-case-image" style="background-image: url('https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop')"></div>
+            <div class="use-case-content">
+              <div class="use-case-icon" style="background:#1a3d2e"><i class="fa-solid fa-campground" style="color:#3ecf8e"></i></div>
+              <h3>Camping & Zonas Remotas</h3>
+              <p>Ofrece WiFi premium en campamentos, cabañas y sitios alejados de centros urbanos</p>
+            </div>
+          </div>
+          <div class="use-case-card use-case-with-image">
+            <div class="use-case-image" style="background-image: url('https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=400&fit=crop')"></div>
+            <div class="use-case-content">
+              <div class="use-case-icon" style="background:#2d1a3d"><i class="fa-solid fa-music" style="color:#a78bfa"></i></div>
+              <h3>Eventos & Festivales</h3>
+              <p>Conectividad temporal para conciertos, ferias, competencias y reuniones masivas</p>
+            </div>
+          </div>
+          <div class="use-case-card use-case-with-image">
+            <div class="use-case-image" style="background-image: url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&h=400&fit=crop')"></div>
+            <div class="use-case-content">
+              <div class="use-case-icon" style="background:#1a2d4a"><i class="fa-solid fa-bus" style="color:#4f8ef7"></i></div>
+              <h3>Transporte de Larga Distancia</h3>
+              <p>Internet a bordo en buses interurbanos, lanchas y otros transportes</p>
+            </div>
+          </div>
+          <div class="use-case-card use-case-with-image">
+            <div class="use-case-image" style="background-image: url('https://images.unsplash.com/photo-1519046904884-53103b34b206?w=600&h=400&fit=crop')"></div>
+            <div class="use-case-content">
+              <div class="use-case-icon" style="background:#3d2a1a"><i class="fa-solid fa-umbrella-beach" style="color:#f59e0b"></i></div>
+              <h3>Playas & Turismo</h3>
+              <p>Servicio de conectividad en costas, ríos, montañas y destinos turísticos</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cómo funciona -->
+    <section class="landing-section" style="background:var(--surface)">
+      <div class="landing-container">
+        <h2 class="section-title">Cómo funciona</h2>
+        <p class="section-subtitle">En 4 pasos simples empiezas a generar ingresos</p>
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <h3>Instala el punto de acceso</h3>
+            <p>Conecta tu dispositivo satelital (Starlink u otro) a un router compatible. Sin cables complejos ni técnicos especializados.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <h3>Configura planes y precios</h3>
+            <p>Define duración, ancho de banda y precios desde el panel web. Crea códigos QR listos para vender.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <h3>Los usuarios compran acceso</h3>
+            <p>Escanean el QR, eligen su plan, pagan online y reciben su código de acceso al instante.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">4</div>
+            <h3>Recibe pagos automáticamente</h3>
+            <p>Reporta tus ingresos, administra sesiones en tiempo real y escala tu red fácilmente.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- En acción -->
+    <section class="landing-section in-action-section">
+      <div class="landing-container">
+        <h2 class="section-title">JADSLink en acción</h2>
+        <p class="section-subtitle">Conectando personas en los lugares más increíbles</p>
+        <div class="in-action-gallery">
+          <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&h=600&fit=crop" alt="Antena satelital en zona remota">
+            <div class="gallery-overlay">
+              <div class="gallery-text">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <p>Conectividad satelital en cualquier ubicación</p>
+              </div>
+            </div>
+          </div>
+          <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?w=800&h=600&fit=crop" alt="Router portátil">
+            <div class="gallery-overlay">
+              <div class="gallery-text">
+                <i class="fa-solid fa-wifi"></i>
+                <p>Equipos compactos y fáciles de transportar</p>
+              </div>
+            </div>
+          </div>
+          <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&h=600&fit=crop" alt="Personas usando internet">
+            <div class="gallery-overlay">
+              <div class="gallery-text">
+                <i class="fa-solid fa-users"></i>
+                <p>Experiencia fluida para tus clientes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Beneficios -->
+    <section class="landing-section">
+      <div class="landing-container">
+        <h2 class="section-title">Por qué JADSLink</h2>
+        <div class="benefits-grid">
+          <div class="benefit-card">
+            <i class="fa-solid fa-bolt"></i>
+            <h3>Sin infraestructura fija</h3>
+            <p>Lleva conectividad satelital a cualquier lugar sin depender de cables o fibra óptica</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-clock"></i>
+            <h3>Configura en minutos</h3>
+            <p>Panel web intuitivo, registro de dispositivos en segundos, sin conocimientos técnicos avanzados</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-dollar-sign"></i>
+            <h3>Monetización automática</h3>
+            <p>Sistema de códigos QR, venta online, reportes de uso y control de sesiones en tiempo real</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-chart-line"></i>
+            <h3>Panel de control completo</h3>
+            <p>Monitorea dispositivos, clientes activos, tráfico de datos y estadísticas desde cualquier lugar</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-shield-halved"></i>
+            <h3>Seguro y estable</h3>
+            <p>Portal cautivo, control de ancho de banda, expulsión de usuarios y gestión de códigos</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-mobile-screen"></i>
+            <h3>Multi-plataforma</h3>
+            <p>Accede desde cualquier dispositivo: PC, tablet o smartphone. Siempre disponible.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Final -->
+    <section class="landing-cta">
+      <div class="landing-container">
+        <h2>¿Listo para empezar?</h2>
+        <p>Crea tu cuenta gratis y comienza a monetizar conectividad hoy mismo</p>
+        <button class="btn-primary-lg" onclick="showSignup()">Crear cuenta gratis</button>
+        <p class="cta-note">14 días de prueba · Sin tarjeta de crédito</p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+      <div class="landing-container">
+        <div class="footer-content">
+          <div class="footer-logo">
+            <svg width="32" height="28" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M1 5C4.87 1.8 9.72 0 13 0s8.13 1.8 12 5" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".3"/>
+              <path d="M3.5 8.5C6.8 5.8 9.8 4.5 13 4.5s6.2 1.3 9.5 4" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+              <path d="M6.5 12C8.9 10 10.9 9 13 9s4.1 1 6.5 3" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="13" cy="18" r="2.5" fill="#4f8ef7"/>
+            </svg>
+            <span>JADSLink</span>
+          </div>
+          <div class="footer-links">
+            <a onclick="showLogin()">Iniciar sesión</a>
+            <a onclick="showSignup()">Crear cuenta</a>
+          </div>
+          <div class="footer-copy">
+            <p>© 2026 JADSLink · Desarrollado por <strong>JADS Studio</strong></p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
   <!-- LOGIN -->
-  <div id="login-screen" class="screen active">
+  <div id="login-screen" class="screen">
     <div class="login-card">
       <div class="login-logo">
         <svg width="52" height="44" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -31,12 +535,81 @@
         <p id="login-error" class="error hidden"></p>
       </form>
       <form id="signup-form" class="hidden">
-        <input type="text"     id="su-company" placeholder="Nombre de tu empresa" required>
-        <input type="text"     id="su-user"    placeholder="Usuario (para iniciar sesión)" required autocomplete="username">
-        <input type="password" id="su-pass"    placeholder="Contraseña (mín. 6)" required minlength="6" autocomplete="new-password">
-        <input type="email"    id="su-email"   placeholder="Email (opcional)">
-        <input type="text"     id="su-phone"   placeholder="Teléfono / WhatsApp (opcional)">
-        <button type="submit">Crear cuenta gratis · 14 días</button>
+        <div class="form-section">
+          <h4 class="form-section-title"><i class="fa-solid fa-building"></i> Información de la empresa</h4>
+          <input type="text"     id="su-company" placeholder="Nombre de tu empresa" required>
+          <input type="email"    id="su-email"   placeholder="Email de contacto" required>
+          <input type="text"     id="su-phone"   placeholder="Teléfono / WhatsApp">
+        </div>
+
+        <div class="form-section">
+          <h4 class="form-section-title"><i class="fa-solid fa-user"></i> Datos de acceso</h4>
+          <input type="text"     id="su-user"    placeholder="Usuario (para iniciar sesión)" required autocomplete="username">
+          <input type="password" id="su-pass"    placeholder="Contraseña (mín. 6)" required minlength="6" autocomplete="new-password">
+        </div>
+
+        <div class="form-section">
+          <h4 class="form-section-title"><i class="fa-solid fa-credit-card"></i> Método de pago</h4>
+          <p class="form-helper-text">
+            <i class="fa-solid fa-shield-halved"></i>
+            No se realizará ningún cargo durante los 14 días de prueba. Tu tarjeta será cargada automáticamente al finalizar el período de prueba.
+          </p>
+
+          <div class="card-input-group">
+            <label class="card-label">Número de tarjeta</label>
+            <div class="card-number-wrapper">
+              <input type="text" id="su-card-number" placeholder="1234 5678 9012 3456"
+                     maxlength="19" autocomplete="cc-number" required
+                     oninput="formatCardNumber(this)">
+              <div class="card-brand" id="card-brand-icon"></div>
+            </div>
+          </div>
+
+          <div class="card-row">
+            <div class="card-input-group">
+              <label class="card-label">Vencimiento</label>
+              <input type="text" id="su-card-expiry" placeholder="MM/AA"
+                     maxlength="5" autocomplete="cc-exp" required
+                     oninput="formatCardExpiry(this)">
+            </div>
+            <div class="card-input-group">
+              <label class="card-label">CVV</label>
+              <input type="text" id="su-card-cvv" placeholder="123"
+                     maxlength="4" autocomplete="cc-csc" required
+                     oninput="this.value=this.value.replace(/\D/g,'')">
+            </div>
+          </div>
+
+          <div class="card-input-group">
+            <label class="card-label">Nombre en la tarjeta</label>
+            <input type="text" id="su-card-name" placeholder="NOMBRE APELLIDO"
+                   autocomplete="cc-name" required style="text-transform:uppercase">
+          </div>
+        </div>
+
+        <div class="signup-summary">
+          <div class="summary-row">
+            <span>Plan Starter</span>
+            <span><strong>$19/mes</strong></span>
+          </div>
+          <div class="summary-row trial">
+            <span><i class="fa-solid fa-gift"></i> Prueba gratis por 14 días</span>
+            <span class="trial-tag">$0 hoy</span>
+          </div>
+          <div class="summary-note">
+            Cancela en cualquier momento. Primer cargo el <strong id="first-charge-date"></strong>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-signup-submit">
+          <i class="fa-solid fa-lock"></i>
+          Iniciar prueba gratis de 14 días
+        </button>
+
+        <p class="signup-terms">
+          Al crear una cuenta, aceptas nuestros <a href="#">Términos de Servicio</a> y <a href="#">Política de Privacidad</a>
+        </p>
+
         <p id="signup-error" class="error hidden"></p>
       </form>
       <p class="login-toggle" id="toggle-signup">¿Nuevo operador? <a onclick="showSignup()">Crea tu cuenta</a></p>
@@ -62,8 +635,18 @@
         <li class="nav-item" data-tab="accounts" id="nav-accounts" style="display:none"><i class="fa-solid fa-building"></i> Cuentas</li>
       </ul>
       <div class="nav-bottom">
-        <span id="nav-user"></span>
-        <button id="logout-btn"><i class="fa-solid fa-right-from-bracket"></i></button>
+        <div class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">
+          <div class="theme-toggle-track">
+            <div class="theme-toggle-thumb">
+              <i id="theme-icon" class="fa-solid fa-sun"></i>
+            </div>
+          </div>
+          <span class="theme-toggle-label">Tema</span>
+        </div>
+        <div class="nav-bottom-row">
+          <span id="nav-user"></span>
+          <button id="logout-btn"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
       </div>
     </nav>
 
@@ -355,14 +938,19 @@
 
       <!-- TAB: Pagos y facturación -->
       <section id="tab-sales" class="tab">
-        <div class="tab-header"><h2>Venta online de códigos</h2></div>
+        <div class="tab-header">
+          <h2>Venta online de códigos</h2>
+          <p style="color:var(--muted);font-size:13px;margin-top:8px">Gestiona productos, pedidos y métodos de pago para venta online</p>
+        </div>
 
         <!-- Pedidos pendientes (todos los roles los ven; aprobar solo manage) -->
         <div class="section-title"><i class="fa-solid fa-hourglass-half"></i> Pedidos pendientes</div>
-        <table class="data-table">
-          <thead><tr><th>Fecha</th><th>Router</th><th>Producto</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Teléfono</th><th></th></tr></thead>
-          <tbody id="orders-pending"></tbody>
-        </table>
+        <div style="overflow-x:auto;margin-bottom:32px">
+          <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Router</th><th>Producto</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Teléfono</th><th style="width:180px">Acciones</th></tr></thead>
+            <tbody id="orders-pending"></tbody>
+          </table>
+        </div>
 
         <div id="sales-operator" style="display:none">
           <!-- Selector de cuenta (solo superadmin) -->
@@ -373,57 +961,114 @@
           </div>
 
           <!-- Productos en venta -->
-          <div class="section-title" style="margin-top:24px"><i class="fa-solid fa-tags"></i> Productos en venta</div>
-          <div class="settings-card" style="max-width:720px" id="product-form-card">
-            <form id="product-form" class="settings-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-              <label style="flex:1;min-width:130px">Nombre <input type="text" id="prod-name" placeholder="Ej: 1 Hora" required></label>
-              <label style="width:110px">Duración (min) <input type="number" id="prod-dur" min="1" value="60" required></label>
-              <label style="width:100px">Precio USD <input type="number" id="prod-usd" step="0.01" min="0" required></label>
-              <label style="width:100px">Precio Bs <input type="number" id="prod-ves" step="0.01" min="0" value="0"></label>
-              <button type="submit" class="btn-primary">Agregar</button>
+          <div class="section-title" style="margin-top:32px"><i class="fa-solid fa-tags"></i> Productos en venta</div>
+          <div class="settings-card" style="max-width:820px;margin-bottom:16px" id="product-form-card">
+            <div style="color:var(--muted);font-size:13px;margin-bottom:18px;line-height:1.5">
+              <i class="fa-solid fa-circle-info"></i> Define los planes que tus clientes pueden comprar
+            </div>
+            <form id="product-form" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:12px;align-items:end">
+              <div>
+                <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Nombre del producto</label>
+                <input type="text" id="prod-name" placeholder="Ej: 1 Hora" required style="width:100%">
+              </div>
+              <div>
+                <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Duración</label>
+                <input type="number" id="prod-dur" min="1" value="60" required style="width:100%" placeholder="60">
+              </div>
+              <div>
+                <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Precio USD</label>
+                <input type="number" id="prod-usd" step="0.01" min="0" required style="width:100%" placeholder="0.00">
+              </div>
+              <div>
+                <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Precio Bs</label>
+                <input type="number" id="prod-ves" step="0.01" min="0" value="0" style="width:100%" placeholder="0.00">
+              </div>
+              <button type="submit" class="btn-primary" style="white-space:nowrap;padding:10px 16px"><i class="fa-solid fa-plus"></i> Agregar</button>
             </form>
           </div>
-          <table class="data-table">
-            <thead><tr><th>Nombre</th><th>Duración</th><th>USD</th><th>Bs</th><th>Estado</th><th></th></tr></thead>
-            <tbody id="products-table"></tbody>
-          </table>
+          <div style="overflow-x:auto;margin-bottom:32px">
+            <table class="data-table">
+              <thead><tr><th>Nombre</th><th>Duración</th><th>USD</th><th>Bs</th><th>Estado</th><th style="width:150px">Acciones</th></tr></thead>
+              <tbody id="products-table"></tbody>
+            </table>
+          </div>
 
           <!-- Datos de cobro (solo owner) -->
-          <div class="section-title" style="margin-top:24px"><i class="fa-solid fa-hand-holding-dollar"></i> Datos de cobro (lo que ve el comprador)</div>
-          <div class="settings-card" style="max-width:720px" id="paymethods-card">
+          <div class="section-title" style="margin-top:32px"><i class="fa-solid fa-hand-holding-dollar"></i> Métodos de pago</div>
+          <div class="settings-card" style="max-width:820px;margin-bottom:32px" id="paymethods-card">
+            <div style="color:var(--muted);font-size:13px;margin-bottom:14px">
+              <i class="fa-solid fa-circle-info"></i> Configura cómo tus clientes te pueden pagar. Esta información se mostrará en la página de compra.
+            </div>
             <form id="paymethods-form" class="settings-form">
-              <label>Pago móvil <input type="text" id="pm-pago_movil" placeholder="0412-1234567 · CI 12.345.678 · Banco de Venezuela" maxlength="300"></label>
-              <label>Transferencia <input type="text" id="pm-transferencia" placeholder="Cuenta 0102-... · Nombre del titular" maxlength="300"></label>
-              <label>Zelle <input type="text" id="pm-zelle" placeholder="correo@ejemplo.com · Nombre" maxlength="300"></label>
-              <label>USDT <input type="text" id="pm-usdt" placeholder="Dirección TRC20 / Binance Pay" maxlength="300"></label>
-              <label>Efectivo <input type="text" id="pm-efectivo" placeholder="Ej: paga al conductor / en la caja" maxlength="300"></label>
-              <div class="form-actions"><button type="submit" class="btn-primary">Guardar datos de cobro</button></div>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-solid fa-mobile-screen" style="color:var(--accent)"></i> Pago móvil
+                </span>
+                <input type="text" id="pm-pago_movil" placeholder="0412-1234567 · CI 12.345.678 · Banco de Venezuela" maxlength="300">
+              </label>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-solid fa-building-columns" style="color:var(--accent)"></i> Transferencia
+                </span>
+                <input type="text" id="pm-transferencia" placeholder="Cuenta 0102-... · Nombre del titular" maxlength="300">
+              </label>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-solid fa-dollar-sign" style="color:var(--accent)"></i> Zelle
+                </span>
+                <input type="text" id="pm-zelle" placeholder="correo@ejemplo.com · Nombre" maxlength="300">
+              </label>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-brands fa-bitcoin" style="color:var(--accent)"></i> USDT
+                </span>
+                <input type="text" id="pm-usdt" placeholder="Dirección TRC20 / Binance Pay" maxlength="300">
+              </label>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-solid fa-money-bill-1" style="color:var(--accent)"></i> Efectivo
+                </span>
+                <input type="text" id="pm-efectivo" placeholder="Ej: paga al conductor / en la caja" maxlength="300">
+              </label>
+              <div class="form-actions"><button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Guardar datos de cobro</button></div>
               <p id="pm-msg" class="hidden" style="margin-top:10px"></p>
             </form>
           </div>
 
           <!-- Link de la tienda por router -->
-          <div class="section-title" style="margin-top:24px"><i class="fa-solid fa-qrcode"></i> Página de venta por router</div>
-          <div class="settings-card" style="max-width:720px">
-            <p style="color:var(--muted);font-size:13px;margin-bottom:10px">
-              Comparte este link o imprime el QR. También aparece automáticamente en el portal cautivo
-              cuando tienes productos y datos de cobro configurados.
-            </p>
-            <select id="sales-device-select" style="width:100%;margin-bottom:12px"></select>
-            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-              <code id="sales-link" style="flex:1;min-width:220px;word-break:break-all"></code>
-              <button class="btn-sm" onclick="copySalesLink(this)"><i class="fa-regular fa-copy"></i> Copiar</button>
-              <img id="sales-qr" alt="QR" style="width:110px;height:110px;border-radius:8px">
+          <div class="section-title" style="margin-top:32px"><i class="fa-solid fa-qrcode"></i> Página de venta por router</div>
+          <div class="settings-card" style="max-width:820px;margin-bottom:32px">
+            <div style="color:var(--muted);font-size:13px;margin-bottom:14px">
+              <i class="fa-solid fa-circle-info"></i> Comparte este link o imprime el QR. También aparece automáticamente en el portal cautivo cuando tienes productos y métodos de pago configurados.
+            </div>
+            <label style="display:block;margin-bottom:12px">
+              <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px">Selecciona el router</span>
+              <select id="sales-device-select" style="width:100%"></select>
+            </label>
+            <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+              <div style="flex:1;min-width:280px">
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px">Link de compra</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <code id="sales-link" style="flex:1;padding:10px;background:var(--surface2);border-radius:8px;font-size:12px;word-break:break-all;border:1px solid var(--border)"></code>
+                  <button class="btn-sm" onclick="copySalesLink(this)" style="white-space:nowrap"><i class="fa-regular fa-copy"></i> Copiar</button>
+                </div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px">Código QR</span>
+                <img id="sales-qr" alt="QR" style="width:110px;height:110px;border-radius:8px;border:1px solid var(--border)">
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Historial -->
-        <div class="section-title" style="margin-top:24px">Historial de ventas</div>
-        <table class="data-table">
-          <thead><tr><th>Fecha</th><th>Router</th><th>Producto</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Código</th><th>Estado</th></tr></thead>
-          <tbody id="orders-history"></tbody>
-        </table>
+        <div class="section-title" style="margin-top:32px"><i class="fa-solid fa-clock-rotate-left"></i> Historial de ventas</div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Router</th><th>Producto</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Código</th><th>Estado</th></tr></thead>
+            <tbody id="orders-history"></tbody>
+          </table>
+        </div>
       </section>
 
       <section id="tab-payments" class="tab">
@@ -520,28 +1165,142 @@
     </div>
   </div>
 
-  <!-- MODAL: Registrar gateway -->
+  <!-- MODAL: Registrar/Activar gateway -->
   <div id="modal-register" class="modal hidden">
-    <div class="modal-content">
-      <h3>Registrar gateway</h3>
-      <form id="register-form">
-        <label>Nombre <input type="text" name="name" required placeholder="Router Principal"></label>
-        <label>Ubicación <input type="text" name="location" placeholder="Oficina 1er piso"></label>
-        <label>Modelo <input type="text" name="model" value="OpenWrt"></label>
-        <div class="modal-actions">
-          <button type="submit" class="btn-primary">Registrar</button>
-          <button type="button" class="btn-secondary" onclick="closeModal('modal-register')">Cancelar</button>
+    <div class="modal-content" style="max-width:580px">
+      <h3>Agregar gateway</h3>
+
+      <!-- Tabs de método -->
+      <div class="activation-tabs">
+        <button class="activation-tab active" data-method="code" onclick="switchActivationMethod('code')">
+          <i class="fa-solid fa-bolt"></i>
+          <div>
+            <strong>Gateway JADSlink</strong>
+            <span>Activación rápida con código</span>
+          </div>
+        </button>
+        <button class="activation-tab" data-method="manual" onclick="switchActivationMethod('manual')">
+          <i class="fa-solid fa-screwdriver-wrench"></i>
+          <div>
+            <strong>Router propio</strong>
+            <span>Configuración manual</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Método 1: Activación por código -->
+      <div id="activation-code-panel" class="activation-panel">
+        <div class="activation-info">
+          <i class="fa-solid fa-circle-info"></i>
+          <p>Ingresa el código de activación que viene en la etiqueta de tu gateway JADSlink</p>
         </div>
-      </form>
+
+        <form id="activate-form">
+          <label>Código de activación
+            <input type="text" id="activation-code" name="activation_code" required
+                   placeholder="Ej: JADS-A1B2-C3D4-E5F6"
+                   style="text-transform:uppercase;font-family:monospace;letter-spacing:1px">
+          </label>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label>Nombre personalizado
+              <input type="text" id="activate-name" name="name" required placeholder="Mi Gateway">
+            </label>
+            <label>Ubicación
+              <input type="text" id="activate-location" name="location" placeholder="Bus 101">
+            </label>
+          </div>
+
+          <div class="activation-steps">
+            <div class="activation-step">
+              <div class="step-icon"><i class="fa-solid fa-1"></i></div>
+              <div class="step-text">Conecta internet satelital al puerto WAN</div>
+            </div>
+            <div class="activation-step">
+              <div class="step-icon"><i class="fa-solid fa-2"></i></div>
+              <div class="step-text">Enciende el gateway (LED azul parpadeante)</div>
+            </div>
+            <div class="activation-step">
+              <div class="step-icon"><i class="fa-solid fa-3"></i></div>
+              <div class="step-text">Ingresa el código y activa</div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Activar gateway</button>
+            <button type="button" class="btn-secondary" onclick="closeModal('modal-register')">Cancelar</button>
+          </div>
+          <p id="activate-error" class="error hidden" style="margin-top:10px;text-align:center"></p>
+        </form>
+      </div>
+
+      <!-- Método 2: Configuración manual -->
+      <div id="activation-manual-panel" class="activation-panel hidden">
+        <div class="activation-info" style="background:var(--surface3);border-color:var(--warning)">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)"></i>
+          <p>Solo para usuarios avanzados con routers OpenWrt, MikroTik u otros compatibles</p>
+        </div>
+
+        <form id="register-form">
+          <label>Nombre <input type="text" name="name" required placeholder="Router Principal"></label>
+          <label>Ubicación <input type="text" name="location" placeholder="Oficina 1er piso"></label>
+          <label>Modelo / Sistema
+            <select name="model" style="width:100%">
+              <option value="OpenWrt">OpenWrt</option>
+              <option value="MikroTik">MikroTik RouterOS</option>
+              <option value="pfSense">pfSense</option>
+              <option value="DD-WRT">DD-WRT</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </label>
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">Registrar</button>
+            <button type="button" class="btn-secondary" onclick="closeModal('modal-register')">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Resultado exitoso -->
       <div id="register-result" class="hidden">
-        <p style="color:var(--accent2);font-weight:600;margin-bottom:8px"><i class="fa-solid fa-circle-check"></i> ¡Gateway registrado!</p>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Sigue estos pasos para conectar tu router:</p>
-        <ol id="onboarding-steps" style="font-size:13px;line-height:1.5;padding-left:18px;margin-bottom:12px"></ol>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Contenido de <code>/etc/hotspot/agent.conf</code>:</p>
-        <pre id="register-creds"></pre>
-        <div class="modal-actions">
-          <button class="btn-secondary" onclick="copyText(document.getElementById('register-creds').textContent, this)"><i class="fa-solid fa-copy"></i> Copiar agent.conf</button>
-          <button class="btn-primary" onclick="closeModal('modal-register')">Listo</button>
+        <div class="success-animation">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h4 style="text-align:center;color:var(--text);margin-bottom:8px">¡Gateway activado correctamente!</h4>
+        <p style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px" id="success-message">Tu gateway está listo para usar</p>
+
+        <!-- Para activación por código -->
+        <div id="activation-success-info" class="activation-success hidden">
+          <div class="success-box">
+            <p style="color:var(--muted);font-size:12px;margin-bottom:8px">Estado del gateway:</p>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface2);border-radius:var(--radius);margin-bottom:16px">
+              <div class="status-pulse status-online"></div>
+              <div style="flex:1">
+                <div style="font-weight:600;color:var(--text)" id="activated-name">Mi Gateway</div>
+                <div style="font-size:12px;color:var(--muted)" id="activated-location">—</div>
+              </div>
+              <span class="badge badge-green">Online</span>
+            </div>
+            <p style="font-size:13px;color:var(--text-secondary);line-height:1.6">
+              <i class="fa-solid fa-circle-check" style="color:var(--accent2)"></i>
+              El gateway se conectará automáticamente en los próximos 30 segundos.
+              Podrás monitorearlo desde el Dashboard.
+            </p>
+          </div>
+        </div>
+
+        <!-- Para configuración manual -->
+        <div id="manual-success-info" class="manual-success hidden">
+          <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Configura el agente en tu router:</p>
+          <ol id="onboarding-steps" style="font-size:13px;line-height:1.6;padding-left:18px;margin-bottom:12px;color:var(--text-secondary)"></ol>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Archivo <code>/etc/hotspot/agent.conf</code>:</p>
+          <pre id="register-creds" style="max-height:180px;overflow-y:auto"></pre>
+          <button class="btn-secondary" style="width:100%;margin-top:12px" onclick="copyText(document.getElementById('register-creds').textContent, this)">
+            <i class="fa-solid fa-copy"></i> Copiar configuración
+          </button>
+        </div>
+
+        <div class="modal-actions" style="margin-top:20px">
+          <button class="btn-primary" onclick="closeRegisterModal()" style="width:100%">Ir al Dashboard</button>
         </div>
       </div>
     </div>
@@ -611,9 +1370,42 @@
       <p id="gen-codes-result" class="hidden" style="margin-top:10px;text-align:center;font-size:13px"></p>
     </div>
   </div>
+  <!-- MODAL: Confirmar acción -->
+  <div id="modal-confirm" class="modal hidden">
+    <div class="modal-content" style="max-width:480px">
+      <h3 id="confirm-title">Confirmar</h3>
+      <div id="confirm-message" style="margin:20px 0;line-height:1.6"></div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="confirmAction()">Confirmar</button>
+        <button class="btn-secondary" onclick="cancelAction()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Otorgar tickets -->
+  <div id="modal-grant-tickets" class="modal hidden">
+    <div class="modal-content" style="max-width:500px">
+      <h3>Otorgar tickets bonus</h3>
+      <p style="color:var(--muted);font-size:13px;margin:10px 0">
+        Cuenta: <strong id="grant-account-name"></strong>
+      </p>
+      <label style="margin-top:16px">Cantidad de tickets
+        <input type="number" id="grant-qty" value="100" min="1" max="10000" required>
+      </label>
+      <label>Nota (opcional)
+        <input type="text" id="grant-note" placeholder="Ej: Regalo por renovación anual">
+      </label>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="submitGrantTickets()">
+          <i class="fa-solid fa-gift"></i> Otorgar tickets
+        </button>
+        <button class="btn-secondary" onclick="closeModal('modal-grant-tickets')">Cancelar</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 
-<script src="/static/js/app.js?v=17"></script>
+<script src="/static/js/app.js?v=1783268723"></script>
 </body>
 </html>

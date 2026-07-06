@@ -23,6 +23,12 @@ class DeviceRegister(BaseModel):
     model: str = "OpenWrt"
     account_id: Optional[str] = None   # solo superadmin puede fijarlo
     group_id: Optional[int] = None
+    activation_code: Optional[str] = None  # Para activación rápida
+
+class DeviceActivate(BaseModel):
+    activation_code: str
+    name: str
+    location: str = ""
 
 class HeartbeatPayload(BaseModel):
     firmware: str = ""
@@ -102,6 +108,64 @@ def register_device(payload: DeviceRegister, db: Session = Depends(get_db), user
     db.commit()
     db.refresh(device)
     return {"device_id": device.id, "api_key": device.api_key}
+
+
+@router.post("/activate")
+def activate_device(payload: DeviceActivate, db: Session = Depends(get_db), user: User = Depends(require_manage)):
+    """Activación rápida de gateway JADSlink preconfigurado por código"""
+    code = payload.activation_code.strip().upper()
+
+    # Verificar que el código existe
+    activation = db.execute(
+        "SELECT * FROM activation_codes WHERE code = ? AND activated = 0",
+        (code,)
+    ).fetchone()
+
+    if not activation:
+        raise HTTPException(status_code=404, detail="Código de activación inválido o ya activado")
+
+    account_id = _resolve_account_id(None, user, db)
+
+    # Límite de routers del plan
+    if not is_superadmin(user):
+        acc = db.query(Account).filter(Account.id == account_id).first()
+        if acc and billing.account_blocked(acc):
+            raise HTTPException(status_code=403, detail="Cuenta suspendida")
+        if acc and not billing.can_add_device(db, acc):
+            raise HTTPException(status_code=403, detail="Alcanzaste el límite de routers de tu plan")
+
+    # Crear el dispositivo
+    device = Device(
+        id=str(uuid.uuid4()),
+        account_id=account_id,
+        name=payload.name,
+        location=payload.location,
+        model=activation[2] if len(activation) > 2 else "JADSlink Gateway v1",  # model
+        api_key=secrets.token_urlsafe(32),
+        config={
+            "wlan.essid": f"JADSlink-{code[-4:]}",
+            "activation_code": code,
+            "serial_number": activation[1] if len(activation) > 1 else "",  # serial_number
+        },
+    )
+
+    db.add(device)
+
+    # Marcar código como activado
+    db.execute(
+        "UPDATE activation_codes SET activated = 1, activated_at = ?, device_id = ?, account_id = ? WHERE code = ?",
+        (datetime.utcnow().isoformat(), device.id, account_id, code)
+    )
+
+    db.commit()
+    db.refresh(device)
+
+    return {
+        "device_id": device.id,
+        "api_key": device.api_key,
+        "serial_number": activation[1] if len(activation) > 1 else "",
+        "activated": True
+    }
 
 
 # ── Heartbeat (dispositivo → nube) ────────────────────────────────────────────

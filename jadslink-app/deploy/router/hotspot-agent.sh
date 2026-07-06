@@ -21,27 +21,6 @@ http_post() {
 
 SPLASH_PATH="${SPLASH_PATH:-/etc/nodogsplash/htdocs/splash.html}"
 
-# ── Re-login al hotspot aguas arriba (ej. MikroTik "Portal WiFi") ─────────────
-# Si el WAN del router está detrás de otro portal cautivo, la sesión expira y
-# el agente pierde la nube (ICMP pasa, TCP no). Con estas vars en agent.conf
-# el agente se re-autentica solo (login PAP por GET; credenciales URL-safe):
-#   UPSTREAM_LOGIN_URL="http://192.168.100.1/login"
-#   UPSTREAM_USER="usuario"  UPSTREAM_PASS="clave"
-UPSTREAM_LOGIN_URL="${UPSTREAM_LOGIN_URL:-}"
-LAST_RELOGIN=0
-
-upstream_relogin() {
-  [ -z "$UPSTREAM_LOGIN_URL" ] && return 1
-  NOW=$(date +%s)
-  [ $((NOW - LAST_RELOGIN)) -lt 300 ] && return 1   # máx. 1 intento cada 5 min
-  LAST_RELOGIN=$NOW
-  uclient-fetch -q -O /dev/null -T 10 \
-    "${UPSTREAM_LOGIN_URL}?username=${UPSTREAM_USER}&password=${UPSTREAM_PASS}" 2>/dev/null
-  # Tras un corte largo el reloj queda atrasado y el TLS falla ("not yet valid")
-  /etc/init.d/sysntpd restart 2>/dev/null
-  log "Re-login al portal aguas arriba + resync NTP"
-}
-
 update_portal() {
   # Descarga el splash.html ya renderizado (con el branding del operador)
   # desde la nube y lo escribe en NoDogSplash. La nube es la fuente de verdad.
@@ -122,13 +101,9 @@ send_heartbeat() {
 
   if [ -n "$RESPONSE" ]; then
     log "Heartbeat OK"
-    HB_FAILS=0
     process_commands "$RESPONSE"
   else
-    HB_FAILS=$(( ${HB_FAILS:-0} + 1 ))
-    log "Heartbeat fallido - sin respuesta (${HB_FAILS} seguidos)"
-    # 2+ fallos seguidos: puede ser la sesión del portal aguas arriba expirada
-    [ "$HB_FAILS" -ge 2 ] && upstream_relogin
+    log "Heartbeat fallido - sin respuesta"
   fi
 }
 

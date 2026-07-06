@@ -10,10 +10,10 @@ from pydantic import BaseModel
 from typing import Optional
 
 from ..database import get_db
-from ..models import Account, User, DeviceGroup, Device, SubscriptionPlan
+from ..models import Account, User, DeviceGroup, Device, SubscriptionPlan, TicketQuotaLog
 from .auth import require_user, require_superadmin, require_manage, hash_pw, _make_token
 from ..scope import is_superadmin
-from .. import billing, ratelimit
+from .. import billing, ratelimit, quota
 
 router = APIRouter(prefix="/api", tags=["accounts"])
 
@@ -58,6 +58,11 @@ class GroupUpdate(BaseModel):
     name: str
 
 
+class GrantTicketsPayload(BaseModel):
+    quantity: int
+    note: str = ""
+
+
 def _slugify(name: str) -> str:
     base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "cuenta"
     return base
@@ -74,6 +79,12 @@ def _unique_slug(db: Session, name: str) -> str:
 
 def _account_dict(a: Account, db: Session) -> dict:
     usage = billing.compute_usage(db, a)
+    quota_info = quota.get_quota_info(db, a)
+    has_superadmin = db.query(User).filter(
+        User.account_id == a.id,
+        User.role == "superadmin"
+    ).first() is not None
+    
     return {
         "id": a.id, "name": a.name, "slug": a.slug,
         "status": a.status, "plan": a.plan,
@@ -81,11 +92,13 @@ def _account_dict(a: Account, db: Session) -> dict:
         "payment_methods": a.payment_methods or {},
         "device_count": usage["device_count"],
         "usage": usage,
+        "quota": quota_info,
         "billing": billing.billing_info(a),
         "billing_cycle_end": a.billing_cycle_end.isoformat() if a.billing_cycle_end else None,
         "created_at": a.created_at.isoformat() if a.created_at else None,
+        "deleted_at": a.deleted_at.isoformat() if a.deleted_at else None,
+        "has_superadmin": has_superadmin,
     }
-
 
 @router.get("/plans")
 def list_plans(db: Session = Depends(get_db), _: User = Depends(require_user)):
@@ -102,8 +115,11 @@ def list_plans(db: Session = Depends(get_db), _: User = Depends(require_user)):
 # ── Cuentas ────────────────────────────────────────────────────────────────────
 
 @router.get("/accounts")
-def list_accounts(db: Session = Depends(get_db), _: User = Depends(require_superadmin)):
-    return [_account_dict(a, db) for a in db.query(Account).order_by(Account.created_at.desc()).all()]
+def list_accounts(include_deleted: bool = False, db: Session = Depends(get_db), _: User = Depends(require_superadmin)):
+    q = db.query(Account)
+    if not include_deleted:
+        q = q.filter(Account.deleted_at.is_(None))
+    return [_account_dict(a, db) for a in q.order_by(Account.created_at.desc()).all()]
 
 
 @router.get("/admin/revenue")
@@ -325,3 +341,103 @@ def delete_group(group_id: int, db: Session = Depends(get_db), user: User = Depe
     db.delete(g)
     db.commit()
     return {"ok": True}
+
+
+# ── Soft delete y restauración de cuentas ────────────────────────────────────────
+
+@router.delete("/accounts/{account_id}")
+def delete_account(account_id: str, db: Session = Depends(get_db), user: User = Depends(require_superadmin)):
+    """Soft delete de una cuenta (solo superadmin)."""
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    if acc.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="La cuenta ya está eliminada")
+    
+    # Prevenir eliminación de cuenta con usuarios superadmin
+    has_superadmin = db.query(User).filter(
+        User.account_id == account_id,
+        User.role == "superadmin"
+    ).first()
+    if has_superadmin:
+        raise HTTPException(status_code=403, detail="No se puede eliminar la cuenta del superadmin")
+
+    from datetime import datetime
+    acc.deleted_at = datetime.utcnow()
+    acc.deleted_by = user.id
+    db.commit()
+    return {"ok": True, "message": f"Cuenta '{acc.name}' eliminada"}
+
+@router.post("/accounts/{account_id}/restore")
+def restore_account(account_id: str, db: Session = Depends(get_db), user: User = Depends(require_superadmin)):
+    """Restaurar una cuenta eliminada (solo superadmin)."""
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    if acc.deleted_at is None:
+        raise HTTPException(status_code=400, detail="La cuenta no está eliminada")
+
+    acc.deleted_at = None
+    acc.deleted_by = None
+    db.commit()
+    return {"ok": True, "message": f"Cuenta '{acc.name}' restaurada"}
+
+
+# ── Gestión de cuotas de tickets ─────────────────────────────────────────────────
+
+@router.get("/accounts/{account_id}/tickets/quota")
+def get_account_quota(account_id: str, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    """Ver estado de cuota de tickets de una cuenta."""
+    if not is_superadmin(user) and user.account_id != account_id:
+        raise HTTPException(status_code=403, detail="Sin permiso")
+
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+
+    return quota.get_quota_info(db, acc)
+
+
+@router.post("/accounts/{account_id}/tickets/grant")
+def grant_tickets(account_id: str, payload: GrantTicketsPayload, db: Session = Depends(get_db), user: User = Depends(require_superadmin)):
+    """Otorgar tickets gratis a una cuenta (solo superadmin)."""
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    if acc.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="No se pueden otorgar tickets a una cuenta eliminada")
+    if payload.quantity <= 0:
+        raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a 0")
+
+    quota.grant_bonus_tickets(db, acc, payload.quantity, user.id, payload.note)
+    db.commit()
+
+    return {
+        "ok": True,
+        "message": f"Se otorgaron {payload.quantity} tickets bonus a '{acc.name}'",
+        "quota": quota.get_quota_info(db, acc),
+    }
+
+
+@router.get("/accounts/{account_id}/tickets/history")
+def get_ticket_history(account_id: str, limit: int = 50, db: Session = Depends(get_db), user: User = Depends(require_user)):
+    """Ver historial de uso/asignación de tickets de una cuenta."""
+    if not is_superadmin(user) and user.account_id != account_id:
+        raise HTTPException(status_code=403, detail="Sin permiso")
+
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+
+    logs = db.query(TicketQuotaLog).filter(
+        TicketQuotaLog.account_id == account_id
+    ).order_by(TicketQuotaLog.created_at.desc()).limit(limit).all()
+
+    return [{
+        "id": log.id,
+        "action": log.action,
+        "quantity": log.quantity,
+        "note": log.note,
+        "performed_by": log.performed_by,
+        "created_at": log.created_at.isoformat(),
+    } for log in logs]
