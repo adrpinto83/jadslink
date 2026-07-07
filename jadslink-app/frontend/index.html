@@ -554,56 +554,13 @@
           <input type="password" id="su-pass"    placeholder="Contraseña (mín. 6)" required minlength="6" autocomplete="new-password">
         </div>
 
-        <div class="form-section">
-          <h4 class="form-section-title"><i class="fa-solid fa-credit-card"></i> Método de pago</h4>
-          <p class="form-helper-text">
-            <i class="fa-solid fa-shield-halved"></i>
-            No se realizará ningún cargo durante los 14 días de prueba. Tu tarjeta será cargada automáticamente al finalizar el período de prueba.
-          </p>
-
-          <div class="card-input-group">
-            <label class="card-label">Número de tarjeta</label>
-            <div class="card-number-wrapper">
-              <input type="text" id="su-card-number" placeholder="1234 5678 9012 3456"
-                     maxlength="19" autocomplete="cc-number" required
-                     oninput="formatCardNumber(this)">
-              <div class="card-brand" id="card-brand-icon"></div>
-            </div>
-          </div>
-
-          <div class="card-row">
-            <div class="card-input-group">
-              <label class="card-label">Vencimiento</label>
-              <input type="text" id="su-card-expiry" placeholder="MM/AA"
-                     maxlength="5" autocomplete="cc-exp" required
-                     oninput="formatCardExpiry(this)">
-            </div>
-            <div class="card-input-group">
-              <label class="card-label">CVV</label>
-              <input type="text" id="su-card-cvv" placeholder="123"
-                     maxlength="4" autocomplete="cc-csc" required
-                     oninput="this.value=this.value.replace(/\D/g,'')">
-            </div>
-          </div>
-
-          <div class="card-input-group">
-            <label class="card-label">Nombre en la tarjeta</label>
-            <input type="text" id="su-card-name" placeholder="NOMBRE APELLIDO"
-                   autocomplete="cc-name" required style="text-transform:uppercase">
-          </div>
-        </div>
-
         <div class="signup-summary">
-          <div class="summary-row">
-            <span>Plan Starter</span>
-            <span><strong>$19/mes</strong></span>
-          </div>
           <div class="summary-row trial">
             <span><i class="fa-solid fa-gift"></i> Prueba gratis por 14 días</span>
             <span class="trial-tag">$0 hoy</span>
           </div>
           <div class="summary-note">
-            Cancela en cualquier momento. Primer cargo el <strong id="first-charge-date"></strong>
+            Sin tarjeta de crédito. Elige tu plan luego, desde el panel.
           </div>
         </div>
 
