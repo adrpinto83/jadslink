@@ -773,7 +773,6 @@ document.getElementById("account-form").addEventListener("submit", async e => {
 
 async function loadDevices() {
   devices = await api("GET", "/api/devices") || [];
-  renderDevices();
   populateDeviceSelects();
   loadOverview();
 }
@@ -797,8 +796,9 @@ async function loadOverview() {
       <td>${time_ago(d.last_seen)}</td>
       <td><span class="badge ${d.online ? 'badge-green' : 'badge-gray'}">${d.online ? "Online" : "Offline"}</span></td>
       <td>
-        <button class="btn-secondary btn-sm" onclick="event.stopPropagation();rebootDev('${d.id}')"><i class="fa-solid fa-rotate-right"></i></button>
-        <button class="btn-sm btn-del" onclick="event.stopPropagation();deleteDevice('${d.id}','${d.name}')"><i class="fa-solid fa-trash"></i></button>
+        <button class="btn-secondary btn-sm" onclick="event.stopPropagation();showEditDevice('${d.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn-secondary btn-sm" onclick="event.stopPropagation();rebootDev('${d.id}')" title="Reiniciar"><i class="fa-solid fa-rotate-right"></i></button>
+        <button class="btn-sm btn-del" onclick="event.stopPropagation();deleteDevice('${d.id}','${d.name}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
       </td>
     </tr>
   `).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Sin gateways registrados</td></tr>';
@@ -814,26 +814,6 @@ async function loadOverview() {
       <td><span class="badge ${c.active ? 'badge-green' : 'badge-gray'}">${c.active ? "Activo" : "Desconectado"}</span></td>
     </tr>
   `).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Sin conexiones recientes</td></tr>';
-}
-
-function renderDevices() {
-  const grid = document.getElementById("devices-grid");
-  if (!grid) return;
-  grid.innerHTML = devices.map(d => `
-    <div class="device-card" onclick="selectDevice('${d.id}')">
-      <div class="device-name">
-        <span class="status ${d.online ? 'status-online' : 'status-offline'}"></span>
-        ${d.name}
-      </div>
-      <div class="device-meta">${d.location || "Sin ubicación"} · ${d.model}</div>
-      <div class="device-meta">Visto: ${time_ago(d.last_seen)} · FW: ${d.firmware || "—"}</div>
-      <div class="device-actions">
-        <button class="btn-secondary btn-sm" onclick="event.stopPropagation();showEditDevice('${d.id}')">Editar</button>
-        <button class="btn-secondary btn-sm" onclick="event.stopPropagation();rebootDev('${d.id}')">Reiniciar</button>
-        <button class="btn-sm btn-del" onclick="event.stopPropagation();deleteDevice('${d.id}','${d.name}')">Eliminar</button>
-      </div>
-    </div>
-  `).join("") || '<p style="color:var(--muted)">No hay gateways. Registra uno con el botón +</p>';
 }
 
 function selectDevice(id) {
