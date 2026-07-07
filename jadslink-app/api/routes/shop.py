@@ -456,6 +456,13 @@ function fmtDur(m){
 
 var PM_LABEL = {pago_movil:'Pago Móvil', transferencia:'Transferencia', zelle:'Zelle', usdt:'USDT', efectivo:'Efectivo'};
 
+function toWaNumber(raw){
+  var d = (raw||'').replace(/\\D/g,'');
+  if (d.indexOf('58') === 0) return d;
+  if (d.indexOf('0') === 0) return '58' + d.slice(1);
+  return d ? ('58' + d) : '';
+}
+
 function renderShop(){
   $('products').innerHTML = shop.products.map(function(p){
     return '<div class="prod" data-id="'+p.id+'" onclick="pickProduct('+p.id+')">'
@@ -465,9 +472,18 @@ function renderShop(){
       + '</div></div>';
   }).join('');
   $('methods').innerHTML = Object.keys(shop.payment_methods).map(function(m){
+    var raw = shop.payment_methods[m];
+    var detailHtml = esc(raw);
+    if (m === 'efectivo') {
+      var wa = toWaNumber(raw);
+      if (wa.length >= 11) {
+        var msg = encodeURIComponent('Hola, quiero pagar en efectivo mi acceso WiFi');
+        detailHtml = '<a href="https://wa.me/'+wa+'?text='+msg+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#25d366;text-decoration:underline">'+esc(raw)+' \\u2014 chatear \\u2197</a>';
+      }
+    }
     return '<div class="pm" data-m="'+m+'" onclick="pickMethod(\\''+m+'\\')">'
       + '<div class="pm-name">'+ (PM_LABEL[m]||m) +'</div>'
-      + '<div class="pm-detail">'+esc(shop.payment_methods[m])+'</div></div>';
+      + '<div class="pm-detail">'+detailHtml+'</div></div>';
   }).join('');
 }
 
