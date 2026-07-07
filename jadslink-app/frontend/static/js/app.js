@@ -828,6 +828,7 @@ function renderDevices() {
       <div class="device-meta">${d.location || "Sin ubicación"} · ${d.model}</div>
       <div class="device-meta">Visto: ${time_ago(d.last_seen)} · FW: ${d.firmware || "—"}</div>
       <div class="device-actions">
+        <button class="btn-secondary btn-sm" onclick="event.stopPropagation();showEditDevice('${d.id}')">Editar</button>
         <button class="btn-secondary btn-sm" onclick="event.stopPropagation();rebootDev('${d.id}')">Reiniciar</button>
         <button class="btn-sm btn-del" onclick="event.stopPropagation();deleteDevice('${d.id}','${d.name}')">Eliminar</button>
       </div>
@@ -871,6 +872,36 @@ async function deleteDevice(id, name) {
   if (!confirm(`¿Eliminar el gateway "${name}"? Esta acción no se puede deshacer.`)) return;
   await api("DELETE", `/api/devices/${id}`);
   loadDevices();
+}
+
+function showEditDevice(id) {
+  const d = devices.find(x => x.id === id);
+  if (!d) return;
+  document.getElementById("edit-dev-id").value = d.id;
+  document.getElementById("edit-dev-name").value = d.name || "";
+  document.getElementById("edit-dev-location").value = d.location || "";
+  document.getElementById("edit-dev-error").classList.add("hidden");
+  document.getElementById("modal-edit-device").classList.remove("hidden");
+}
+
+async function submitEditDevice() {
+  const id = document.getElementById("edit-dev-id").value;
+  const name = document.getElementById("edit-dev-name").value.trim();
+  const location = document.getElementById("edit-dev-location").value.trim();
+  const err = document.getElementById("edit-dev-error");
+  if (!name) {
+    err.textContent = "El nombre no puede estar vacío";
+    err.classList.remove("hidden");
+    return;
+  }
+  const r = await api("PATCH", `/api/devices/${id}`, { name, location });
+  if (r) {
+    closeModal("modal-edit-device");
+    loadDevices();
+  } else {
+    err.textContent = "No se pudo guardar el cambio";
+    err.classList.remove("hidden");
+  }
 }
 
 // ── Registrar dispositivo ─────────────────────────────────────────────────────

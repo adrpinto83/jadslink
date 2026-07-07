@@ -1373,9 +1373,29 @@
     </div>
   </div>
 
+  <div id="modal-edit-device" class="modal hidden">
+    <div class="modal-content" style="max-width:500px">
+      <h3>Editar gateway</h3>
+      <input type="hidden" id="edit-dev-id">
+      <label style="margin-top:16px">Nombre
+        <input type="text" id="edit-dev-name" placeholder="Ej: Bus 101" required>
+      </label>
+      <label>Ubicación
+        <input type="text" id="edit-dev-location" placeholder="Ej: Ruta Caracas-Maracay">
+      </label>
+      <p id="edit-dev-error" class="error hidden"></p>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="submitEditDevice()">
+          <i class="fa-solid fa-check"></i> Guardar
+        </button>
+        <button class="btn-secondary" onclick="closeModal('modal-edit-device')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="/static/js/currency-display.js?v=1783452032"></script>
-<script src="/static/js/app.js?v=1783452032"></script>
+<script src="/static/js/app.js?v=1783452805"></script>
 </body>
 </html>
