@@ -282,3 +282,17 @@ class Settings(Base):
 
     key   = Column(String, primary_key=True)
     value = Column(String, default="")
+
+
+class ExchangeRate(Base):
+    """Historial de tasas de cambio USD -> Bs (Bolívar venezolano)"""
+    __tablename__ = "exchange_rates"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    rate          = Column(Float, nullable=False)           # Tasa de cambio (ej: 48.50)
+    source        = Column(String, default="manual")        # bcv_scraping|manual|api_fallback
+    source_url    = Column(Text, nullable=True)             # URL fuente
+    is_active     = Column(Boolean, default=True)           # Solo una tasa puede estar activa
+    updated_by    = Column(String, nullable=True)           # Email o 'cron_job'
+    notes         = Column(Text, nullable=True)
+    created_at    = Column(DateTime, default=datetime.utcnow)
