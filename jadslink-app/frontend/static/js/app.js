@@ -303,6 +303,8 @@ document.querySelectorAll(".nav-item").forEach(el => {
 // ── Venta online de códigos ─────────────────────────────────────────────────────
 
 let salesAccountId = null;   // cuenta cuya tienda se está configurando
+let PRODUCTS_CACHE = [];
+let editingProductId = null; // producto en edición inline dentro de la tabla de Ventas
 
 function loadSales() {
   const isViewer = userRole === "viewer";
@@ -383,18 +385,75 @@ async function rejectOrder(id) {
 
 async function loadProducts() {
   const q = userRole === "superadmin" ? `?account_id=${encodeURIComponent(salesAccountId)}` : "";
-  const prods = await api("GET", "/api/products" + q) || [];
-  document.getElementById("products-table").innerHTML = prods.map(p => `
+  PRODUCTS_CACHE = await api("GET", "/api/products" + q) || [];
+  renderProducts();
+}
+
+function currentBsRate() {
+  return (typeof currencySystem !== "undefined" && currencySystem.exchangeRate) || null;
+}
+
+function renderProducts() {
+  const rate = currentBsRate();
+  document.getElementById("products-table").innerHTML = PRODUCTS_CACHE.map(p => {
+    if (p.id === editingProductId) {
+      return `
+    <tr>
+      <td><input type="text" id="edit-name-${p.id}" value="${p.name}" style="width:100%"></td>
+      <td><input type="number" id="edit-dur-${p.id}" min="1" value="${p.duration_min}" style="width:80px"></td>
+      <td><input type="number" id="edit-usd-${p.id}" step="0.01" min="0" value="${p.price_usd}" style="width:90px"></td>
+      <td>
+        <input type="number" id="edit-ves-${p.id}" step="0.01" min="0" value="${p.price_ves || 0}" style="width:100px">
+        ${rate ? `<button type="button" class="btn-sm" title="Calcular con la tasa actual (1 USD = ${rate.toFixed(2)} Bs)" onclick="applyRateToEdit(${p.id})"><i class="fa-solid fa-rotate"></i></button>` : ""}
+      </td>
+      <td>${p.is_active ? '<span class="badge badge-green">activo</span>' : '<span class="badge badge-gray">inactivo</span>'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm" style="background:var(--accent2)" onclick="saveProduct(${p.id})">Guardar</button>
+        <button class="btn-sm" onclick="cancelEditProduct()">Cancelar</button>
+      </td>
+    </tr>`;
+    }
+    return `
     <tr style="${p.is_active ? "" : "opacity:.45"}">
       <td><strong>${p.name}</strong></td>
       <td>${p.duration_min} min</td>
       <td>$${p.price_usd.toFixed(2)}</td>
-      <td>${p.price_ves > 0 ? "Bs. " + p.price_ves.toFixed(2) : "—"}</td>
+      <td>${p.price_ves > 0 ? "Bs. " + p.price_ves.toFixed(2) : (rate ? `<span style="color:var(--muted)">≈ Bs. ${(p.price_usd * rate).toFixed(2)}</span>` : "—")}</td>
       <td>${p.is_active ? '<span class="badge badge-green">activo</span>' : '<span class="badge badge-gray">inactivo</span>'}</td>
       <td style="white-space:nowrap">
+        <button class="btn-sm" onclick="editProduct(${p.id})">Editar</button>
         <button class="btn-sm" onclick="toggleProduct(${p.id}, ${!p.is_active})">${p.is_active ? "Desactivar" : "Activar"}</button>
       </td>
-    </tr>`).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Crea tu primer producto para activar la tienda</td></tr>';
+    </tr>`;
+  }).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Crea tu primer producto para activar la tienda</td></tr>';
+}
+
+function editProduct(id) {
+  editingProductId = id;
+  renderProducts();
+}
+
+function cancelEditProduct() {
+  editingProductId = null;
+  renderProducts();
+}
+
+function applyRateToEdit(id) {
+  const rate = currentBsRate();
+  const usd = parseFloat(document.getElementById(`edit-usd-${id}`).value) || 0;
+  if (rate) document.getElementById(`edit-ves-${id}`).value = (usd * rate).toFixed(2);
+}
+
+async function saveProduct(id) {
+  const name = document.getElementById(`edit-name-${id}`).value.trim();
+  const duration_min = parseInt(document.getElementById(`edit-dur-${id}`).value, 10);
+  const price_usd = parseFloat(document.getElementById(`edit-usd-${id}`).value);
+  const price_ves = parseFloat(document.getElementById(`edit-ves-${id}`).value) || 0;
+  if (!name || !duration_min || duration_min <= 0 || isNaN(price_usd) || price_usd < 0) {
+    return alert("Revisa los datos: nombre, duración y precio USD son requeridos");
+  }
+  const r = await api("PATCH", `/api/products/${id}`, { name, duration_min, price_usd, price_ves });
+  if (r) { editingProductId = null; loadProducts(); }
 }
 
 document.getElementById("product-form").addEventListener("submit", async e => {
@@ -408,6 +467,12 @@ document.getElementById("product-form").addEventListener("submit", async e => {
   });
   if (r) { document.getElementById("product-form").reset(); document.getElementById("prod-dur").value = 60; loadProducts(); }
 });
+
+function applyRateToNewProduct() {
+  const rate = currentBsRate();
+  const usd = parseFloat(document.getElementById("prod-usd").value) || 0;
+  if (rate) document.getElementById("prod-ves").value = (usd * rate).toFixed(2);
+}
 
 async function toggleProduct(id, active) {
   if (await api("PATCH", `/api/products/${id}`, { is_active: active })) loadProducts();
