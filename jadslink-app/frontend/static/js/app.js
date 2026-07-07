@@ -15,11 +15,10 @@ const theme = {
 
   init() {
     this.apply(this.current);
-    const btn = document.getElementById("theme-toggle");
-    if (btn) {
+    document.querySelectorAll(".js-theme-toggle").forEach(btn => {
       btn.addEventListener("click", () => this.toggle());
-      this.updateIcon();
-    }
+    });
+    this.updateIcon();
   },
 
   apply(themeName) {
@@ -34,16 +33,12 @@ const theme = {
   },
 
   updateIcon() {
-    const btn = document.getElementById("theme-toggle");
-    if (!btn) return;
-    const icon = btn.querySelector("i");
-    if (this.current === "dark") {
-      icon.className = "fa-solid fa-moon";
-      btn.title = "Cambiar a tema claro";
-    } else {
-      icon.className = "fa-solid fa-sun";
-      btn.title = "Cambiar a tema oscuro";
-    }
+    const title = this.current === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro";
+    document.querySelectorAll(".js-theme-toggle").forEach(btn => {
+      const icon = btn.querySelector("i");
+      if (icon) icon.className = this.current === "dark" ? "fa-solid fa-moon" : "fa-solid fa-sun";
+      btn.title = title;
+    });
   }
 };
 

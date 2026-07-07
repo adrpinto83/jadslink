@@ -238,7 +238,7 @@
      ══════════════════════════════════════════════════════════════════════════ -->
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="all">
-<link rel="stylesheet" href="/static/css/app.css?v=1783268723" media="all">
+<link rel="stylesheet" href="/static/css/app.css?v=1783452032" media="all">
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      PERFORMANCE & SECURITY
@@ -265,7 +265,10 @@
           </svg>
           <span>JADSLink</span>
         </div>
-        <button class="btn-login" onclick="showLogin()">Iniciar sesión</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button type="button" class="theme-toggle-icon js-theme-toggle" title="Cambiar tema"><i class="fa-solid fa-sun"></i></button>
+          <button class="btn-login" onclick="showLogin()">Iniciar sesión</button>
+        </div>
       </div>
     </header>
 
@@ -519,6 +522,7 @@
 
   <!-- LOGIN -->
   <div id="login-screen" class="screen">
+    <button type="button" class="theme-toggle-icon js-theme-toggle" title="Cambiar tema" style="position:fixed;top:20px;right:20px"><i class="fa-solid fa-sun"></i></button>
     <div class="login-card">
       <div class="login-logo">
         <svg width="52" height="44" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -640,7 +644,7 @@
         <a class="nav-item" href="https://wa.me/584124767466?text=Hola%2C%20necesito%20soporte%20con%20JADSLink" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;color:#25d366">
           <i class="fa-brands fa-whatsapp"></i> Soporte
         </a>
-        <div class="theme-toggle" id="theme-toggle" title="Cambiar tema">
+        <div class="theme-toggle js-theme-toggle" title="Cambiar tema">
           <div class="theme-toggle-track">
             <div class="theme-toggle-thumb">
               <i id="theme-icon" class="fa-solid fa-sun"></i>
@@ -1414,7 +1418,7 @@
 
 </div>
 
-<script src="/static/js/currency-display.js?v=1783428096"></script>
-<script src="/static/js/app.js?v=1783428096"></script>
+<script src="/static/js/currency-display.js?v=1783452032"></script>
+<script src="/static/js/app.js?v=1783452032"></script>
 </body>
 </html>
