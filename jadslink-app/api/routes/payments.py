@@ -15,7 +15,7 @@ from ..database import get_db, DATA_DIR
 from ..models import Payment, Account, User
 from .auth import require_user, require_superadmin
 from ..scope import is_superadmin
-from .. import billing
+from .. import billing, emailer
 
 router = APIRouter(prefix="/api", tags=["payments"])
 
@@ -86,6 +86,15 @@ async def report_payment(
     db.add(p)
     db.commit()
     db.refresh(p)
+
+    emailer.notify(
+        db,
+        f"[JADSLink] Nuevo pago de suscripción — {acc.name}",
+        f"Cuenta: {acc.name}\nMonto: ${amount_usd:.2f}\nMétodo: {method}\n"
+        f"Referencia: {reference or '—'}\nNota: {note or '—'}\n"
+        f"Comprobante: {'sí' if proof_name else 'no'}\n\n"
+        f"Apruébalo desde el panel de superadmin:\nhttps://link.jadsstudio.com",
+    )
     return _payment_dict(p, acc.name)
 
 

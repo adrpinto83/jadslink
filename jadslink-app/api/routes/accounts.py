@@ -13,7 +13,7 @@ from ..database import get_db
 from ..models import Account, User, DeviceGroup, Device, SubscriptionPlan, TicketQuotaLog
 from .auth import require_user, require_superadmin, require_manage, hash_pw, _make_token
 from ..scope import is_superadmin
-from .. import billing, ratelimit, quota
+from .. import billing, ratelimit, quota, emailer
 
 router = APIRouter(prefix="/api", tags=["accounts"])
 
@@ -192,6 +192,14 @@ def signup(payload: SignupPayload, request: Request, db: Session = Depends(get_d
         password=payload.password, email=payload.email, contact_phone=payload.contact_phone,
     )
     user = db.query(User).filter(User.username == username).first()
+
+    emailer.notify(
+        db,
+        f"[JADSLink] Nueva cuenta trial — {name}",
+        f"Empresa: {name}\nUsuario: {username}\nEmail: {payload.email or '—'}\n"
+        f"Teléfono: {payload.contact_phone or '—'}\n\n"
+        f"Panel de superadmin:\nhttps://link.jadsstudio.com",
+    )
     return {
         "token": _make_token(user),
         "username": user.username,

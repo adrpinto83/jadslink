@@ -22,7 +22,7 @@ from ..models import Account, Device, CodeProduct, CodeOrder, Command, Code, Use
 from .auth import require_user, require_manage
 from .codes import gen_code
 from ..scope import is_superadmin
-from .. import billing, ratelimit
+from .. import billing, ratelimit, emailer
 
 router = APIRouter(tags=["shop"])
 
@@ -173,6 +173,16 @@ def create_order(device_id: str, payload: OrderCreate, request: Request, db: Ses
     )
     db.add(order)
     db.commit()
+
+    emailer.notify(
+        db,
+        f"[JADSLink] Nuevo pedido pendiente — {product.name}",
+        f"Cuenta: {acc.name}\nDispositivo: {device.name}\n"
+        f"Producto: {product.name} (${product.price_usd:.2f})\n"
+        f"Método: {method}\nReferencia: {reference or '—'}\n"
+        f"Comprador: {order.buyer_name or '—'} ({order.buyer_phone or 'sin teléfono'})\n\n"
+        f"Apruébalo desde el panel, pestaña Ventas:\nhttps://link.jadsstudio.com",
+    )
     return {"token": order.token, "status": order.status}
 
 

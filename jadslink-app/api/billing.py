@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from .models import Account, SubscriptionPlan, Device
+from . import emailer
 
 # Estados en los que la cuenta NO puede operar (generar códigos, validar).
 BLOCKED_STATUSES = {"suspended", "canceled"}
@@ -66,6 +67,13 @@ def run_billing_cycle(db: Session) -> int:
         if now > a.billing_cycle_end + timedelta(days=GRACE_DAYS):
             if a.status != "suspended":
                 a.status = "suspended"; changed += 1
+                emailer.notify(
+                    db,
+                    f"[JADSLink] Cuenta suspendida — {a.name}",
+                    f"La cuenta «{a.name}» se suspendió por falta de pago "
+                    f"(venció el {a.billing_cycle_end.strftime('%Y-%m-%d')} + {GRACE_DAYS}d de gracia).\n\n"
+                    f"Panel de superadmin:\nhttps://link.jadsstudio.com",
+                )
         elif now > a.billing_cycle_end:
             if a.status != "past_due":
                 a.status = "past_due"; changed += 1

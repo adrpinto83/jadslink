@@ -918,10 +918,10 @@
           <div id="api-keys-list"></div>
         </div>
 
-        <!-- Alertas offline -->
+        <!-- Alertas por email -->
         <div class="settings-card" style="margin-top:20px">
-          <div class="settings-card-head"><i class="fa-solid fa-bell"></i> Alertas de gateway offline</div>
-          <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Recibe un email cuando un gateway deje de responder. Requiere SMTP configurado en el servidor (<code>SMTP_HOST</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> en <code>.env</code>).</p>
+          <div class="settings-card-head"><i class="fa-solid fa-bell"></i> Alertas por email</div>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Recibe un email cuando: un gateway deje de responder, llegue un pedido de venta online, se reporte un pago de suscripción, se registre una cuenta trial, o una cuenta se suspenda por falta de pago. Requiere SMTP configurado en el servidor (<code>SMTP_HOST</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> en <code>.env</code>).</p>
           <form id="alert-form" class="settings-form">
             <label style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
               <input type="checkbox" id="alert-enabled" style="width:auto;margin:0">
@@ -930,7 +930,7 @@
             <label>Email de destino
               <input type="email" id="alert-email" placeholder="admin@empresa.com">
             </label>
-            <label>Minutos sin respuesta antes de alertar
+            <label>Minutos sin respuesta antes de alertar por gateway offline
               <input type="number" id="alert-threshold" value="5" min="1" max="60">
             </label>
             <div class="form-actions">
