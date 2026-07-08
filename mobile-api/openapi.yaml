@@ -1,0 +1,941 @@
+openapi: 3.0.3
+info:
+  title: JADSLink — API de Operador (app móvil)
+  description: >
+    Endpoints que consume la app Android de operadores de JADSLink.
+    Autenticación por token Bearer (el mismo token que devuelve /api/auth/login).
+    Contrato verificado contra jadslink-app (2026-07-08).
+  version: 1.1.0
+servers:
+  - url: https://link.jadsstudio.com
+    description: Producción
+  - url: http://127.0.0.1:8099
+    description: Local (dev)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+  - name: cuenta
+  - name: dashboard
+  - name: gateways
+  - name: codigos
+  - name: tienda
+  - name: pagos
+  - name: extras
+
+paths:
+  # ─────────────────────────── AUTH ───────────────────────────
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Login → token Bearer
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginPayload' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+
+  /api/signup:
+    post:
+      tags: [auth]
+      summary: Registro self-service (crea cuenta trial y auto-login)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupPayload' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '400': { $ref: '#/components/responses/Error' }
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: Perfil del usuario + cuenta + uso + facturación
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /api/auth/password:
+    put:
+      tags: [auth]
+      summary: Cambiar contraseña (invalida tokens previos, devuelve uno nuevo)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordPayload' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  token: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: Cerrar sesión (limpia la cookie; el token Bearer simplemente se descarta en el cliente)
+      responses:
+        '200': { description: OK }
+
+  # ─────────────────────────── CUENTA / PLAN ───────────────────────────
+  /api/plans:
+    get:
+      tags: [cuenta]
+      summary: Planes de suscripción disponibles
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Plan' }
+
+  /api/accounts/{account_id}:
+    get:
+      tags: [cuenta]
+      summary: Detalle de mi cuenta
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /api/accounts/{account_id}/users:
+    get:
+      tags: [cuenta]
+      summary: Usuarios de la cuenta (RBAC)
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AccountUser' }
+
+  /api/accounts/{account_id}/tickets/quota:
+    get:
+      tags: [cuenta]
+      summary: Cuota de códigos del mes
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quota' }
+
+  /api/accounts/{account_id}/payments:
+    get:
+      tags: [pagos]
+      summary: Historial de pagos de suscripción
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Payment' }
+    post:
+      tags: [pagos]
+      summary: Reportar pago de suscripción (multipart, con comprobante opcional)
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [amount_usd, method]
+              properties:
+                amount_usd: { type: number, format: float }
+                method:
+                  type: string
+                  enum: [pago_movil, transferencia, zelle, usdt, efectivo]
+                reference: { type: string }
+                note: { type: string }
+                proof:
+                  type: string
+                  format: binary
+                  description: Imagen (JPG/PNG/WEBP) o PDF, máx 4 MB
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Payment' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+
+  # ─────────────────────────── DASHBOARD ───────────────────────────
+  /api/devices/overview:
+    get:
+      tags: [dashboard]
+      summary: Resumen para las tarjetas del dashboard
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Overview' }
+
+  # ─────────────────────────── GATEWAYS ───────────────────────────
+  /api/devices:
+    get:
+      tags: [gateways]
+      summary: Listar mis gateways
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Device' }
+    post:
+      tags: [gateways]
+      summary: (alias no usado — ver /api/devices/register)
+      responses: { '405': { description: Method Not Allowed } }
+
+  /api/devices/register:
+    post:
+      tags: [gateways]
+      summary: Alta de un gateway → devuelve api_key para el router
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceRegister' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceCredentials' }
+        '403':
+          description: Cuenta suspendida o límite de plan alcanzado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+
+  /api/devices/activate:
+    post:
+      tags: [gateways]
+      summary: Activación rápida por código (gateway JADSLink preconfigurado)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceActivate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceCredentials' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /api/devices/{device_id}:
+    get:
+      tags: [gateways]
+      summary: Detalle de un gateway
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [gateways]
+      summary: Editar nombre / ubicación / grupo
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceUpdate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+    delete:
+      tags: [gateways]
+      summary: Eliminar gateway
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200': { description: OK }
+
+  /api/devices/{device_id}/config:
+    put:
+      tags: [gateways]
+      summary: Actualizar config/branding del portal cautivo
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config]
+              properties:
+                config: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: OK }
+
+  /api/devices/{device_id}/onboarding:
+    get:
+      tags: [gateways]
+      summary: Datos para configurar el router (agent.conf, api_key, endpoint)
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { type: object, additionalProperties: true } } }
+
+  /api/devices/{device_id}/clients:
+    get:
+      tags: [gateways]
+      summary: Clientes conectados actualmente
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ConnectedClient' }
+
+  /api/devices/{device_id}/kick/{mac}:
+    post:
+      tags: [gateways]
+      summary: Desconectar un cliente por MAC
+      parameters:
+        - { $ref: '#/components/parameters/DeviceId' }
+        - { name: mac, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK }
+
+  /api/devices/{device_id}/usage-summary:
+    get:
+      tags: [gateways]
+      summary: Resumen de consumo (bytes, sesiones)
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { type: object, additionalProperties: true } } }
+
+  /api/devices/{device_id}/reports:
+    get:
+      tags: [gateways]
+      summary: Métricas históricas (heartbeats)
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Report' }
+
+  /api/devices/{device_id}/logs:
+    get:
+      tags: [gateways]
+      summary: Logs del gateway
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { type: object, additionalProperties: true } } }
+
+  /api/devices/{device_id}/reboot:
+    post:
+      tags: [gateways]
+      summary: Reiniciar el router (encola comando)
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200': { description: OK }
+
+  /api/devices/{device_id}/ssid:
+    post:
+      tags: [gateways]
+      summary: Cambiar SSID del WiFi (encola comando)
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ssid]
+              properties:
+                ssid: { type: string }
+      responses:
+        '200': { description: OK }
+
+  # ─────────────────────────── CÓDIGOS ───────────────────────────
+  /api/devices/{device_id}/codes:
+    get:
+      tags: [codigos]
+      summary: Listar códigos del gateway
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Code' }
+    post:
+      tags: [codigos]
+      summary: Generar N códigos (respeta la cuota del plan)
+      parameters: [ { $ref: '#/components/parameters/DeviceId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CodeCreate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CodeCreateResult' }
+        '403': { $ref: '#/components/responses/Error' }
+
+  /api/devices/{device_id}/codes/{code_id}:
+    delete:
+      tags: [codigos]
+      summary: Eliminar un código
+      parameters:
+        - { $ref: '#/components/parameters/DeviceId' }
+        - { name: code_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+
+  # ─────────────────────────── TIENDA / VENTAS ───────────────────────────
+  /api/products:
+    get:
+      tags: [tienda]
+      summary: Listar productos de la tienda
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Product' }
+    post:
+      tags: [tienda]
+      summary: Crear producto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCreate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+
+  /api/products/{product_id}:
+    patch:
+      tags: [tienda]
+      summary: Editar producto
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductUpdate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+    delete:
+      tags: [tienda]
+      summary: Eliminar producto
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+
+  /api/orders:
+    get:
+      tags: [tienda]
+      summary: Pedidos de compradores (ventas online)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Order' }
+
+  /api/orders/{order_id}/approve:
+    post:
+      tags: [tienda]
+      summary: Aprobar pedido → genera y entrega el código
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+
+  /api/orders/{order_id}/reject:
+    post:
+      tags: [tienda]
+      summary: Rechazar pedido
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { note: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+
+  # ─────────────────────────── EXTRAS ───────────────────────────
+  /api/exchange/current:
+    get:
+      tags: [extras]
+      summary: Tasa de cambio USD → Bs (pública)
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExchangeRate' }
+
+  /api/groups:
+    get:
+      tags: [extras]
+      summary: Listar grupos de gateways
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Group' }
+    post:
+      tags: [extras]
+      summary: Crear grupo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties: { name: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    AccountId:
+      name: account_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DeviceId:
+      name: device_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        detail: { type: string }
+
+    LoginPayload:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+
+    SignupPayload:
+      type: object
+      required: [company_name, username, password]
+      properties:
+        company_name: { type: string }
+        username: { type: string }
+        password: { type: string, minLength: 6 }
+        email: { type: string }
+        contact_phone: { type: string }
+
+    ChangePasswordPayload:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string }
+        new_password: { type: string, minLength: 8 }
+
+    AuthResult:
+      type: object
+      properties:
+        token: { type: string, description: "Usar en header Authorization: Bearer <token>" }
+        username: { type: string }
+        role: { type: string, enum: [superadmin, owner, manager, viewer] }
+        account_id: { type: string }
+
+    Me:
+      type: object
+      properties:
+        username: { type: string }
+        email: { type: string }
+        full_name: { type: string }
+        role: { type: string, enum: [superadmin, owner, manager, viewer] }
+        account_id: { type: string }
+        account: { $ref: '#/components/schemas/Account' }
+
+    Account:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        status: { type: string, enum: [trial, active, past_due, suspended] }
+        plan: { type: string }
+        usage: { $ref: '#/components/schemas/Usage' }
+        billing: { $ref: '#/components/schemas/Billing' }
+
+    Usage:
+      type: object
+      properties:
+        plan: { type: string }
+        plan_name: { type: string }
+        device_count: { type: integer }
+        included_devices: { type: integer }
+        max_devices: { type: integer, nullable: true }
+        extra_devices: { type: integer }
+        base_price: { type: number }
+        price_per_extra_device: { type: number }
+        extra_cost: { type: number }
+        total_monthly: { type: number }
+        at_limit: { type: boolean }
+        tickets_per_month: { type: integer }
+        tickets_used: { type: integer }
+        tickets_bonus: { type: integer }
+        tickets_unlimited: { type: boolean }
+
+    Billing:
+      type: object
+      properties:
+        billing_cycle_end: { type: string, format: date-time, nullable: true }
+        days_left: { type: integer }
+        expired: { type: boolean }
+        grace: { type: boolean }
+
+    Plan:
+      type: object
+      properties:
+        key: { type: string }
+        name: { type: string }
+        base_price_usd: { type: number }
+        included_devices: { type: integer }
+        price_per_extra_device_usd: { type: number }
+        max_devices: { type: integer, nullable: true }
+        features: { type: object, additionalProperties: true }
+
+    AccountUser:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        email: { type: string }
+        full_name: { type: string }
+        role: { type: string, enum: [owner, manager, viewer] }
+        is_active: { type: boolean }
+
+    Quota:
+      type: object
+      properties:
+        plan: { type: string }
+        limit: { type: integer }
+        used: { type: integer }
+        bonus: { type: integer }
+        available: { type: integer }
+        unlimited: { type: boolean }
+        reset_at: { type: string, format: date-time }
+
+    Overview:
+      type: object
+      properties:
+        devices_total: { type: integer }
+        devices_online: { type: integer }
+        active_clients: { type: integer }
+        active_codes: { type: integer }
+        recent_connections:
+          type: array
+          items: { type: object, additionalProperties: true }
+
+    Device:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        location: { type: string }
+        model: { type: string }
+        online: { type: boolean }
+        last_seen: { type: string, format: date-time, nullable: true }
+        firmware: { type: string }
+        config: { type: object, additionalProperties: true }
+        api_key: { type: string }
+        account_id: { type: string }
+        group_id: { type: integer, nullable: true }
+        active_clients: { type: integer }
+
+    DeviceRegister:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        location: { type: string }
+        model: { type: string, default: OpenWrt }
+        group_id: { type: integer, nullable: true }
+
+    DeviceActivate:
+      type: object
+      required: [activation_code, name]
+      properties:
+        activation_code: { type: string }
+        name: { type: string }
+        location: { type: string }
+
+    DeviceUpdate:
+      type: object
+      properties:
+        name: { type: string, nullable: true }
+        location: { type: string, nullable: true }
+        group_id: { type: integer, nullable: true }
+
+    DeviceCredentials:
+      type: object
+      properties:
+        device_id: { type: string }
+        api_key: { type: string }
+        serial_number: { type: string }
+        activated: { type: boolean }
+
+    ConnectedClient:
+      type: object
+      properties:
+        mac: { type: string }
+        ip: { type: string }
+        hostname: { type: string }
+        bytes_in: { type: integer }
+        bytes_out: { type: integer }
+        code_used: { type: string }
+        active: { type: boolean }
+
+    Report:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        clients_count: { type: integer }
+        bytes_in: { type: integer }
+        bytes_out: { type: integer }
+        cpu_load: { type: number }
+        mem_free_mb: { type: number }
+        uptime_sec: { type: integer }
+        wan_ip: { type: string }
+
+    CodeCreate:
+      type: object
+      properties:
+        quantity: { type: integer, default: 1, description: "OJO: es 'quantity', no 'count'" }
+        duration_min: { type: integer, default: 60 }
+        max_uses: { type: integer, default: 1 }
+        bandwidth_dn: { type: integer, default: 0 }
+        bandwidth_up: { type: integer, default: 0 }
+        expires_hours: { type: integer, nullable: true }
+        note: { type: string }
+        prefix: { type: string }
+
+    CodeCreateResult:
+      type: object
+      properties:
+        created: { type: integer }
+        codes:
+          type: array
+          items: { type: string }
+        quota: { $ref: '#/components/schemas/Quota' }
+
+    Code:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        duration_min: { type: integer }
+        max_uses: { type: integer }
+        used_count: { type: integer }
+        status: { type: string }
+        note: { type: string }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time, nullable: true }
+
+    Product:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        duration_min: { type: integer }
+        price_usd: { type: number }
+        price_ves: { type: number }
+        bandwidth_dn: { type: integer }
+        bandwidth_up: { type: integer }
+        is_active: { type: boolean }
+        sort_order: { type: integer }
+
+    ProductCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        duration_min: { type: integer, default: 60 }
+        price_usd: { type: number, default: 0 }
+        price_ves: { type: number, default: 0 }
+        bandwidth_dn: { type: integer, default: 0 }
+        bandwidth_up: { type: integer, default: 0 }
+        sort_order: { type: integer, default: 0 }
+
+    ProductUpdate:
+      type: object
+      properties:
+        name: { type: string, nullable: true }
+        duration_min: { type: integer, nullable: true }
+        price_usd: { type: number, nullable: true }
+        price_ves: { type: number, nullable: true }
+        bandwidth_dn: { type: integer, nullable: true }
+        bandwidth_up: { type: integer, nullable: true }
+        is_active: { type: boolean, nullable: true }
+        sort_order: { type: integer, nullable: true }
+
+    Order:
+      type: object
+      properties:
+        id: { type: integer }
+        token: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        device_id: { type: string }
+        device_name: { type: string }
+        product_name: { type: string }
+        duration_min: { type: integer }
+        price_usd: { type: number }
+        method: { type: string }
+        reference: { type: string }
+        buyer_name: { type: string }
+        buyer_phone: { type: string }
+        code: { type: string }
+        review_note: { type: string }
+        created_at: { type: string, format: date-time }
+        reviewed_at: { type: string, format: date-time, nullable: true }
+
+    Payment:
+      type: object
+      properties:
+        id: { type: integer }
+        account_id: { type: string }
+        account_name: { type: string }
+        amount_usd: { type: number }
+        method: { type: string }
+        reference: { type: string }
+        note: { type: string }
+        proof_file: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        created_at: { type: string, format: date-time }
+
+    ExchangeRate:
+      type: object
+      properties:
+        rate: { type: number }
+        source: { type: string }
+        updated_at: { type: string, format: date-time, nullable: true }
+        cached: { type: boolean }
+
+    Group:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        account_id: { type: string }

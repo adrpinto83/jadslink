@@ -1,0 +1,560 @@
+{
+  "info": {
+    "name": "JADSLink — API de Operador",
+    "description": "Endpoints que consume la app Android de operadores.\n\nUso rápido:\n1. Selecciona el environment (o edita las variables de la colección): `baseUrl`, `username`, `password`.\n2. Corre **Auth > Login** (o **Signup**): guarda `token` y `accountId` automáticamente.\n3. Corre **Gateways > Registrar gateway**: guarda `deviceId` automáticamente.\n4. El resto de requests ya usan esas variables.\n\nAuth: Bearer token a nivel de colección ({{token}}).\nContrato verificado contra jadslink-app (2026-07-08).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://link.jadsstudio.com" },
+    { "key": "username", "value": "operador" },
+    { "key": "password", "value": "cambia-esto" },
+    { "key": "token", "value": "" },
+    { "key": "accountId", "value": "" },
+    { "key": "deviceId", "value": "" },
+    { "key": "codeId", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "orderId", "value": "" },
+    { "key": "groupId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.token) {",
+                  "  pm.collectionVariables.set('token', d.token);",
+                  "  pm.collectionVariables.set('accountId', d.account_id || '');",
+                  "  console.log('Token guardado. Rol:', d.role);",
+                  "}",
+                  "pm.test('200 OK', () => pm.response.code === 200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "Signup (crear cuenta trial)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.token) {",
+                  "  pm.collectionVariables.set('token', d.token);",
+                  "  pm.collectionVariables.set('accountId', d.account_id || '');",
+                  "}",
+                  "pm.test('200 OK', () => pm.response.code === 200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company_name\": \"Mi Empresa\",\n  \"username\": \"nuevo_operador\",\n  \"password\": \"secreto123\",\n  \"email\": \"correo@ejemplo.com\",\n  \"contact_phone\": \"+584120000000\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/signup", "host": ["{{baseUrl}}"], "path": ["api","signup"] }
+          }
+        },
+        {
+          "name": "Me (perfil + cuenta + uso)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api","auth","me"] }
+          }
+        },
+        {
+          "name": "Cambiar contraseña",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"secreto123\",\n  \"new_password\": \"nuevaClave123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/password", "host": ["{{baseUrl}}"], "path": ["api","auth","password"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","auth","logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cuenta / Plan",
+      "item": [
+        {
+          "name": "Planes disponibles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/plans", "host": ["{{baseUrl}}"], "path": ["api","plans"] }
+          }
+        },
+        {
+          "name": "Detalle de mi cuenta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{accountId}}"] }
+          }
+        },
+        {
+          "name": "Usuarios de la cuenta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/users", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{accountId}}","users"] }
+          }
+        },
+        {
+          "name": "Cuota de códigos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/tickets/quota", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{accountId}}","tickets","quota"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/overview", "host": ["{{baseUrl}}"], "path": ["api","devices","overview"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gateways",
+      "item": [
+        {
+          "name": "Listar gateways",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (Array.isArray(d) && d.length && !pm.collectionVariables.get('deviceId')) {",
+                  "  pm.collectionVariables.set('deviceId', d[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices", "host": ["{{baseUrl}}"], "path": ["api","devices"] }
+          }
+        },
+        {
+          "name": "Registrar gateway",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.device_id) pm.collectionVariables.set('deviceId', d.device_id);",
+                  "pm.test('200 OK', () => pm.response.code === 200);",
+                  "console.log('api_key (va en el router):', d.api_key);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gateway Playa Azul\",\n  \"location\": \"Playa Azul\",\n  \"model\": \"OpenWrt\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/devices/register", "host": ["{{baseUrl}}"], "path": ["api","devices","register"] }
+          }
+        },
+        {
+          "name": "Activar gateway por código",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activation_code\": \"ABCD1234\",\n  \"name\": \"Gateway Bus 101\",\n  \"location\": \"Ruta Caracas-Maracay\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/devices/activate", "host": ["{{baseUrl}}"], "path": ["api","devices","activate"] }
+          }
+        },
+        {
+          "name": "Detalle de gateway",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}"] }
+          }
+        },
+        {
+          "name": "Editar gateway",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gateway Renombrado\",\n  \"location\": \"Caracas\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}"] }
+          }
+        },
+        {
+          "name": "Actualizar config/branding",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"config\": {\n    \"portal_title\": \"Mi WiFi\",\n    \"portal_color1\": \"#4f8ef7\",\n    \"portal_color2\": \"#a259f7\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/config", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","config"] }
+          }
+        },
+        {
+          "name": "Onboarding (config del agente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/onboarding", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","onboarding"] }
+          }
+        },
+        {
+          "name": "Clientes conectados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/clients", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","clients"] }
+          }
+        },
+        {
+          "name": "Desconectar cliente (kick)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/kick/AA:BB:CC:DD:EE:FF", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","kick","AA:BB:CC:DD:EE:FF"] }
+          }
+        },
+        {
+          "name": "Resumen de consumo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/usage-summary", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","usage-summary"] }
+          }
+        },
+        {
+          "name": "Reportes/métricas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/reports", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","reports"] }
+          }
+        },
+        {
+          "name": "Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/logs", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","logs"] }
+          }
+        },
+        {
+          "name": "Reiniciar router",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/reboot", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","reboot"] }
+          }
+        },
+        {
+          "name": "Cambiar SSID",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"ssid\": \"JADSlink-Playa\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/ssid", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","ssid"] }
+          }
+        },
+        {
+          "name": "Eliminar gateway",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Códigos",
+      "item": [
+        {
+          "name": "Listar códigos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (Array.isArray(d) && d.length) pm.collectionVariables.set('codeId', d[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/codes", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","codes"] }
+          }
+        },
+        {
+          "name": "Generar códigos",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 10,\n  \"duration_min\": 60,\n  \"max_uses\": 1,\n  \"note\": \"Venta mostrador\"\n}"
+            },
+            "description": "OJO: el campo es 'quantity', no 'count'.",
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/codes", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","codes"] }
+          }
+        },
+        {
+          "name": "Eliminar código",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/codes/{{codeId}}", "host": ["{{baseUrl}}"], "path": ["api","devices","{{deviceId}}","codes","{{codeId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tienda / Ventas",
+      "item": [
+        {
+          "name": "Listar productos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (Array.isArray(d) && d.length) pm.collectionVariables.set('productId', d[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/products", "host": ["{{baseUrl}}"], "path": ["api","products"] }
+          }
+        },
+        {
+          "name": "Crear producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.id) pm.collectionVariables.set('productId', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"1 Hora\",\n  \"duration_min\": 60,\n  \"price_usd\": 1.0,\n  \"price_ves\": 40.0,\n  \"sort_order\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/products", "host": ["{{baseUrl}}"], "path": ["api","products"] }
+          }
+        },
+        {
+          "name": "Editar producto",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"price_usd\": 1.5,\n  \"is_active\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["api","products","{{productId}}"] }
+          }
+        },
+        {
+          "name": "Eliminar producto",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["api","products","{{productId}}"] }
+          }
+        },
+        {
+          "name": "Listar pedidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (Array.isArray(d) && d.length) pm.collectionVariables.set('orderId', d[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api","orders"] }
+          }
+        },
+        {
+          "name": "Aprobar pedido",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/approve", "host": ["{{baseUrl}}"], "path": ["api","orders","{{orderId}}","approve"] }
+          }
+        },
+        {
+          "name": "Rechazar pedido",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"Referencia de pago no verificada\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/reject", "host": ["{{baseUrl}}"], "path": ["api","orders","{{orderId}}","reject"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagos (suscripción)",
+      "item": [
+        {
+          "name": "Mis pagos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/payments", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{accountId}}","payments"] }
+          }
+        },
+        {
+          "name": "Reportar pago (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "amount_usd", "value": "29", "type": "text" },
+                { "key": "method", "value": "pago_movil", "type": "text", "description": "pago_movil | transferencia | zelle | usdt | efectivo" },
+                { "key": "reference", "value": "0102-1234567", "type": "text" },
+                { "key": "note", "value": "Pago mensual Pro", "type": "text" },
+                { "key": "proof", "type": "file", "src": [], "description": "Opcional: JPG/PNG/WEBP/PDF, máx 4 MB" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/payments", "host": ["{{baseUrl}}"], "path": ["api","accounts","{{accountId}}","payments"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Extras",
+      "item": [
+        {
+          "name": "Tasa de cambio (público)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/exchange/current", "host": ["{{baseUrl}}"], "path": ["api","exchange","current"] }
+          }
+        },
+        {
+          "name": "Listar grupos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (Array.isArray(d) && d.length) pm.collectionVariables.set('groupId', d[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/groups", "host": ["{{baseUrl}}"], "path": ["api","groups"] }
+          }
+        },
+        {
+          "name": "Crear grupo",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Buses\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/groups", "host": ["{{baseUrl}}"], "path": ["api","groups"] }
+          }
+        }
+      ]
+    }
+  ]
+}
