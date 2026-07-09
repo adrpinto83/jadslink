@@ -1,18 +1,47 @@
-# Entorno y secretos
-.env
-venv/
-
-# Base de datos SQLite (datos de runtime)
-data/
-*.db
-*.db-shm
-*.db-wal
-hotspot.db
-
-# Logs y locks de runtime
-*.log
-.uvicorn.lock
+# Archivos temporales y backups
+*.bak
+*.bak.*
+*~
+*.old
+*.tmp
 
 # Python
 __pycache__/
 *.pyc
+*.pyo
+venv/
+*.egg-info/
+
+# Base de datos
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+!data/.gitkeep
+
+# Logs
+*.log
+uvicorn.log
+stderr.log
+
+# Cache
+.cache/
+*.cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env files
+.env
+.env.local
+.env.production
+
+# Lock files
+.uvicorn.lock
+
+# Test files  
+test-*.txt
+cache-info.html

@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- ÚLTIMA ACTUALIZACIÓN: 2026-07-05 07:17 - VERSIÓN: 1783250272 -->
+<!-- SI VES ESTE COMENTARIO, ESTÁS VIENDO LA VERSIÓN NUEVA -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JADSLink</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📶</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/app.css?v=1783250272">
+</head>
+<body>
+<div id="app">
+
+  <!-- LANDING PAGE -->
+  <div id="landing-screen" class="screen">
+    <!-- Header -->
+    <header class="landing-header">
+      <div class="landing-container">
+        <div class="landing-logo">
+          <svg width="40" height="34" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 5C4.87 1.8 9.72 0 13 0s8.13 1.8 12 5" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".3"/>
+            <path d="M3.5 8.5C6.8 5.8 9.8 4.5 13 4.5s6.2 1.3 9.5 4" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+            <path d="M6.5 12C8.9 10 10.9 9 13 9s4.1 1 6.5 3" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="13" cy="18" r="2.5" fill="#4f8ef7"/>
+          </svg>
+          <span>JADSLink</span>
+        </div>
+        <button class="btn-login" onclick="showLogin()">Iniciar sesión</button>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="landing-hero">
+      <div class="landing-container">
+        <div class="hero-content">
+          <h1 class="hero-title">Vende Internet Donde Quieras</h1>
+          <p class="hero-subtitle">Monetiza conectividad satelital en eventos, camping, buses y lugares remotos sin infraestructura. Configura en minutos, cobra automáticamente.</p>
+          <div class="hero-cta">
+            <button class="btn-primary-lg" onclick="showSignup()">Comenzar ahora</button>
+            <button class="btn-secondary-lg" onclick="showLogin()">Ya tengo cuenta</button>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-item">
+              <div class="stat-number">5 min</div>
+              <div class="stat-label">Setup inicial</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">0</div>
+              <div class="stat-label">Infraestructura fija</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">24/7</div>
+              <div class="stat-label">Acceso remoto</div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="hero-device">
+            <i class="fa-solid fa-wifi"></i>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Casos de uso -->
+    <section class="landing-section">
+      <div class="landing-container">
+        <h2 class="section-title">Casos de uso perfectos</h2>
+        <p class="section-subtitle">Lleva conectividad de calidad a cualquier lugar</p>
+        <div class="use-cases-grid">
+          <div class="use-case-card use-case-with-image">
+            <div class="use-case-image" style="background-image: url('https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop')"></div>
+            <div class="use-case-content">
+              <div class="use-case-icon" style="background:#1a3d2e"><i class="fa-solid fa-campground" style="color:#3ecf8e"></i></div>
+              <h3>Camping & Zonas Remotas</h3>
+              <p>Ofrece WiFi premium en campamentos, cabañas y sitios alejados de centros urbanos</p>
+            </div>
+          </div>
+          <div class="use-case-card use-case-with-image">
+            <div class="use-case-image" style="background-image: url('https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=400&fit=crop')"></div>
+            <div class="use-case-content">
+              <div class="use-case-icon" style="background:#2d1a3d"><i class="fa-solid fa-music" style="color:#a78bfa"></i></div>
+              <h3>Eventos & Festivales</h3>
+              <p>Conectividad temporal para conciertos, ferias, competencias y reuniones masivas</p>
+            </div>
+          </div>
+          <div class="use-case-card use-case-with-image">
+            <div class="use-case-image" style="background-image: url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&h=400&fit=crop')"></div>
+            <div class="use-case-content">
+              <div class="use-case-icon" style="background:#1a2d4a"><i class="fa-solid fa-bus" style="color:#4f8ef7"></i></div>
+              <h3>Transporte de Larga Distancia</h3>
+              <p>Internet a bordo en buses interurbanos, lanchas y otros transportes</p>
+            </div>
+          </div>
+          <div class="use-case-card use-case-with-image">
+            <div class="use-case-image" style="background-image: url('https://images.unsplash.com/photo-1519046904884-53103b34b206?w=600&h=400&fit=crop')"></div>
+            <div class="use-case-content">
+              <div class="use-case-icon" style="background:#3d2a1a"><i class="fa-solid fa-umbrella-beach" style="color:#f59e0b"></i></div>
+              <h3>Playas & Turismo</h3>
+              <p>Servicio de conectividad en costas, ríos, montañas y destinos turísticos</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cómo funciona -->
+    <section class="landing-section" style="background:var(--surface)">
+      <div class="landing-container">
+        <h2 class="section-title">Cómo funciona</h2>
+        <p class="section-subtitle">En 4 pasos simples empiezas a generar ingresos</p>
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <h3>Instala el punto de acceso</h3>
+            <p>Conecta tu dispositivo satelital (Starlink u otro) a un router compatible. Sin cables complejos ni técnicos especializados.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <h3>Configura planes y precios</h3>
+            <p>Define duración, ancho de banda y precios desde el panel web. Crea códigos QR listos para vender.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <h3>Los usuarios compran acceso</h3>
+            <p>Escanean el QR, eligen su plan, pagan online y reciben su código de acceso al instante.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">4</div>
+            <h3>Recibe pagos automáticamente</h3>
+            <p>Reporta tus ingresos, administra sesiones en tiempo real y escala tu red fácilmente.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- En acción -->
+    <section class="landing-section in-action-section">
+      <div class="landing-container">
+        <h2 class="section-title">JADSLink en acción</h2>
+        <p class="section-subtitle">Conectando personas en los lugares más increíbles</p>
+        <div class="in-action-gallery">
+          <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&h=600&fit=crop" alt="Antena satelital en zona remota">
+            <div class="gallery-overlay">
+              <div class="gallery-text">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <p>Conectividad satelital en cualquier ubicación</p>
+              </div>
+            </div>
+          </div>
+          <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?w=800&h=600&fit=crop" alt="Router portátil">
+            <div class="gallery-overlay">
+              <div class="gallery-text">
+                <i class="fa-solid fa-wifi"></i>
+                <p>Equipos compactos y fáciles de transportar</p>
+              </div>
+            </div>
+          </div>
+          <div class="gallery-item">
+            <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&h=600&fit=crop" alt="Personas usando internet">
+            <div class="gallery-overlay">
+              <div class="gallery-text">
+                <i class="fa-solid fa-users"></i>
+                <p>Experiencia fluida para tus clientes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Beneficios -->
+    <section class="landing-section">
+      <div class="landing-container">
+        <h2 class="section-title">Por qué JADSLink</h2>
+        <div class="benefits-grid">
+          <div class="benefit-card">
+            <i class="fa-solid fa-bolt"></i>
+            <h3>Sin infraestructura fija</h3>
+            <p>Lleva conectividad satelital a cualquier lugar sin depender de cables o fibra óptica</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-clock"></i>
+            <h3>Configura en minutos</h3>
+            <p>Panel web intuitivo, registro de dispositivos en segundos, sin conocimientos técnicos avanzados</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-dollar-sign"></i>
+            <h3>Monetización automática</h3>
+            <p>Sistema de códigos QR, venta online, reportes de uso y control de sesiones en tiempo real</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-chart-line"></i>
+            <h3>Panel de control completo</h3>
+            <p>Monitorea dispositivos, clientes activos, tráfico de datos y estadísticas desde cualquier lugar</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-shield-halved"></i>
+            <h3>Seguro y estable</h3>
+            <p>Portal cautivo, control de ancho de banda, expulsión de usuarios y gestión de códigos</p>
+          </div>
+          <div class="benefit-card">
+            <i class="fa-solid fa-mobile-screen"></i>
+            <h3>Multi-plataforma</h3>
+            <p>Accede desde cualquier dispositivo: PC, tablet o smartphone. Siempre disponible.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Final -->
+    <section class="landing-cta">
+      <div class="landing-container">
+        <h2>¿Listo para empezar?</h2>
+        <p>Crea tu cuenta gratis y comienza a monetizar conectividad hoy mismo</p>
+        <button class="btn-primary-lg" onclick="showSignup()">Crear cuenta gratis</button>
+        <p class="cta-note">14 días de prueba · Sin tarjeta de crédito</p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+      <div class="landing-container">
+        <div class="footer-content">
+          <div class="footer-logo">
+            <svg width="32" height="28" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M1 5C4.87 1.8 9.72 0 13 0s8.13 1.8 12 5" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".3"/>
+              <path d="M3.5 8.5C6.8 5.8 9.8 4.5 13 4.5s6.2 1.3 9.5 4" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+              <path d="M6.5 12C8.9 10 10.9 9 13 9s4.1 1 6.5 3" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="13" cy="18" r="2.5" fill="#4f8ef7"/>
+            </svg>
+            <span>JADSLink</span>
+          </div>
+          <div class="footer-links">
+            <a onclick="showLogin()">Iniciar sesión</a>
+            <a onclick="showSignup()">Crear cuenta</a>
+          </div>
+          <div class="footer-copy">
+            <p>© 2026 JADSLink · Desarrollado por <strong>JADS Studio</strong></p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="login-screen" class="screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <svg width="52" height="44" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 5C4.87 1.8 9.72 0 13 0s8.13 1.8 12 5" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".3"/>
+          <path d="M3.5 8.5C6.8 5.8 9.8 4.5 13 4.5s6.2 1.3 9.5 4" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+          <path d="M6.5 12C8.9 10 10.9 9 13 9s4.1 1 6.5 3" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="13" cy="18" r="2.5" fill="#4f8ef7"/>
+        </svg>
+      </div>
+      <h1>JADSLink</h1>
+      <p class="subtitle" id="login-subtitle">Panel de administración</p>
+      <form id="login-form">
+        <input type="text"     id="login-user" placeholder="Usuario" required autocomplete="username">
+        <input type="password" id="login-pass" placeholder="Contraseña" required autocomplete="current-password">
+        <button type="submit">Iniciar sesión</button>
+        <p id="login-error" class="error hidden"></p>
+      </form>
+      <form id="signup-form" class="hidden">
+        <div class="form-section">
+          <h4 class="form-section-title"><i class="fa-solid fa-building"></i> Información de la empresa</h4>
+          <input type="text"     id="su-company" placeholder="Nombre de tu empresa" required>
+          <input type="email"    id="su-email"   placeholder="Email de contacto" required>
+          <input type="text"     id="su-phone"   placeholder="Teléfono / WhatsApp">
+        </div>
+
+        <div class="form-section">
+          <h4 class="form-section-title"><i class="fa-solid fa-user"></i> Datos de acceso</h4>
+          <input type="text"     id="su-user"    placeholder="Usuario (para iniciar sesión)" required autocomplete="username">
+          <input type="password" id="su-pass"    placeholder="Contraseña (mín. 6)" required minlength="6" autocomplete="new-password">
+        </div>
+
+        <div class="form-section">
+          <h4 class="form-section-title"><i class="fa-solid fa-credit-card"></i> Método de pago</h4>
+          <p class="form-helper-text">
+            <i class="fa-solid fa-shield-halved"></i>
+            No se realizará ningún cargo durante los 14 días de prueba. Tu tarjeta será cargada automáticamente al finalizar el período de prueba.
+          </p>
+
+          <div class="card-input-group">
+            <label class="card-label">Número de tarjeta</label>
+            <div class="card-number-wrapper">
+              <input type="text" id="su-card-number" placeholder="1234 5678 9012 3456"
+                     maxlength="19" autocomplete="cc-number" required
+                     oninput="formatCardNumber(this)">
+              <div class="card-brand" id="card-brand-icon"></div>
+            </div>
+          </div>
+
+          <div class="card-row">
+            <div class="card-input-group">
+              <label class="card-label">Vencimiento</label>
+              <input type="text" id="su-card-expiry" placeholder="MM/AA"
+                     maxlength="5" autocomplete="cc-exp" required
+                     oninput="formatCardExpiry(this)">
+            </div>
+            <div class="card-input-group">
+              <label class="card-label">CVV</label>
+              <input type="text" id="su-card-cvv" placeholder="123"
+                     maxlength="4" autocomplete="cc-csc" required
+                     oninput="this.value=this.value.replace(/\D/g,'')">
+            </div>
+          </div>
+
+          <div class="card-input-group">
+            <label class="card-label">Nombre en la tarjeta</label>
+            <input type="text" id="su-card-name" placeholder="NOMBRE APELLIDO"
+                   autocomplete="cc-name" required style="text-transform:uppercase">
+          </div>
+        </div>
+
+        <div class="signup-summary">
+          <div class="summary-row">
+            <span>Plan Starter</span>
+            <span><strong>$19/mes</strong></span>
+          </div>
+          <div class="summary-row trial">
+            <span><i class="fa-solid fa-gift"></i> Prueba gratis por 14 días</span>
+            <span class="trial-tag">$0 hoy</span>
+          </div>
+          <div class="summary-note">
+            Cancela en cualquier momento. Primer cargo el <strong id="first-charge-date"></strong>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-signup-submit">
+          <i class="fa-solid fa-lock"></i>
+          Iniciar prueba gratis de 14 días
+        </button>
+
+        <p class="signup-terms">
+          Al crear una cuenta, aceptas nuestros <a href="#">Términos de Servicio</a> y <a href="#">Política de Privacidad</a>
+        </p>
+
+        <p id="signup-error" class="error hidden"></p>
+      </form>
+      <p class="login-toggle" id="toggle-signup">¿Nuevo operador? <a onclick="showSignup()">Crea tu cuenta</a></p>
+      <p class="login-toggle hidden" id="toggle-login">¿Ya tienes cuenta? <a onclick="showLogin()">Inicia sesión</a></p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard-screen" class="screen">
+    <nav class="sidebar">
+      <div class="brand"><i class="fa-solid fa-wifi"></i> JADSLink</div>
+      <ul>
+        <li class="nav-item active" data-tab="devices"><i class="fa-solid fa-gauge-high"></i> Dashboard</li>
+        <li class="nav-item" data-tab="clients"><i class="fa-solid fa-users"></i> Clientes</li>
+        <li class="nav-item" data-tab="logs"><i class="fa-solid fa-database"></i> Logs</li>
+        <li class="nav-item" data-tab="codes"><i class="fa-solid fa-ticket"></i> Códigos</li>
+        <li class="nav-item" data-tab="sales"><i class="fa-solid fa-cart-shopping"></i> Ventas</li>
+        <li class="nav-item" data-tab="reports"><i class="fa-solid fa-chart-bar"></i> Reportes</li>
+        <li class="nav-item" data-tab="config"><i class="fa-solid fa-gear"></i> Configuración</li>
+        <li class="nav-item" data-tab="portal"><i class="fa-solid fa-paintbrush"></i> Portal</li>
+        <li class="nav-item" data-tab="payments"><i class="fa-solid fa-credit-card"></i> Pagos</li>
+        <li class="nav-item" data-tab="settings"><i class="fa-solid fa-sliders"></i> Ajustes</li>
+        <li class="nav-item" data-tab="accounts" id="nav-accounts" style="display:none"><i class="fa-solid fa-building"></i> Cuentas</li>
+      </ul>
+      <div class="nav-bottom">
+        <div class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">
+          <div class="theme-toggle-track">
+            <div class="theme-toggle-thumb">
+              <i id="theme-icon" class="fa-solid fa-sun"></i>
+            </div>
+          </div>
+          <span class="theme-toggle-label">Tema</span>
+        </div>
+        <div class="nav-bottom-row">
+          <span id="nav-user"></span>
+          <button id="logout-btn"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="content">
+
+      <!-- TAB: DASHBOARD / DISPOSITIVOS -->
+      <section id="tab-devices" class="tab active">
+        <div class="tab-header">
+          <h2>Dashboard</h2>
+          <button class="btn-primary" id="btn-register-gateway" onclick="showRegisterModal()"><i class="fa-solid fa-plus"></i> Registrar gateway</button>
+        </div>
+
+        <!-- Indicador de plan / uso (operadores) -->
+        <div id="usage-banner" class="usage-banner hidden"></div>
+
+        <!-- Estadísticas globales -->
+        <div class="overview-stats" id="overview-stats">
+          <div class="ov-card">
+            <div class="ov-icon" style="background:#1a2d4a"><i class="fa-solid fa-router" style="color:#4f8ef7"></i></div>
+            <div><div class="ov-val" id="ov-devices">—</div><div class="ov-lbl">Gateways <span id="ov-online" class="badge badge-green"></span></div></div>
+          </div>
+          <div class="ov-card">
+            <div class="ov-icon" style="background:#1a3d2e"><i class="fa-solid fa-users" style="color:#3ecf8e"></i></div>
+            <div><div class="ov-val" id="ov-clients">—</div><div class="ov-lbl">Clientes activos</div></div>
+          </div>
+          <div class="ov-card">
+            <div class="ov-icon" style="background:#2d1a3d"><i class="fa-solid fa-ticket" style="color:#a78bfa"></i></div>
+            <div><div class="ov-val" id="ov-codes">—</div><div class="ov-lbl">Códigos activos</div></div>
+          </div>
+        </div>
+
+        <!-- Estado de gateways -->
+        <div class="section-title"><i class="fa-solid fa-circle-info"></i> Estado de Gateways</div>
+        <table class="data-table" style="margin-bottom:24px">
+          <thead><tr>
+            <th>Gateway</th><th>Ubicación</th><th>Clientes</th><th>Último contacto</th><th>Estado</th><th></th>
+          </tr></thead>
+          <tbody id="gateways-body"></tbody>
+        </table>
+
+        <!-- Conexiones recientes -->
+        <div class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Conexiones recientes</div>
+        <table class="data-table">
+          <thead><tr><th>Gateway</th><th>MAC</th><th>IP</th><th>Código</th><th>Hora</th><th>Estado</th></tr></thead>
+          <tbody id="recent-body"></tbody>
+        </table>
+      </section>
+
+      <!-- TAB: CLIENTES -->
+      <section id="tab-clients" class="tab">
+        <div class="tab-header">
+          <h2>Clientes conectados</h2>
+          <select id="clients-device-select"><option value="">Selecciona gateway</option></select>
+          <label><input type="checkbox" id="clients-all"> Ver historial</label>
+        </div>
+        <table id="clients-table" class="data-table">
+          <thead><tr>
+            <th>MAC</th><th>IP</th><th>Hostname</th>
+            <th>↓ Bytes</th><th>↑ Bytes</th><th>Código</th>
+            <th>Conectado</th><th>Estado</th><th></th>
+          </tr></thead>
+          <tbody id="clients-body"></tbody>
+        </table>
+      </section>
+
+      <!-- TAB: LOGS -->
+      <section id="tab-logs" class="tab">
+        <div class="tab-header">
+          <h2>Historial de conexiones</h2>
+          <select id="logs-device-select"><option value="">Selecciona gateway</option></select>
+          <select id="logs-days">
+            <option value="7">Últimos 7 días</option>
+            <option value="14">Últimos 14 días</option>
+            <option value="28" selected>Últimos 28 días</option>
+          </select>
+          <button class="btn-secondary" onclick="exportLogs()"><i class="fa-solid fa-file-csv"></i> CSV</button>
+        </div>
+        <table class="data-table">
+          <thead><tr>
+            <th>MAC</th><th>IP</th><th>Hostname</th><th>Código</th>
+            <th>Entrada</th><th>Salida</th><th>↓</th><th>↑</th><th>Estado</th>
+          </tr></thead>
+          <tbody id="logs-body"></tbody>
+        </table>
+      </section>
+
+      <!-- TAB: CÓDIGOS -->
+      <section id="tab-codes" class="tab">
+        <div class="tab-header">
+          <h2>Códigos de acceso</h2>
+          <select id="codes-device-select"><option value="">Selecciona gateway</option></select>
+          <button class="btn-primary" id="btn-open-codes" onclick="showCodesModal()"><i class="fa-solid fa-plus"></i> Generar</button>
+          <button class="btn-secondary" onclick="exportCodes()"><i class="fa-solid fa-file-csv"></i> CSV</button>
+          <button class="btn-secondary" onclick="printVouchers()"><i class="fa-solid fa-print"></i> Vouchers</button>
+        </div>
+        <table id="codes-table" class="data-table">
+          <thead><tr>
+            <th>Código</th><th>Duración</th><th>Usos</th>
+            <th>BW ↓/↑</th><th>Vence</th><th>Nota</th><th>Estado</th><th></th>
+          </tr></thead>
+          <tbody id="codes-body"></tbody>
+        </table>
+      </section>
+
+      <!-- TAB: REPORTES -->
+      <section id="tab-reports" class="tab">
+        <div class="tab-header">
+          <h2>Reportes</h2>
+          <select id="reports-device-select"><option value="">Selecciona gateway</option></select>
+          <select id="reports-days">
+            <option value="7">7 días</option>
+            <option value="30" selected>30 días</option>
+            <option value="90">90 días</option>
+          </select>
+        </div>
+
+        <!-- Resumen de uso -->
+        <div class="section-title"><i class="fa-solid fa-circle-info"></i> Resumen de uso</div>
+        <div class="overview-stats" id="usage-cards">
+          <div class="ov-card">
+            <div class="ov-icon" style="background:#2d1a3d"><i class="fa-solid fa-ticket" style="color:#a78bfa"></i></div>
+            <div><div class="ov-val" id="us-used">—</div><div class="ov-lbl">Tickets usados</div></div>
+          </div>
+          <div class="ov-card">
+            <div class="ov-icon" style="background:#1a2d4a"><i class="fa-solid fa-tag" style="color:#4f8ef7"></i></div>
+            <div><div class="ov-val" id="us-active">—</div><div class="ov-lbl">Tickets activos</div></div>
+          </div>
+          <div class="ov-card">
+            <div class="ov-icon" style="background:#1a3d2e"><i class="fa-solid fa-users" style="color:#3ecf8e"></i></div>
+            <div><div class="ov-val" id="us-clients">—</div><div class="ov-lbl">Total clientes</div></div>
+          </div>
+          <div class="ov-card">
+            <div class="ov-icon" style="background:#3d2a1a"><i class="fa-solid fa-hard-drive" style="color:#f59e0b"></i></div>
+            <div><div class="ov-val" id="us-data">—</div><div class="ov-lbl">Datos transferidos</div></div>
+          </div>
+        </div>
+
+        <!-- Gráfica de conexiones diarias -->
+        <div class="section-title" style="margin-top:28px"><i class="fa-solid fa-chart-bar"></i> Conexiones por día</div>
+        <div class="bar-chart-wrap" id="daily-chart-wrap">
+          <div class="bar-chart" id="daily-chart"></div>
+        </div>
+
+        <!-- Telemetría en vivo -->
+        <div class="section-title" style="margin-top:28px"><i class="fa-solid fa-heartbeat"></i> Telemetría en vivo</div>
+        <div class="stats-row" id="stats-row"></div>
+        <canvas id="traffic-chart" height="80"></canvas>
+        <canvas id="clients-chart" height="80"></canvas>
+      </section>
+
+      <!-- TAB: CONFIGURACIÓN -->
+      <section id="tab-config" class="tab">
+        <div class="tab-header">
+          <h2>Configuración del gateway</h2>
+          <select id="config-device-select"><option value="">Selecciona gateway</option></select>
+        </div>
+
+        <!-- SSID -->
+        <div class="settings-card" style="margin-bottom:20px">
+          <div class="settings-card-head"><i class="fa-solid fa-wifi"></i> Nombre de la red WiFi (SSID)</div>
+          <form id="ssid-form" class="settings-form">
+            <label>SSID actual
+              <input type="text" id="ssid-input" maxlength="32" placeholder="Hot Spot" autocomplete="off">
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary"><i class="fa-solid fa-satellite-dish"></i> Cambiar SSID</button>
+            </div>
+            <p id="ssid-msg" class="hidden" style="margin-top:8px"></p>
+          </form>
+        </div>
+
+        <!-- Opciones avanzadas -->
+        <div class="settings-card">
+          <div class="settings-card-head"><i class="fa-solid fa-sliders"></i> Opciones avanzadas</div>
+          <form id="config-form" class="settings-form">
+            <div class="form-grid">
+              <label>Timeout inactividad (seg)
+                <input type="number" name="inactivity.logout.time" placeholder="3600">
+              </label>
+              <label>IPs permitidas (bypass portal)
+                <input type="text" name="allowed.ip" placeholder="1.2.3.4, 5.6.7.8">
+              </label>
+              <label>MACs permitidas (bypass portal)
+                <input type="text" name="allowed.mac" placeholder="AA:BB:CC:DD:EE:FF">
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Guardar</button>
+              <button type="button" class="btn-danger" onclick="rebootDevice()"><i class="fa-solid fa-power-off"></i> Reiniciar gateway</button>
+            </div>
+            <p id="config-msg" class="hidden"></p>
+          </form>
+        </div>
+      </section>
+
+      <!-- TAB: PORTAL (branding del portal cautivo) -->
+      <section id="tab-portal" class="tab">
+        <div class="tab-header">
+          <h2>Personalizar portal cautivo</h2>
+          <select id="portal-device-select"><option value="">Selecciona gateway</option></select>
+        </div>
+        <div class="portal-editor">
+          <form id="portal-form" class="portal-fields">
+            <label>Logo (URL https, opcional)
+              <input type="url" name="portal_logo_url" placeholder="https://misitio.com/logo.png">
+            </label>
+            <label>Título
+              <input type="text" name="portal_title" maxlength="40" placeholder="JADSLink">
+            </label>
+            <label>Subtítulo / tagline
+              <input type="text" name="portal_tagline" maxlength="60" placeholder="Internet • Acceso WiFi">
+            </label>
+            <label>Texto de instrucción
+              <input type="text" name="portal_prompt" maxlength="60" placeholder="Ingresa tu código de acceso">
+            </label>
+            <label>Texto del botón
+              <input type="text" name="portal_button" maxlength="20" placeholder="CONECTAR">
+            </label>
+            <div class="color-row">
+              <label>Color primario
+                <input type="color" name="portal_color1" value="#4f8ef7">
+              </label>
+              <label>Color secundario
+                <input type="color" name="portal_color2" value="#a259f7">
+              </label>
+            </div>
+            <label>Pie de página (opcional)
+              <input type="text" name="portal_footer" maxlength="80" placeholder="Ej: Wi-Fi patrocinado por Empresa XYZ">
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary"><i class="fa-solid fa-cloud-arrow-up"></i> Guardar y aplicar al router</button>
+            </div>
+            <p id="portal-msg" class="hidden" style="margin-top:10px"></p>
+          </form>
+          <div class="portal-preview">
+            <div class="preview-label"><i class="fa-solid fa-mobile-screen"></i> Vista previa en vivo</div>
+            <iframe id="portal-iframe" title="preview"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: AJUSTES -->
+      <section id="tab-settings" class="tab">
+        <div class="tab-header"><h2>Ajustes de cuenta</h2></div>
+
+        <!-- Cambiar contraseña -->
+        <div class="settings-card">
+          <div class="settings-card-head"><i class="fa-solid fa-lock"></i> Cambiar contraseña</div>
+          <form id="pwd-form" class="settings-form">
+            <label>Contraseña actual <input type="password" id="pwd-current" required></label>
+            <label>Nueva contraseña <input type="password" id="pwd-new" required minlength="8"></label>
+            <label>Confirmar contraseña <input type="password" id="pwd-confirm" required minlength="8"></label>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Cambiar contraseña</button>
+            </div>
+            <p id="pwd-msg" class="hidden" style="margin-top:10px"></p>
+          </form>
+        </div>
+
+        <!-- API Keys por dispositivo -->
+        <div class="settings-card" style="margin-top:20px">
+          <div class="settings-card-head"><i class="fa-solid fa-key"></i> Credenciales de gateways</div>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Usa estas credenciales en el archivo <code>/etc/hotspot/agent.conf</code> de cada router.</p>
+          <div id="api-keys-list"></div>
+        </div>
+
+        <!-- Alertas offline -->
+        <div class="settings-card" style="margin-top:20px">
+          <div class="settings-card-head"><i class="fa-solid fa-bell"></i> Alertas de gateway offline</div>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Recibe un email cuando un gateway deje de responder. Requiere SMTP configurado en el servidor (<code>SMTP_HOST</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> en <code>.env</code>).</p>
+          <form id="alert-form" class="settings-form">
+            <label style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+              <input type="checkbox" id="alert-enabled" style="width:auto;margin:0">
+              <span>Activar alertas por email</span>
+            </label>
+            <label>Email de destino
+              <input type="email" id="alert-email" placeholder="admin@empresa.com">
+            </label>
+            <label>Minutos sin respuesta antes de alertar
+              <input type="number" id="alert-threshold" value="5" min="1" max="60">
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Guardar alertas</button>
+            </div>
+            <p id="alert-msg" class="hidden" style="margin-top:10px"></p>
+          </form>
+        </div>
+      </section>
+
+      <!-- TAB: Pagos y facturación -->
+      <section id="tab-sales" class="tab">
+        <div class="tab-header">
+          <h2>Venta online de códigos</h2>
+          <p style="color:var(--muted);font-size:13px;margin-top:8px">Gestiona productos, pedidos y métodos de pago para venta online</p>
+        </div>
+
+        <!-- Pedidos pendientes (todos los roles los ven; aprobar solo manage) -->
+        <div class="section-title"><i class="fa-solid fa-hourglass-half"></i> Pedidos pendientes</div>
+        <div style="overflow-x:auto;margin-bottom:32px">
+          <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Router</th><th>Producto</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Teléfono</th><th style="width:180px">Acciones</th></tr></thead>
+            <tbody id="orders-pending"></tbody>
+          </table>
+        </div>
+
+        <div id="sales-operator" style="display:none">
+          <!-- Selector de cuenta (solo superadmin) -->
+          <div id="sales-account-picker" class="settings-card" style="display:none;max-width:720px;margin-top:20px">
+            <label style="display:block">Cuenta a configurar
+              <select id="sales-account-select" style="width:100%;margin-top:6px"></select>
+            </label>
+          </div>
+
+          <!-- Productos en venta -->
+          <div class="section-title" style="margin-top:32px"><i class="fa-solid fa-tags"></i> Productos en venta</div>
+          <div class="settings-card" style="max-width:820px;margin-bottom:16px" id="product-form-card">
+            <div style="color:var(--muted);font-size:13px;margin-bottom:18px;line-height:1.5">
+              <i class="fa-solid fa-circle-info"></i> Define los planes que tus clientes pueden comprar
+            </div>
+            <form id="product-form" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:12px;align-items:end">
+              <div>
+                <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Nombre del producto</label>
+                <input type="text" id="prod-name" placeholder="Ej: 1 Hora" required style="width:100%">
+              </div>
+              <div>
+                <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Duración</label>
+                <input type="number" id="prod-dur" min="1" value="60" required style="width:100%" placeholder="60">
+              </div>
+              <div>
+                <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Precio USD</label>
+                <input type="number" id="prod-usd" step="0.01" min="0" required style="width:100%" placeholder="0.00">
+              </div>
+              <div>
+                <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Precio Bs</label>
+                <input type="number" id="prod-ves" step="0.01" min="0" value="0" style="width:100%" placeholder="0.00">
+              </div>
+              <button type="submit" class="btn-primary" style="white-space:nowrap;padding:10px 16px"><i class="fa-solid fa-plus"></i> Agregar</button>
+            </form>
+          </div>
+          <div style="overflow-x:auto;margin-bottom:32px">
+            <table class="data-table">
+              <thead><tr><th>Nombre</th><th>Duración</th><th>USD</th><th>Bs</th><th>Estado</th><th style="width:150px">Acciones</th></tr></thead>
+              <tbody id="products-table"></tbody>
+            </table>
+          </div>
+
+          <!-- Datos de cobro (solo owner) -->
+          <div class="section-title" style="margin-top:32px"><i class="fa-solid fa-hand-holding-dollar"></i> Métodos de pago</div>
+          <div class="settings-card" style="max-width:820px;margin-bottom:32px" id="paymethods-card">
+            <div style="color:var(--muted);font-size:13px;margin-bottom:14px">
+              <i class="fa-solid fa-circle-info"></i> Configura cómo tus clientes te pueden pagar. Esta información se mostrará en la página de compra.
+            </div>
+            <form id="paymethods-form" class="settings-form">
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-solid fa-mobile-screen" style="color:var(--accent)"></i> Pago móvil
+                </span>
+                <input type="text" id="pm-pago_movil" placeholder="0412-1234567 · CI 12.345.678 · Banco de Venezuela" maxlength="300">
+              </label>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-solid fa-building-columns" style="color:var(--accent)"></i> Transferencia
+                </span>
+                <input type="text" id="pm-transferencia" placeholder="Cuenta 0102-... · Nombre del titular" maxlength="300">
+              </label>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-solid fa-dollar-sign" style="color:var(--accent)"></i> Zelle
+                </span>
+                <input type="text" id="pm-zelle" placeholder="correo@ejemplo.com · Nombre" maxlength="300">
+              </label>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-brands fa-bitcoin" style="color:var(--accent)"></i> USDT
+                </span>
+                <input type="text" id="pm-usdt" placeholder="Dirección TRC20 / Binance Pay" maxlength="300">
+              </label>
+              <label>
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <i class="fa-solid fa-money-bill-1" style="color:var(--accent)"></i> Efectivo
+                </span>
+                <input type="text" id="pm-efectivo" placeholder="Ej: paga al conductor / en la caja" maxlength="300">
+              </label>
+              <div class="form-actions"><button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Guardar datos de cobro</button></div>
+              <p id="pm-msg" class="hidden" style="margin-top:10px"></p>
+            </form>
+          </div>
+
+          <!-- Link de la tienda por router -->
+          <div class="section-title" style="margin-top:32px"><i class="fa-solid fa-qrcode"></i> Página de venta por router</div>
+          <div class="settings-card" style="max-width:820px;margin-bottom:32px">
+            <div style="color:var(--muted);font-size:13px;margin-bottom:14px">
+              <i class="fa-solid fa-circle-info"></i> Comparte este link o imprime el QR. También aparece automáticamente en el portal cautivo cuando tienes productos y métodos de pago configurados.
+            </div>
+            <label style="display:block;margin-bottom:12px">
+              <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px">Selecciona el router</span>
+              <select id="sales-device-select" style="width:100%"></select>
+            </label>
+            <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+              <div style="flex:1;min-width:280px">
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px">Link de compra</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <code id="sales-link" style="flex:1;padding:10px;background:var(--surface2);border-radius:8px;font-size:12px;word-break:break-all;border:1px solid var(--border)"></code>
+                  <button class="btn-sm" onclick="copySalesLink(this)" style="white-space:nowrap"><i class="fa-regular fa-copy"></i> Copiar</button>
+                </div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px">Código QR</span>
+                <img id="sales-qr" alt="QR" style="width:110px;height:110px;border-radius:8px;border:1px solid var(--border)">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="section-title" style="margin-top:32px"><i class="fa-solid fa-clock-rotate-left"></i> Historial de ventas</div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Router</th><th>Producto</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Código</th><th>Estado</th></tr></thead>
+            <tbody id="orders-history"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-payments" class="tab">
+        <div class="tab-header"><h2>Pagos y facturación</h2></div>
+
+        <!-- Vista operador -->
+        <div id="pay-operator" style="display:none">
+          <div id="billing-summary" class="usage-banner"></div>
+          <div class="settings-card" style="max-width:620px">
+            <div class="settings-card-head"><i class="fa-solid fa-money-bill-wave"></i> Reportar un pago</div>
+            <form id="payment-form" class="settings-form">
+              <label>Monto (USD) <input type="number" id="pay-amount" step="0.01" min="0.01" required></label>
+              <label>Método de pago
+                <select id="pay-method" style="width:100%">
+                  <option value="pago_movil">Pago móvil</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="zelle">Zelle</option>
+                  <option value="usdt">USDT / Binance</option>
+                  <option value="efectivo">Efectivo</option>
+                </select>
+              </label>
+              <label>Referencia <input type="text" id="pay-ref" placeholder="Nro. de referencia / hash"></label>
+              <label>Nota (opcional) <input type="text" id="pay-note" placeholder="Ej: pago de enero"></label>
+              <label>Comprobante (imagen, opcional) <input type="file" id="pay-proof" accept="image/*"></label>
+              <div class="form-actions"><button type="submit" class="btn-primary">Enviar pago</button></div>
+              <p id="pay-msg" class="hidden" style="margin-top:10px"></p>
+            </form>
+          </div>
+          <div class="section-title" style="margin-top:24px">Historial de pagos</div>
+          <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Estado</th></tr></thead>
+            <tbody id="pay-history"></tbody>
+          </table>
+        </div>
+
+        <!-- Vista superadmin: cola de aprobación -->
+        <div id="pay-admin" style="display:none">
+          <div class="section-title"><i class="fa-solid fa-hourglass-half"></i> Pagos pendientes de aprobación</div>
+          <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Cuenta</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Comprobante</th><th></th></tr></thead>
+            <tbody id="pay-pending"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB: Cuentas (solo superadmin) -->
+      <section id="tab-accounts" class="tab">
+        <div class="tab-header">
+          <h2>Cuentas de operadores</h2>
+          <button class="btn-primary" onclick="document.getElementById('modal-account').classList.remove('hidden')">
+            <i class="fa-solid fa-plus"></i> Nueva cuenta
+          </button>
+        </div>
+        <!-- Resumen de ingresos -->
+        <div class="overview-stats" id="revenue-stats"></div>
+
+        <p style="color:var(--muted);font-size:13px;margin:16px 0">
+          Cada cuenta es un operador que gestiona sus propios routers y paga su suscripción.
+          El dueño (owner) inicia sesión con el usuario/clave que definas aquí.
+        </p>
+        <table class="data-table">
+          <thead><tr><th>Cuenta</th><th>Plan</th><th>Estado</th><th>Routers</th><th>Creada</th></tr></thead>
+          <tbody id="accounts-table"></tbody>
+        </table>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: Nueva cuenta de operador -->
+  <div id="modal-account" class="modal hidden">
+    <div class="modal-content">
+      <h3>Nueva cuenta de operador</h3>
+      <form id="account-form">
+        <label>Nombre de la empresa <input type="text" id="acc-name" required placeholder="Transportes ABC"></label>
+        <label>Plan
+          <select id="acc-plan" style="width:100%">
+            <option value="trial">Trial (14 días)</option>
+            <option value="starter">Starter</option>
+            <option value="pro">Pro</option>
+            <option value="business">Business</option>
+          </select>
+        </label>
+        <label>Usuario del dueño (login) <input type="text" id="acc-user" required placeholder="abc"></label>
+        <label>Contraseña del dueño <input type="password" id="acc-pass" required minlength="6"></label>
+        <label>Email (opcional) <input type="email" id="acc-email" placeholder="dueño@empresa.com"></label>
+        <label>Teléfono / WhatsApp (opcional) <input type="text" id="acc-phone" placeholder="+58 412 ..."></label>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Crear cuenta</button>
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-account')">Cancelar</button>
+        </div>
+        <p id="acc-msg" class="hidden" style="margin-top:10px"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Registrar/Activar gateway -->
+  <div id="modal-register" class="modal hidden">
+    <div class="modal-content" style="max-width:580px">
+      <h3>Agregar gateway</h3>
+
+      <!-- Tabs de método -->
+      <div class="activation-tabs">
+        <button class="activation-tab active" data-method="code" onclick="switchActivationMethod('code')">
+          <i class="fa-solid fa-bolt"></i>
+          <div>
+            <strong>Gateway JADSlink</strong>
+            <span>Activación rápida con código</span>
+          </div>
+        </button>
+        <button class="activation-tab" data-method="manual" onclick="switchActivationMethod('manual')">
+          <i class="fa-solid fa-screwdriver-wrench"></i>
+          <div>
+            <strong>Router propio</strong>
+            <span>Configuración manual</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Método 1: Activación por código -->
+      <div id="activation-code-panel" class="activation-panel">
+        <div class="activation-info">
+          <i class="fa-solid fa-circle-info"></i>
+          <p>Ingresa el código de activación que viene en la etiqueta de tu gateway JADSlink</p>
+        </div>
+
+        <form id="activate-form">
+          <label>Código de activación
+            <input type="text" id="activation-code" name="activation_code" required
+                   placeholder="Ej: JADS-A1B2-C3D4-E5F6"
+                   style="text-transform:uppercase;font-family:monospace;letter-spacing:1px">
+          </label>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label>Nombre personalizado
+              <input type="text" id="activate-name" name="name" required placeholder="Mi Gateway">
+            </label>
+            <label>Ubicación
+              <input type="text" id="activate-location" name="location" placeholder="Bus 101">
+            </label>
+          </div>
+
+          <div class="activation-steps">
+            <div class="activation-step">
+              <div class="step-icon"><i class="fa-solid fa-1"></i></div>
+              <div class="step-text">Conecta internet satelital al puerto WAN</div>
+            </div>
+            <div class="activation-step">
+              <div class="step-icon"><i class="fa-solid fa-2"></i></div>
+              <div class="step-text">Enciende el gateway (LED azul parpadeante)</div>
+            </div>
+            <div class="activation-step">
+              <div class="step-icon"><i class="fa-solid fa-3"></i></div>
+              <div class="step-text">Ingresa el código y activa</div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Activar gateway</button>
+            <button type="button" class="btn-secondary" onclick="closeModal('modal-register')">Cancelar</button>
+          </div>
+          <p id="activate-error" class="error hidden" style="margin-top:10px;text-align:center"></p>
+        </form>
+      </div>
+
+      <!-- Método 2: Configuración manual -->
+      <div id="activation-manual-panel" class="activation-panel hidden">
+        <div class="activation-info" style="background:var(--surface3);border-color:var(--warning)">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)"></i>
+          <p>Solo para usuarios avanzados con routers OpenWrt, MikroTik u otros compatibles</p>
+        </div>
+
+        <form id="register-form">
+          <label>Nombre <input type="text" name="name" required placeholder="Router Principal"></label>
+          <label>Ubicación <input type="text" name="location" placeholder="Oficina 1er piso"></label>
+          <label>Modelo / Sistema
+            <select name="model" style="width:100%">
+              <option value="OpenWrt">OpenWrt</option>
+              <option value="MikroTik">MikroTik RouterOS</option>
+              <option value="pfSense">pfSense</option>
+              <option value="DD-WRT">DD-WRT</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </label>
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">Registrar</button>
+            <button type="button" class="btn-secondary" onclick="closeModal('modal-register')">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Resultado exitoso -->
+      <div id="register-result" class="hidden">
+        <div class="success-animation">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h4 style="text-align:center;color:var(--text);margin-bottom:8px">¡Gateway activado correctamente!</h4>
+        <p style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px" id="success-message">Tu gateway está listo para usar</p>
+
+        <!-- Para activación por código -->
+        <div id="activation-success-info" class="activation-success hidden">
+          <div class="success-box">
+            <p style="color:var(--muted);font-size:12px;margin-bottom:8px">Estado del gateway:</p>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface2);border-radius:var(--radius);margin-bottom:16px">
+              <div class="status-pulse status-online"></div>
+              <div style="flex:1">
+                <div style="font-weight:600;color:var(--text)" id="activated-name">Mi Gateway</div>
+                <div style="font-size:12px;color:var(--muted)" id="activated-location">—</div>
+              </div>
+              <span class="badge badge-green">Online</span>
+            </div>
+            <p style="font-size:13px;color:var(--text-secondary);line-height:1.6">
+              <i class="fa-solid fa-circle-check" style="color:var(--accent2)"></i>
+              El gateway se conectará automáticamente en los próximos 30 segundos.
+              Podrás monitorearlo desde el Dashboard.
+            </p>
+          </div>
+        </div>
+
+        <!-- Para configuración manual -->
+        <div id="manual-success-info" class="manual-success hidden">
+          <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Configura el agente en tu router:</p>
+          <ol id="onboarding-steps" style="font-size:13px;line-height:1.6;padding-left:18px;margin-bottom:12px;color:var(--text-secondary)"></ol>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Archivo <code>/etc/hotspot/agent.conf</code>:</p>
+          <pre id="register-creds" style="max-height:180px;overflow-y:auto"></pre>
+          <button class="btn-secondary" style="width:100%;margin-top:12px" onclick="copyText(document.getElementById('register-creds').textContent, this)">
+            <i class="fa-solid fa-copy"></i> Copiar configuración
+          </button>
+        </div>
+
+        <div class="modal-actions" style="margin-top:20px">
+          <button class="btn-primary" onclick="closeRegisterModal()" style="width:100%">Ir al Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Generar tickets -->
+  <div id="modal-codes" class="modal hidden">
+    <div class="modal-content" style="max-width:500px">
+      <h3>Generar tickets</h3>
+
+      <!-- Tipo de servicio -->
+      <p class="field-label">Tipo de servicio</p>
+      <div class="chip-group" id="type-chips">
+        <button type="button" class="chip active" data-type="bus">🚌 Bus</button>
+        <button type="button" class="chip" data-type="evento">🎪 Evento</button>
+        <button type="button" class="chip" data-type="playa">🏖️ Playa</button>
+        <button type="button" class="chip" data-type="express">⚡ Express</button>
+        <button type="button" class="chip" data-type="custom">⚙️ Personalizado</button>
+      </div>
+
+      <!-- Duración -->
+      <p class="field-label" style="margin-top:16px">Duración</p>
+      <div class="chip-group" id="dur-chips">
+        <button type="button" class="chip" data-min="30">30 min</button>
+        <button type="button" class="chip active" data-min="60">1 hora</button>
+        <button type="button" class="chip" data-min="120">2 horas</button>
+        <button type="button" class="chip" data-min="240">4 horas</button>
+        <button type="button" class="chip" data-min="360">6 horas</button>
+        <button type="button" class="chip" data-min="480">8 horas</button>
+        <button type="button" class="chip" data-min="720">12 horas</button>
+        <button type="button" class="chip" data-min="1440">Todo el día</button>
+        <button type="button" class="chip" data-min="0">Otro…</button>
+      </div>
+      <div id="dur-custom-wrap" style="display:none;margin-top:10px">
+        <label class="field-label">Duración personalizada (horas)
+          <input type="number" id="dur-custom-val" min="0.5" step="0.5" placeholder="Ej: 1.5">
+        </label>
+      </div>
+
+      <!-- Cantidad y nota -->
+      <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
+        <label class="field-label" style="flex:1;min-width:100px">Cantidad
+          <input type="number" id="tickets-qty" value="10" min="1" max="500">
+        </label>
+        <label class="field-label" style="flex:2;min-width:160px">Nota (aparece en el voucher)
+          <input type="text" id="tickets-note" placeholder="Ej: Ruta Caracas">
+        </label>
+      </div>
+
+      <!-- Opciones extra solo en Personalizado -->
+      <div id="adv-bw" style="display:none;margin-top:14px">
+        <div class="form-grid">
+          <label class="field-label">BW descarga kbps (0=∞) <input type="number" id="adv-bw-dn" value="0" min="0"></label>
+          <label class="field-label">BW subida kbps (0=∞)   <input type="number" id="adv-bw-up" value="0" min="0"></label>
+          <label class="field-label">Usos por código          <input type="number" id="adv-max-uses" value="1" min="1"></label>
+          <label class="field-label">Vence en horas           <input type="number" id="adv-expires" placeholder="24"></label>
+          <label class="field-label">Prefijo                  <input type="text"   id="adv-prefix"  placeholder="BUS-"></label>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:18px">
+        <button type="button" class="btn-primary" id="btn-gen-codes">
+          <i class="fa-solid fa-ticket"></i> Generar
+        </button>
+        <button type="button" class="btn-secondary" onclick="closeModal('modal-codes')">Cancelar</button>
+      </div>
+      <p id="gen-codes-result" class="hidden" style="margin-top:10px;text-align:center;font-size:13px"></p>
+    </div>
+  </div>
+
+</div>
+
+<script src="/static/js/app.js?v=1783250272"></script>
+</body>
+</html>
